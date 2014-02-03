@@ -5,7 +5,7 @@ use warnings;
 
 use GSCLockClient::Properties qw(pid socket_watcher);
 
-use GSCLockCLient::Claim;
+use GSCLockClient::Claim;
 
 use Socket;
 use IO::Socket;
@@ -21,7 +21,7 @@ sub new {
 
     my($socket1, $socket2) = IO::Socket->socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC);
 
-    { $_->autoflush(1) } foreach ($socket1, $socket2);
+    $_->autoflush(1) foreach ($socket1, $socket2);
 
     my $pid = fork();
     if ($pid) {
@@ -96,12 +96,11 @@ sub _send_command_and_get_result {
 
     $self->socket->print( $json_parser->encode($command) );
     $self->socket->print( $json_parser->encode({
-        });
-
+        }));
     my $result = $c->recv;
     return unless $result->{result};
     return GSCLockClient::Claim->new(
-        resource_name => $resource_name,
+        resource_name => $command->{resource_name},
         keychain  => $self,
     );
 }
