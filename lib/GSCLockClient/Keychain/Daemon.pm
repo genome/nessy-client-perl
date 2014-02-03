@@ -38,8 +38,8 @@ sub new {
 sub _required_params {
     my($params, @required) = @_;
 
-    foreach $name ( @required ) {
-        unless (exists $params{$name}) {
+    foreach my $name ( @required ) {
+        unless (exists $params->{$name}) {
             die "'$name' is a required parameter to new";
         }
     }
@@ -102,7 +102,8 @@ sub _send_return_message {
     $message->{result} = $result ? 'success' : 'failed';
     $message->{error_message} = $@ if ($@);
 
-    $watcher->push_write( json => $return_message );
+    my $watcher = $self->client_watcher;
+    $watcher->push_write( json => $message );
     $watcher->push_read;
 }
 
@@ -156,16 +157,6 @@ sub remove_claim {
     my($self, $resource_name) = @_;
     my $claims = $self->claims;
     return delete $claims->{$resource_name};
-}
-
-sub claim_failed {
-    my($self, $resource_name) = @_;
-
-}
-
-sub claim_succeeded {
-    my($self, $resource_name) = @_;
-
 }
 
 sub _respond_to_requestor {

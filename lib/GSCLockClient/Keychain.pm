@@ -3,9 +3,10 @@ package GSCLockClient::Keychain;
 use strict;
 use warnings;
 
-use GSCLockClient::Properties qw(pid socket_watcher);
+use GSCLockClient::Properties qw(pid socket socket_watcher);
 
 use GSCLockClient::Claim;
+use GSCLockClient::Keychain::Daemon;
 
 use Socket;
 use IO::Socket;
@@ -33,7 +34,6 @@ sub new {
 
     } elsif(defined $pid) {
         exit GSCLockClient::Keychain::Daemon->go(url => $params{url}, client_socket => $socket2);
-
     } else {
         die "Can't fork: $!";
     }
@@ -60,7 +60,7 @@ sub _shutdown_timeout_sub {
 sub claim {
     my($self, $resource_name, $data) = @_;
 
-    my $result = $self->send_command_and_get_result({
+    my $result = $self->_send_command_and_get_result({
         command => 'claim',
         resource_name => $resource_name,
         data => $data,
