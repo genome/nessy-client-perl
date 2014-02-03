@@ -54,6 +54,4 @@ sub DESTROY {
     $self->keychain->shutdown;
 }
 
-}
-
 1;
