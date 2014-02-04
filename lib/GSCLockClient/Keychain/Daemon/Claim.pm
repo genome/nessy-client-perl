@@ -1,6 +1,9 @@
 package GSCLockClient::Keychain::Daemon::Claim;
 
-use GSCLockClient::Properties qw(resource_name state claim_id url keychain ttl_timer_watcher);
+use strict;
+use warnings;
+
+use GSCLockClient::Properties qw(resource_name state url claim_id keychain ttl_timer_watcher);
 
 use AnyEvent;
 use AnyEvent::HTTP;
@@ -151,7 +154,7 @@ sub _ttl_timer_value {
 
 sub state_fail {
     my $self = shift;
-    $self->state(STATE_FAIL);
+    $self->state(STATE_FAILED);
     $self->keychain->claim_failed( { resource_name => $self->resource_name });
 }
 
