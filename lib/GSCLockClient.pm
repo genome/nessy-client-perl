@@ -53,7 +53,7 @@ sub DESTROY {
         $claim->release;
     }
 
-    $self->keychain->shutdown;
+    $self->keychain && $self->keychain->shutdown;
 }
 
 1;
