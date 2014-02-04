@@ -3,7 +3,7 @@ package GSCLockClient::Keychain::Daemon::Claim;
 use strict;
 use warnings;
 
-use GSCLockClient::Properties qw(resource_name state url claim_id keychain ttl_timer_watcher);
+use GSCLockClient::Properties qw(resource_name state url claim_id keychain ttl_timer_watcher ttl);
 
 use AnyEvent;
 use AnyEvent::HTTP;
@@ -39,7 +39,7 @@ sub new {
 
     my $self = bless {}, $class;
 
-    $self->_required_params(\%params, qw(url resource_name keychain));
+    $self->_required_params(\%params, qw(url resource_name keychain ttl));
     $self->state(STATE_NEW);
     return $self;
 }
