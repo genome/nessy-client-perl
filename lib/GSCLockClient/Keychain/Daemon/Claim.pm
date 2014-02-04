@@ -65,7 +65,7 @@ sub _failure {
     my($self, $error) = @_;
 
     my $message = { resource_name => $self->resource_name };
-    $error && $message->{error_message} = $error;
+    $error && ($message->{error_message} = $error);
 
     $self->keychain->claim_failed($message);
 }
