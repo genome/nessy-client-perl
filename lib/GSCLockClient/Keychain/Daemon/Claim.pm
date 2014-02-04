@@ -7,14 +7,14 @@ use AnyEvent::HTTP;
 use JSON;
 use Data::Dumper;
 
-use constant STATE_NEW => 'new';
-use constant STATE_REGISTERING => 'registering';
-use constant STATE_WAITING => 'waiting';
-use constant STATE_ACTIVATING => 'activating';
-use constant STATE_ACTIVE => 'active';
-use constant STATE_RENEWING => 'renewing';
-use constant STATE_RELEASED => 'released';
-use constant STATE_FAILED => 'failed';
+use constant STATE_NEW          => 'new';
+use constant STATE_REGISTERING  => 'registering';
+use constant STATE_WAITING      => 'waiting';
+use constant STATE_ACTIVATING   => 'activating';
+use constant STATE_ACTIVE       => 'active';
+use constant STATE_RENEWING     => 'renewing';
+use constant STATE_RELEASED     => 'released';
+use constant STATE_FAILED       => 'failed';
 
 my %STATE = (
     STATE_NEW()         => [ STATE_REGISTERING ],
