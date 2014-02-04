@@ -7,14 +7,15 @@ use AnyEvent::HTTP;
 use JSON;
 use Data::Dumper;
 
-use constant STATE_NEW => 'new';
-use constant STATE_REGISTERING => 'registering';
-use constant STATE_WAITING => 'waiting';
-use constant STATE_ACTIVATING => 'activating';
-use constant STATE_ACTIVE => 'active';
-use constant STATE_RENEWING => 'renewing';
-use constant STATE_RELEASED => 'released';
-use constant STATE_FAILED => 'failed';
+use constant STATE_NEW          => 'new';
+use constant STATE_REGISTERING  => 'registering';
+use constant STATE_WAITING      => 'waiting';
+use constant STATE_ACTIVATING   => 'activating';
+use constant STATE_ACTIVE       => 'active';
+use constant STATE_RENEWING     => 'renewing';
+use constant STATE_RELEASED     => 'released';
+use constant STATE_RELEASING    => 'releasing';
+use constant STATE_FAILED       => 'failed';
 
 my %STATE = (
     STATE_NEW()         => [ STATE_REGISTERING ],
@@ -25,7 +26,7 @@ my %STATE = (
     STATE_RELEASING()   => [ STATE_RELEASED ],
     STATE_RENEWING()    => [ STATE_ACTIVE ],
     STATE_FAILED()      => [],
-    STATE_RELEASED()    => [].
+    STATE_RELEASED()    => [],
 );
 
 
@@ -64,7 +65,7 @@ sub _failure {
     my($self, $error) = @_;
 
     my $message = { resource_name => $self->resource_name };
-    $error && $message->{error_message} = $error;
+    $error && ($message->{error_message} = $error);
 
     $self->keychain->claim_failed($message);
 }
@@ -104,7 +105,7 @@ sub recv_register_response {
     } else {
         $self->_failure("Unexpected response status $status in recv_register_response.\n"
             . "Headers: " . Data::Dumper::Dumper($headers) ."\n"
-            . "Body: " . Data::Dumper::Dumper($body);
+            . "Body: " . Data::Dumper::Dumper($body)
         );
     }
 }
@@ -137,6 +138,5 @@ sub state_fail {
 
 
 
-}
 
 1;

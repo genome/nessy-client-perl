@@ -11,16 +11,18 @@ sub new {
     my($class, %params) = @_;
 
     my $self = bless {}, $class;
+    $self->claims([]);
 
     unless ($self->url($params{url})) {
         die "new() requires a 'url parameter";
     }
 
-    $self->ttl( $params{ttl} || $self->_default_ttl);
-    $self->timeout( $params{timeout} || $self->_default_timeout);
+    $self->default_ttl( $params{ttl} || $self->_default_ttl);
+    $self->default_timeout( $params{timeout} || $self->_default_timeout);
     $self->api_version( $params{api_version} || $self->_default_api_version);
 
-    my $keychain = GSCLockClient::Keychain->new($self->url);
+    my $keychain = GSCLockClient::Keychain->new(url => $self->url);
+    die "Unable to create keychain" unless $keychain;
     $self->keychain( $keychain );
 
     return $self;
@@ -51,7 +53,7 @@ sub DESTROY {
         $claim->release;
     }
 
-    $self->keychain->shutdown;
+    $self->keychain && $self->keychain->shutdown;
 }
 
 1;
