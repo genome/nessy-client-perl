@@ -26,7 +26,7 @@ my %STATE = (
     STATE_RELEASING()   => [ STATE_RELEASED ],
     STATE_RENEWING()    => [ STATE_ACTIVE ],
     STATE_FAILED()      => [],
-    STATE_RELEASED()    => [].
+    STATE_RELEASED()    => [],
 );
 
 
@@ -105,7 +105,7 @@ sub recv_register_response {
     } else {
         $self->_failure("Unexpected response status $status in recv_register_response.\n"
             . "Headers: " . Data::Dumper::Dumper($headers) ."\n"
-            . "Body: " . Data::Dumper::Dumper($body);
+            . "Body: " . Data::Dumper::Dumper($body)
         );
     }
 }
@@ -138,6 +138,5 @@ sub state_fail {
 
 
 
-}
 
 1;
