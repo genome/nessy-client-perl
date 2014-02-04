@@ -11,6 +11,7 @@ sub new {
     my($class, %params) = @_;
 
     my $self = bless {}, $class;
+    $self->claims([]);
 
     unless ($self->url($params{url})) {
         die "new() requires a 'url parameter";
