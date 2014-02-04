@@ -159,16 +159,6 @@ sub remove_claim {
     return delete $claims->{$resource_name};
 }
 
-sub claim_failed {
-    my($self, $resource_name) = @_;
-
-}
-
-sub claim_succeeded {
-    my($self, $resource_name) = @_;
-
-}
-
 sub _respond_to_requestor {
     my($self, $message) = @_;
 
