@@ -102,6 +102,7 @@ sub _send_return_message {
     $message->{result} = $result ? 'success' : 'failed';
     $message->{error_message} = $@ if ($@);
 
+    my $watcher = $self->client_watcher;
     $watcher->push_write( json => $return_message );
     $watcher->push_read;
 }
