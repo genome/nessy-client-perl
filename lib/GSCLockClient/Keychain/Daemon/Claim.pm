@@ -35,9 +35,8 @@ sub new {
     my($class, %params) = @_;
 
     my $self = bless {}, $class;
-    $self->url($params{url}) || die "'url' is required";
-    $self->resource_name($params{resource_name}) || die "'resource_name' is required";
-    $self->keychain($params{keychain}) || die "'keychain' is required";
+
+    $self->_required_params(\%params, qw(url resource_name keychain));
     $self->state(STATE_NEW);
 
     $self->send_register();

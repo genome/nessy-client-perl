@@ -2,6 +2,7 @@ package GSCLockClient::Properties;
 
 use Sub::Install;
 use Sub::Name;
+use Carp;
 
 sub import {
     my $package = caller();
@@ -14,6 +15,12 @@ sub import {
             as => $prop
         });
     }
+
+    Sub::Install::install_sub({
+        code => \&_required_params,
+        into => $package,
+        as => '_required_params',
+    });
 }
 
 sub _property_sub {
@@ -26,6 +33,16 @@ sub _property_sub {
         }
         return $self->{$prop_name};
     };
+}
+
+sub _required_params {
+    my($self, $params, @required) = @_;
+
+    foreach my $param_name ( @required ) {
+        Carp::croak("$param_name is a required param") unless exists ($params->{$param_name});
+        $self->$param_name( $params->{$param_name} );
+    }
+    return 1;
 }
 
 1;

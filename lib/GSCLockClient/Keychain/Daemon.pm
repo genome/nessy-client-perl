@@ -23,7 +23,7 @@ sub new {
     my $class = shift;
     my %params = @_;
 
-    _required_params(\%params, qw(client_socket url));
+    $self->_required_params(\%params, qw(client_socket url));
 
     my $self = bless {}, $class;
 
@@ -34,18 +34,6 @@ sub new {
 
     return $self;
 }
-
-sub _required_params {
-    my($params, @required) = @_;
-
-    foreach my $name ( @required ) {
-        unless (exists $params->{$name}) {
-            die "'$name' is a required parameter to new";
-        }
-    }
-    return 1;
-}
-
 
 sub setup_events {
     my $self = shift;
