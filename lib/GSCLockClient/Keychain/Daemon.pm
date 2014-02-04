@@ -38,7 +38,7 @@ sub new {
 sub _required_params {
     my($params, @required) = @_;
 
-    foreach $name ( @required ) {
+    foreach my $name ( @required ) {
         unless (exists $params{$name}) {
             die "'$name' is a required parameter to new";
         }
