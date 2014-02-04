@@ -4,9 +4,10 @@ use Test::More;
 use strict;
 use warnings FATAL => qw(all);
 
-my $server = GSCLockClient::FakeServer();
 use GSCLockClient;
+use GSCLockClient::FakeServer;
 
+my $server = GSCLockClient::FakeServer->new();
 my $manager = GSCLockClient->new( url => $server->url);
 
 sub test_get_release {
