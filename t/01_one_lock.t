@@ -1,13 +1,13 @@
 #!/usr/bin/env perl
-use GSCLockClient;
 
 use Test::More;
 use strict;
 use warnings FATAL => qw(all);
 
 my $server = GSCLockClient::FakeServer();
+use GSCLockClient;
 
-my $manager = GSCLockClient->new($server);
+my $manager = GSCLockClient->new( url => $server->url);
 
 sub test_get_release {
     is_deeply($manager->claim_names(), [], 'Manager says we have no locks');
