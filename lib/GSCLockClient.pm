@@ -21,7 +21,8 @@ sub new {
     $self->default_timeout( $params{timeout} || $self->_default_timeout);
     $self->api_version( $params{api_version} || $self->_default_api_version);
 
-    my $keychain = GSCLockClient::Keychain->new($self->url);
+    my $keychain = GSCLockClient::Keychain->new(url => $self->url);
+    die "Unable to create keychain" unless $keychain;
     $self->keychain( $keychain );
 
     return $self;
