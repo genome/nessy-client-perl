@@ -7,11 +7,12 @@ use GSCLockClient::Keychain::Daemon::Claim;
 
 use JSON;
 use Carp;
-use Test::More tests => 14;
+use Test::More tests => 36;
 
 test_failed_constructor();
 test_constructor();
 test_start_state_machine();
+test_registration_response();
 
 sub test_failed_constructor {
 
@@ -24,6 +25,7 @@ sub test_failed_constructor {
             url => 'http://test.org',
             resource_name => 'foo',
             keychain => 'bar',
+            ttl => 1,
         );
     foreach my $missing_arg ( keys %all_params ) {
         my %args = %all_params;
@@ -46,6 +48,7 @@ sub test_constructor {
                 url => $url,
                 resource_name => $resource_name,
                 keychain => $keychain,
+                ttl => 1,
             );
     ok($claim, 'Create Claim');
 }
@@ -59,6 +62,7 @@ sub test_start_state_machine {
                 keychain => $keychain,
                 resource_name => $resource_name,
                 url => $url,
+                ttl => 1,
             );
     ok($claim, 'Create new Claim');
     is($claim->state, 'new', 'Newly created Claim is in state new');
@@ -85,6 +89,60 @@ sub test_start_state_machine {
     is_deeply($params->[0],
               [ 'Content-Type' => 'application/json' ],
               'headers in http post');
+
+    ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
+    ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
+}
+
+sub test_registration_response {
+    my $keychain = GSCLockClient::Keychain::Daemon::Fake->new();
+    my $url = 'http://example.org';
+    my $resource_name = 'foo';
+    my $claim = GSCLockClient::Keychain::Daemon::TestClaim->new(
+                keychain => $keychain,
+                resource_name => $resource_name,
+                url => $url,
+                ttl => 1,
+            );
+    ok($claim, 'Create new Claim');
+
+    my $reset_for_next_try = sub {
+        $keychain->claim_succeeded(undef);
+        $keychain->claim_failed(undef);
+        $claim->state('registering');
+        $claim->ttl_timer_watcher(undef);
+        $claim->claim_location_url(undef);
+    };
+
+    $claim->state('registering');
+    my $claim_location_url = "${url}/claim/123";
+    ok( $claim->recv_register_response('', { Status => 201, Location => $claim_location_url}),
+        'send 201 response to registration');
+    is($claim->state(), 'active', 'Claim state is active');
+    ok($claim->ttl_timer_watcher, 'Claim created a timer');
+    ok($keychain->claim_succeeded, 'Keychain was notified about success');
+    ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
+    is($claim->claim_location_url, $claim_location_url, 'Claim location URL');
+
+    $reset_for_next_try->();
+
+    ok( $claim->recv_register_response('', { Status => 202, Location => $claim_location_url}),
+        'send 202 response to registrtation');
+    is($claim->state(), 'waiting', 'Claim state is waiting');
+    ok($claim->ttl_timer_watcher, 'Claim created a timer');
+    ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
+    ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
+    is($claim->claim_location_url, $claim_location_url, 'Claim location URL');
+
+    $reset_for_next_try->();
+
+    ok( $claim->recv_register_response('', { Status => 400 }),
+        'send 400 response to registrtation');
+    is($claim->state(), 'failed', 'Claim state is waiting');
+    ok(! $claim->ttl_timer_watcher, 'Claim did not created a timer');
+    ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
+    ok($keychain->claim_failed, 'Keychain was not notified about failure');
+    ok(! $claim->claim_location_url, 'Claim has no location URL');
 }
 
 
@@ -149,11 +207,19 @@ sub new {
 }
 
 sub claim_failed {
-
+    my $self = shift;
+    if (@_) {
+        $self->{_claim_failed} = shift;
+    }
+    return $self->{_claim_failed};
 }
 
 sub claim_succeeded {
-
+    my $self = shift;
+    if (@_) {
+        $self->{_claim_succeeded} = shift;
+    }
+    return $self->{_claim_succeeded};
 }
 
 
