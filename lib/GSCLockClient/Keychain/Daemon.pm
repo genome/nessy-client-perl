@@ -103,7 +103,7 @@ sub _send_return_message {
     $message->{error_message} = $@ if ($@);
 
     my $watcher = $self->client_watcher;
-    $watcher->push_write( json => $return_message );
+    $watcher->push_write( json => $message );
     $watcher->push_read;
 }
 
