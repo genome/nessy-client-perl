@@ -78,13 +78,23 @@ sub _success {
 sub send_register {
     my $self = shift;
 
-    AnyEvent::HTTP::http_post(
+    $self->_send_http_post(
         $self->url . '/claims',
         $json_parser->encode({ resource => $self->resource_name }),
         'Content-Type' => 'application/json',
         sub { $self->recv_register_response() }
     );
     $self->transition(STATE_REGISTERING);
+}
+
+sub _send_http_post {
+    my $self = shift;
+    my $url = shift;
+    my $body = shift;
+    my @headers = @_;
+    my $cb = pop @headers;
+
+    AnyEvent::HTTP::http_post($url, $body, @headers, $cb);
 }
 
 sub recv_register_response {
@@ -114,7 +124,7 @@ sub state_active {
     $self->transition(STATE_ACTIVE);
 
     my $ttl = $self->_ttl_timer_value;
-    my $w = AnyEvent->timer(
+    my $w = $self->_create_timer_event(
                 after => $ttl,
                 interval => $ttl,
                 cb => sub { $self->send_renewal() }
@@ -122,6 +132,12 @@ sub state_active {
     $self->ttl_timer_watcher($w);
 
     $self->_success();
+}
+
+sub _create_timer_event {
+    my $self = shift;
+
+    AnyEvent->timer(@_);
 }
 
 sub _ttl_timer_value {
