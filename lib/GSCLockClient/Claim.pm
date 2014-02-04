@@ -9,7 +9,7 @@ sub new {
     my ($class, %params) = @_;
 
     my $self = bless {}, $class;
-    $self->resource_name($params{resource_rame}) or die "resource_name is a required param for Claim";
+    $self->resource_name($params{resource_name}) or die "resource_name is a required param for Claim";
     $self->keychain($params{keychain}) or die "keychain is a required param for Claim";
 
     return $self;
