@@ -6,6 +6,7 @@ use warnings;
 use GSCLockClient::Properties qw(pid socket socket_watcher);
 
 use GSCLockClient::Claim;
+use GSCLockClient::Keychain::Daemon;
 
 use Socket;
 use IO::Socket;
