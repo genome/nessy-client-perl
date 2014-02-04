@@ -1,6 +1,6 @@
 package GSCLockClient::Keychain::Daemon::Claim;
 
-use GSCLockClient::Properties qw(resource_name state claim_id base_url keychain ttl_timer_watcher);
+use GSCLockClient::Properties qw(resource_name state claim_id url keychain ttl_timer_watcher);
 
 use AnyEvent;
 use AnyEvent::HTTP;
