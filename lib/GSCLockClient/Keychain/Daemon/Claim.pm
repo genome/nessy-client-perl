@@ -38,9 +38,13 @@ sub new {
 
     $self->_required_params(\%params, qw(url resource_name keychain));
     $self->state(STATE_NEW);
+    return $self;
+}
+
+sub start {
+    my $self = shift;
 
     $self->send_register();
-    return $self;
 }
 
 sub release {

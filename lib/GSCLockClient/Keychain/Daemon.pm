@@ -120,6 +120,7 @@ sub claim {
                     keychain => $self);
     if ($claim) {
         $self->add_claim($resource_name, $claim);
+        $claim->start();
     }
     return $claim;
 }
