@@ -3,7 +3,7 @@ package GSCLockClient::Keychain;
 use strict;
 use warnings;
 
-use GSCLockClient::Properties qw(pid socket_watcher);
+use GSCLockClient::Properties qw(pid socket socket_watcher);
 
 use GSCLockClient::Claim;
 
