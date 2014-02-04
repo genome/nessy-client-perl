@@ -17,8 +17,8 @@ sub new {
         die "new() requires a 'url parameter";
     }
 
-    $self->ttl( $params{ttl} || $self->_default_ttl);
-    $self->timeout( $params{timeout} || $self->_default_timeout);
+    $self->default_ttl( $params{ttl} || $self->_default_ttl);
+    $self->default_timeout( $params{timeout} || $self->_default_timeout);
     $self->api_version( $params{api_version} || $self->_default_api_version);
 
     my $keychain = GSCLockClient::Keychain->new($self->url);
