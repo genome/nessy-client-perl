@@ -1,6 +1,9 @@
+#!/usr/bin/env perl
 use GSCLockClient;
 
 use Test::More;
+use strict;
+use warnings FATAL => qw(all);
 
 my $server = GSCLockClient::FakeServer();
 
