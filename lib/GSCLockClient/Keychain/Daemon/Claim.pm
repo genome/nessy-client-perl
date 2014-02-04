@@ -109,27 +109,21 @@ sub recv_register_response {
     my($body, $headers) = @_;
 
     my $status = $headers->{Status};
-    if ($status == 201) {
-        $self->state_active();
+    my $method = "recv_register_response_${status}";
 
-    } elsif ($status == 202) {
-        $self->state_waiting();
-
-    } elsif ($status == 400) {
-        $self->state_fail();
-
-    } else {
-        $self->_failure("Unexpected response status $status in recv_register_response.\n"
+    unless (eval { $self->$method($body, $headers); }) {
+        $self->_failure("Exception when handling status $status in recv_register_response(): $@\n"
             . "Headers: " . Data::Dumper::Dumper($headers) ."\n"
             . "Body: " . Data::Dumper::Dumper($body)
         );
     }
 }
 
-sub state_active {
-    my $self = shift;
+sub recv_register_response_201 {
+    my($self, $body, $headers) = @_;
     $self->transition(STATE_ACTIVE);
 
+    $self->claim_location_url( $headers->{Location} );
     my $ttl = $self->_ttl_timer_value;
     my $w = $self->_create_timer_event(
                 after => $ttl,
@@ -139,6 +133,25 @@ sub state_active {
     $self->ttl_timer_watcher($w);
 
     $self->_success();
+}
+
+sub recv_register_response_202 {
+    my($self, $body, $headers) = @_;
+
+    $self->transition(STATE_WAITING);
+
+    $self->claim_location_url( $headers->{Location} );
+    my $ttl = $self->_ttl_timer_value;
+    my $w = $self->_create_timer_event(
+                after => $ttl,
+                interval => $ttl,
+                cb => sub { $self->send_activating() }
+            );
+    $self->ttl_timer_watcher($w);
+}
+
+sub recv_register_response_400 {
+    shift->state_fail();
 }
 
 sub _create_timer_event {
