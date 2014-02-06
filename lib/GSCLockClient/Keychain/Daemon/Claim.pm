@@ -66,7 +66,7 @@ sub transition {
             return 1;
         }
     }
-    $self->_failure("Illegal transition from ".$self->state." to $new_state");
+    $self->_failure(Carp::shortmess("Illegal transition from ".$self->state." to $new_state"));
 }
 
 sub _failure {
