@@ -112,7 +112,7 @@ sub _send_http_request {
 # make handlers for receiving responses and forwarding them to individual handlers
 # by response code
 foreach my $prefix ( qw( recv_register_response recv_activating_response ) ) {
-    my $sub = Sub::Name::subname $prefix => sub {
+    my $sub = sub {
         my($self, $body, $headers) = @_;
 
         my $status = $headers->{Status};
@@ -127,10 +127,16 @@ foreach my $prefix ( qw( recv_register_response recv_activating_response ) ) {
         }
         return 1;
     };
+    _install_sub($prefix, $sub);
+}
+
+sub _install_sub {
+    my($name, $sub) = @_;
+    Sub::Name::subname $name, $sub;
     Sub::Install::install_sub({
         code => $sub,
-        into => __PACKAGE__,
-        as => $prefix,
+        as => $name,
+        into => __PACKAGE__
     });
 }
 
