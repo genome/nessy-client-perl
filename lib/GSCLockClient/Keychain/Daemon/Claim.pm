@@ -72,9 +72,11 @@ sub transition {
 sub _failure {
     my($self, $error) = @_;
 
+    $self->_remove_all_watchers();
     my $message = { resource_name => $self->resource_name };
     $error && ($message->{error_message} = $error);
 
+    $self->state(STATE_FAILED);
     $self->keychain->claim_failed($message);
 }
 
@@ -195,6 +197,10 @@ sub _ttl_timer_value {
     return $self->ttl / 4;
 }
 
+sub _remove_all_watchers {
+    my $self = shift;
+    $self->ttl_timer_watcher(undef);
+}
 
 
 
