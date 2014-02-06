@@ -9,10 +9,26 @@ use JSON;
 use Carp;
 use Test::More tests => 36;
 
+# defaults when creating a new claim object for testing
+our $url = 'http://example.org';
+our $resource_name = 'foo';
+our $ttl = 1;
+
 test_failed_constructor();
 test_constructor();
 test_start_state_machine();
 test_registration_response();
+
+sub _new_claim {
+    my $keychain = GSCLockClient::Keychain::Daemon::Fake->new();
+    my $claim = GSCLockClient::Keychain::Daemon::TestClaim->new(
+                url => $url,
+                resource_name => $resource_name,
+                keychain => $keychain,
+                ttl => $ttl,
+            );
+    return $claim;
+}
 
 sub test_failed_constructor {
 
@@ -41,29 +57,18 @@ sub test_failed_constructor {
 sub test_constructor {
     my $claim;
     my $keychain = GSCLockClient::Keychain::Daemon::Fake->new();
-
-    my $url = 'http://example.org';
-    my $resource_name = 'foo';
     $claim = GSCLockClient::Keychain::Daemon::TestClaim->new(
                 url => $url,
                 resource_name => $resource_name,
                 keychain => $keychain,
-                ttl => 1,
+                ttl => $ttl,
             );
     ok($claim, 'Create Claim');
 }
 
 sub test_start_state_machine {
 
-    my $keychain = GSCLockClient::Keychain::Daemon::Fake->new();
-    my $url = 'http://example.org';
-    my $resource_name = 'foo';
-    my $claim = GSCLockClient::Keychain::Daemon::TestClaim->new(
-                keychain => $keychain,
-                resource_name => $resource_name,
-                url => $url,
-                ttl => 1,
-            );
+    my $claim = _new_claim();
     ok($claim, 'Create new Claim');
     is($claim->state, 'new', 'Newly created Claim is in state new');
 
@@ -90,21 +95,15 @@ sub test_start_state_machine {
               [ 'Content-Type' => 'application/json' ],
               'headers in http post');
 
+    my $keychain = $claim->keychain;
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
     ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
 }
 
 sub test_registration_response {
-    my $keychain = GSCLockClient::Keychain::Daemon::Fake->new();
-    my $url = 'http://example.org';
-    my $resource_name = 'foo';
-    my $claim = GSCLockClient::Keychain::Daemon::TestClaim->new(
-                keychain => $keychain,
-                resource_name => $resource_name,
-                url => $url,
-                ttl => 1,
-            );
+    my $claim = _new_claim();
     ok($claim, 'Create new Claim');
+    my $keychain = $claim->keychain;
 
     my $reset_for_next_try = sub {
         $keychain->claim_succeeded(undef);
