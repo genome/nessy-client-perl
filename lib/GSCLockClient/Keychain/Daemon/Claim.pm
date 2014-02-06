@@ -9,6 +9,8 @@ use AnyEvent;
 use AnyEvent::HTTP;
 use JSON;
 use Data::Dumper;
+use Sub::Name;
+use Sub::Install;
 
 use constant STATE_NEW          => 'new';
 use constant STATE_REGISTERING  => 'registering';
@@ -89,7 +91,7 @@ sub send_register {
         POST => $self->url . '/claims',
         $json_parser->encode({ resource => $self->resource_name }),
         'Content-Type' => 'application/json',
-        sub { $self->recv_register_response() }
+        sub { $self->recv_register_response(@_) }
     );
     $self->transition(STATE_REGISTERING);
 }
@@ -105,19 +107,27 @@ sub _send_http_request {
     AnyEvent::HTTP::http_request($method => $url, $body, @headers, $cb);
 }
 
-sub recv_register_response {
-    my $self = shift;
-    my($body, $headers) = @_;
+# make handlers for receiving responses and forwarding them to individual handlers
+# by response code
+foreach my $prefix ( qw( recv_register_response ) ) {
+    my $sub = Sub::Name::subname $prefix => sub {
+        my($self, $body, $headers) = @_;
 
-    my $status = $headers->{Status};
-    my $method = "recv_register_response_${status}";
+        my $status = $headers->{Status};
+        my $method = "${prefix}_${status}";
 
-    unless (eval { $self->$method($body, $headers); }) {
-        $self->_failure("Exception when handling status $status in recv_register_response(): $@\n"
-            . "Headers: " . Data::Dumper::Dumper($headers) ."\n"
-            . "Body: " . Data::Dumper::Dumper($body)
-        );
-    }
+        unless (eval { $self->$method($body, $headers); }) {
+             $self->_failure("Exception when handling status $status in ${prefix}(): $@\n"
+                 . "Headers: " . Data::Dumper::Dumper($headers) ."\n"
+                   . "Body: " . Data::Dumper::Dumper($body)
+             );
+        }
+    };
+    Sub::Install::install_sub({
+        code => $sub,
+        into => __PACKAGE__,
+        as => $prefix,
+    });
 }
 
 sub recv_register_response_201 {
