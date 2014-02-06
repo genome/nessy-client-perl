@@ -132,9 +132,16 @@ foreach my $prefix ( qw( recv_register_response ) ) {
 
 sub recv_register_response_201 {
     my($self, $body, $headers) = @_;
-    $self->transition(STATE_ACTIVE);
 
     $self->claim_location_url( $headers->{Location} );
+    $self->_successfully_activated();
+}
+
+sub _successfully_activated {
+    my $self = shift;
+
+    $self->transition(STATE_ACTIVE);
+
     my $ttl = $self->_ttl_timer_value;
     my $w = $self->_create_timer_event(
                 after => $ttl,
