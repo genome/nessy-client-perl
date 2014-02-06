@@ -230,6 +230,19 @@ _install_sub('recv_renewal_response_400', \&_failure);
 _install_sub('recv_renewal_response_404', \&_failure);
 _install_sub('recv_renewal_response_409', \&_failure);
 
+sub send_release {
+    my $self = shift;
+
+    $self->ttl_timer_watcher(undef);
+    $self->_send_http_request(
+        PATCH => $self->claim_location_url,
+        $json_parser->encode({ status => 'released' }),
+        'Content-Type' => 'application/json',
+        sub { $self->recv_release_response() },
+    );
+    $self->transition(STATE_RELEASING);
+}
+
 sub _create_timer_event {
     my $self = shift;
 
