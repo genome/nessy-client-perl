@@ -186,6 +186,26 @@ sub send_activating {
     $self->transition(STATE_ACTIVATING);
 }
 
+sub recv_activating_response_409 {
+    my($self, $body, $headers) = @_;
+
+    $self->transition(STATE_WAITING);
+}
+
+sub recv_activating_response_200 {
+    my($self, $body, $headers) = @_;
+
+    $self->_successfully_activated();
+}
+
+sub recv_activating_response_400 {
+    shift->_failure();
+}
+
+sub recv_activating_response_404 {
+    shift->_failure();
+}
+
 sub _create_timer_event {
     my $self = shift;
 

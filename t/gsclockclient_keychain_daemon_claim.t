@@ -8,7 +8,7 @@ use GSCLockClient::Keychain::Daemon::Claim;
 use JSON;
 use Carp;
 use Data::Dumper;
-use Test::More tests => 40;
+use Test::More tests => 58;
 
 # defaults when creating a new claim object for testing
 our $url = 'http://example.org';
@@ -24,6 +24,9 @@ test_registration_response_202();
 test_registration_response_400();
 
 test_send_activating();
+test_activating_response_409();
+test_activating_response_200();
+test_activating_response_400();
 
 sub _new_claim {
     my $keychain = GSCLockClient::Keychain::Daemon::Fake->new();
@@ -171,6 +174,59 @@ sub test_send_activating {
     my $keychain = $claim->keychain;
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
     ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
+}
+
+sub test_activating_response_409 {
+    my $claim = _new_claim();
+    my $keychain = $claim->keychain;
+    $claim->state('activating');
+
+    my $fake_ttl_timer_watcher = $claim->ttl_timer_watcher('abc');
+    my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
+
+    ok($claim->recv_activating_response('', { Status => 409 }),
+        'send 409 response to activation');
+
+    is($claim->state, 'waiting', 'Claim state is waiting');
+    is($claim->ttl_timer_watcher, $fake_ttl_timer_watcher, 'ttl timer was not changed');
+    ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
+    ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
+    is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
+}
+
+sub test_activating_response_200 {
+    my $claim = _new_claim();
+    my $keychain = $claim->keychain;
+    $claim->state('activating');
+
+    my $fake_ttl_timer_watcher = $claim->ttl_timer_watcher('abc');
+    my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
+
+    ok($claim->recv_activating_response('', { Status => 200 }),
+        'send 200 response to activation');
+
+    is($claim->state, 'active', 'Claim state is active');
+    ok($claim->ttl_timer_watcher, 'Claim has a ttl timer');
+    isnt($claim->ttl_timer_watcher, $fake_ttl_timer_watcher, 'ttl timer was changed');
+    ok($keychain->claim_succeeded, 'Keychain was notified about success');
+    ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
+    is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
+}
+
+sub test_activating_response_400 {
+    my $claim = _new_claim();
+    my $keychain = $claim->keychain;
+    $claim->state('activating');
+
+    my $fake_ttl_timer_watcher = $claim->ttl_timer_watcher('abc');
+
+    ok($claim->recv_activating_response('', { Status => 400 }),
+        'send 400 response to activation');
+
+    is($claim->state, 'failed', 'Claim state is active');
+    ok(! $claim->ttl_timer_watcher, 'Claim has no ttl timer');
+    ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
+    ok($keychain->claim_failed, 'Keychain was notified about failure');
 }
 
 
