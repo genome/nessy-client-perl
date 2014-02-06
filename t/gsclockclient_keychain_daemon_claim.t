@@ -8,7 +8,7 @@ use GSCLockClient::Keychain::Daemon::Claim;
 use JSON;
 use Carp;
 use Data::Dumper;
-use Test::More tests => 79;
+use Test::More tests => 112;
 
 # defaults when creating a new claim object for testing
 our $url = 'http://example.org';
@@ -33,6 +33,9 @@ test_renewal_response_200();
 test_renewal_response_400();
 
 test_send_release();
+test_release_response_204();
+test_release_response_400();
+test_release_response_409();
 
 sub _new_claim {
     my $keychain = GSCLockClient::Keychain::Daemon::Fake->new();
@@ -320,6 +323,63 @@ sub test_send_release {
     ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
 }
 
+sub test_release_response_204 {
+    my $claim = _new_claim();
+    my $keychain = $claim->keychain;
+    $claim->state('releasing');
+
+    my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
+
+    ok($claim->recv_release_response('', { Status => 204 }),
+        'send 200 response to release');
+
+    is($claim->state, 'released', 'Claim state is released');
+    is($claim->ttl_timer_watcher, undef, 'ttl timer was removed');
+    ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
+    ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
+    ok($keychain->release_succeeded, 'Keychain was notified about release success');
+    ok(! $keychain->release_failed, 'Keychain was not notified about release success');
+    is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
+}
+
+sub test_release_response_400 {
+    my $claim = _new_claim();
+    my $keychain = $claim->keychain;
+    $claim->state('releasing');
+
+    my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
+
+    ok($claim->recv_release_response('', { Status => 400 }),
+        'send 400 response to release');
+
+    is($claim->state, 'failed', 'Claim state is failed');
+    is($claim->ttl_timer_watcher, undef, 'ttl timer was removed');
+    ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
+    ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
+    ok(! $keychain->release_succeeded, 'Keychain was not notified about release success');
+    ok($keychain->release_failed, 'Keychain was notified about release success');
+    is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
+}
+
+sub test_release_response_409 {
+    my $claim = _new_claim();
+    my $keychain = $claim->keychain;
+    $claim->state('releasing');
+
+    my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
+
+    ok($claim->recv_release_response('', { Status => 409 }),
+        'send 409 response to release');
+
+    is($claim->state, 'failed', 'Claim state is failed');
+    is($claim->ttl_timer_watcher, undef, 'ttl timer was removed');
+    ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
+    ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
+    ok(! $keychain->release_succeeded, 'Keychain was not notified about release success');
+    ok($keychain->release_failed, 'Keychain was notified about release success');
+    is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
+}
+
 
 
 
@@ -378,13 +438,14 @@ sub _http_method_params {
 
 
 package GSCLockClient::Keychain::Daemon::Fake;
+
 sub new {
     my $class = shift;
     return bless {}, $class;
 }
 
 BEGIN {
-    foreach my $method ( qw( claim_succeeded claim_failed ) ) {
+    foreach my $method ( qw( claim_succeeded claim_failed release_succeeded release_failed ) ) {
         my $hash_key = "_${method}";
         my $sub = sub {
             my $self = shift;

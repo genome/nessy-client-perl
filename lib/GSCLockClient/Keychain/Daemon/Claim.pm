@@ -75,6 +75,12 @@ sub _claim_failure {
     $self->_report_failure_to_keychain('claim_failed', $error);
 }
 
+sub _release_failure {
+    my($self, $error) = @_;
+
+    $self->_report_failure_to_keychain('release_failed', $error);
+}
+
 sub _report_failure_to_keychain {
     my($self, $keychain_method, $error) = @_;
 
@@ -117,7 +123,7 @@ sub _send_http_request {
 
 # make handlers for receiving responses and forwarding them to individual handlers
 # by response code
-foreach my $prefix ( qw( recv_register_response recv_activating_response recv_renewal_response ) ) {
+foreach my $prefix ( qw( recv_register_response recv_activating_response recv_renewal_response recv_release_response ) ) {
     my $sub = sub {
         my($self, $body, $headers) = @_;
 
@@ -248,6 +254,16 @@ sub send_release {
     );
     $self->transition(STATE_RELEASING);
 }
+
+sub recv_release_response_204 {
+    my $self = shift;
+    $self->state(STATE_RELEASED);
+    $self->keychain->release_succeeded({ resource_name => $self->resource_name });
+}
+
+_install_sub('recv_release_response_400', \&_release_failure);
+_install_sub('recv_release_response_404', \&_release_failure);
+_install_sub('recv_release_response_409', \&_release_failure);
 
 sub _create_timer_event {
     my $self = shift;
