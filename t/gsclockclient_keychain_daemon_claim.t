@@ -7,7 +7,8 @@ use GSCLockClient::Keychain::Daemon::Claim;
 
 use JSON;
 use Carp;
-use Test::More tests => 34;
+use Data::Dumper;
+use Test::More tests => 40;
 
 # defaults when creating a new claim object for testing
 our $url = 'http://example.org';
@@ -21,6 +22,8 @@ test_start_state_machine();
 test_registration_response_201();
 test_registration_response_202();
 test_registration_response_400();
+
+test_send_activating();
 
 sub _new_claim {
     my $keychain = GSCLockClient::Keychain::Daemon::Fake->new();
@@ -149,6 +152,27 @@ sub test_registration_response_400 {
     ok($keychain->claim_failed, 'Keychain was not notified about failure');
     ok(! $claim->claim_location_url, 'Claim has no location URL');
 }
+
+sub test_send_activating {
+    my $claim = _new_claim();
+
+    $claim->state('waiting');
+    my $claim_location_url = $claim->claim_location_url( "${url}/claims/${resource_name}" );
+    ok($claim->send_activating(), 'send_activating()');
+
+    my $params = $claim->_http_method_params();
+    my $json = JSON->new();
+    _verify_http_params($params,
+        [ 'PATCH' => $claim_location_url,
+          $json->encode({ status => 'active' }),
+          'Content-Type' => 'application/json',
+        ]);
+
+    my $keychain = $claim->keychain;
+    ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
+    ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
+}
+
 
 
 package GSCLockClient::Keychain::Daemon::TestClaim;

@@ -109,7 +109,7 @@ sub _send_http_request {
 
 # make handlers for receiving responses and forwarding them to individual handlers
 # by response code
-foreach my $prefix ( qw( recv_register_response ) ) {
+foreach my $prefix ( qw( recv_register_response recv_activating_response ) ) {
     my $sub = Sub::Name::subname $prefix => sub {
         my($self, $body, $headers) = @_;
 
@@ -170,6 +170,18 @@ sub recv_register_response_202 {
 
 sub recv_register_response_400 {
     shift->state_fail();
+}
+
+sub send_activating {
+    my $self = shift;
+
+    $self->_send_http_request(
+        PATCH => $self->claim_location_url,
+        $json_parser->encode({ status => 'active' }),
+        'Content-Type' => 'application/json',
+        sub { $self->recv_activating_response() }
+    );
+    $self->transition(STATE_ACTIVATING);
 }
 
 sub _create_timer_event {
