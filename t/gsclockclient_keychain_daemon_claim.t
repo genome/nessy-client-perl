@@ -239,6 +239,7 @@ sub claim_failed {
     my $self = shift;
     if (@_) {
         $self->{_claim_failed} = shift;
+        Test::More::note("Got claim failed: ".Data::Dumper::Dumper$self->{_claim_failed});
     }
     return $self->{_claim_failed};
 }
