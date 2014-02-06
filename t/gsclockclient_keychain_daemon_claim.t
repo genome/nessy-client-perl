@@ -7,7 +7,7 @@ use GSCLockClient::Keychain::Daemon::Claim;
 
 use JSON;
 use Carp;
-use Test::More tests => 36;
+use Test::More tests => 34;
 
 # defaults when creating a new claim object for testing
 our $url = 'http://example.org';
@@ -69,6 +69,18 @@ sub test_constructor {
     ok($claim, 'Create Claim');
 }
 
+sub _verify_http_params {
+    my $got = shift;
+    my @expected = @_;
+
+    is(scalar(@$got), scalar(@expected), 'got '.scalar(@expected).' http request params');
+    for (my $i = 0; $i < @expected; $i++) {
+        my $code = pop @{$got->[$i]};
+        is_deeply($got->[$i], $expected[$i], "http request param $i");
+        is(ref($code), 'CODE', "callback for param $i");
+    }
+}
+
 sub test_start_state_machine {
 
     my $claim = _new_claim();
@@ -79,24 +91,13 @@ sub test_start_state_machine {
     ok($claim->start(),'start()');
     is(scalar($claim->remaining_state_transitions), 0, 'expected state transitions for start()');
 
-    my $params = $claim->_http_post_params();
-    is(scalar(@$params), 1, 'Sent 1 http post');
-
+    my $params = $claim->_http_method_params();
     my $json = JSON->new();
-    my $got_url = shift @{$params->[0]};
-    is($got_url, "${url}/claims", 'post URL param');
-
-    my $got_body = $json->decode(shift @{$params->[0]});
-    is_deeply($got_body,
-            { resource => $resource_name },
-            'post body param');
-
-    my $got_cb = pop @{$params->[0]};
-    is(ref($got_cb), 'CODE', 'Callback set in post params');
-
-    is_deeply($params->[0],
-              [ 'Content-Type' => 'application/json' ],
-              'headers in http post');
+    _verify_http_params($params,
+        [ 'POST' => "${url}/claims",
+          $json->encode({ resource => $resource_name }),
+          'Content-Type' => 'application/json',
+        ]);
 
     my $keychain = $claim->keychain;
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
@@ -191,16 +192,16 @@ Test::More::diag "going from ".$self->SUPER::state()." to $next, expecting $expe
     $self->SUPER::state($next);
 }
 
-sub _send_http_post {
+sub _send_http_request {
     my $self = shift;
     my @params = @_;
 
-    $self->{_http_post_params} ||= [];
-    push @{$self->{_http_post_params}}, \@params;
+    $self->{_http_method_params} ||= [];
+    push @{$self->{_http_method_params}}, \@params;
 }
 
-sub _http_post_params {
-    return shift->{_http_post_params};
+sub _http_method_params {
+    return shift->{_http_method_params};
 }
 
 

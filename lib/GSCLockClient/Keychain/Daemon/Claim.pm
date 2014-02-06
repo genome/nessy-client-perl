@@ -85,8 +85,8 @@ sub _success {
 sub send_register {
     my $self = shift;
 
-    $self->_send_http_post(
-        $self->url . '/claims',
+    $self->_send_http_request(
+        POST => $self->url . '/claims',
         $json_parser->encode({ resource => $self->resource_name }),
         'Content-Type' => 'application/json',
         sub { $self->recv_register_response() }
@@ -94,14 +94,15 @@ sub send_register {
     $self->transition(STATE_REGISTERING);
 }
 
-sub _send_http_post {
+sub _send_http_request {
     my $self = shift;
+    my $method = shift;
     my $url = shift;
     my $body = shift;
     my @headers = @_;
     my $cb = pop @headers;
 
-    AnyEvent::HTTP::http_post($url, $body, @headers, $cb);
+    AnyEvent::HTTP::http_request($method => $url, $body, @headers, $cb);
 }
 
 sub recv_register_response {
