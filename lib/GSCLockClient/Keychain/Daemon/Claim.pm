@@ -207,6 +207,19 @@ sub recv_activating_response_200 {
 _install_sub('recv_activating_response_400', \&_failure);
 _install_sub('recv_activating_response_404', \&_failure);
 
+sub send_renewal {
+    my $self = shift;
+
+    my $ttl = $self->_ttl_timer_value;
+    $self->_send_http_request(
+        PATCH => $self->claim_location_url,
+        $json_parser->encode({ ttl => $ttl }),
+        'Content-Type' => 'application/json',
+        sub { $self->recv_renewal_response() }
+    );
+    $self->transition(STATE_RENEWING);
+}
+
 sub _create_timer_event {
     my $self = shift;
 

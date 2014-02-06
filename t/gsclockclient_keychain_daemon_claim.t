@@ -28,6 +28,8 @@ test_activating_response_409();
 test_activating_response_200();
 test_activating_response_400();
 
+test_send_renewal();
+
 sub _new_claim {
     my $keychain = GSCLockClient::Keychain::Daemon::Fake->new();
     my $claim = GSCLockClient::Keychain::Daemon::TestClaim->new(
@@ -227,6 +229,31 @@ sub test_activating_response_400 {
     ok(! $claim->ttl_timer_watcher, 'Claim has no ttl timer');
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
     ok($keychain->claim_failed, 'Keychain was notified about failure');
+}
+
+sub test_send_renewal {
+    my $claim = _new_claim();
+
+    $claim->state('active');
+    my $claim_location_url = $claim->claim_location_url( "${url}/claims/${resource_name}" );
+    my $fake_ttl_timer_watcher = $claim->ttl_timer_watcher('abc');
+    ok($claim->send_renewal(), 'send_renewal()');
+
+    my $params = $claim->_http_method_params();
+    my $json = JSON->new();
+    _verify_http_params($params,
+        [ 'PATCH' => $claim_location_url,
+          $json->encode({ ttl => $ttl/4}),
+          'Content-Type' => 'application/json',
+        ]);
+
+    is($claim->state, 'renewing', 'state is renewing');
+    is($claim->claim_location_url, $claim_location_url, 'claim location url did not change');
+    is($claim->ttl_timer_watcher, $fake_ttl_timer_watcher, 'ttl timer watcher url did not change');
+
+    my $keychain = $claim->keychain;
+    ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
+    ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
 }
 
 
