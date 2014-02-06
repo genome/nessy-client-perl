@@ -304,7 +304,7 @@ sub test_send_release {
     $claim->state('active');
     my $claim_location_url = $claim->claim_location_url( "${url}/claims/${resource_name}" );
     my $fake_ttl_timer_watcher = $claim->ttl_timer_watcher('abc');
-    ok($claim->send_release(), 'send_release()');
+    ok($claim->release(), 'send_release()');
 
     my $params = $claim->_http_method_params();
     my $json = JSON->new();

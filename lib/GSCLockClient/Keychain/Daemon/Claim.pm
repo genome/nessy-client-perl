@@ -52,10 +52,6 @@ sub start {
     $self->send_register();
 }
 
-sub release {
-
-}
-
 sub transition {
     my($self, $new_state) = @_;
 
@@ -247,7 +243,7 @@ _install_sub('recv_renewal_response_400', \&_renewal_failure);
 _install_sub('recv_renewal_response_404', \&_renewal_failure);
 _install_sub('recv_renewal_response_409', \&_renewal_failure);
 
-sub send_release {
+sub release {
     my $self = shift;
 
     $self->_remove_all_watchers();
