@@ -383,21 +383,20 @@ sub new {
     return bless {}, $class;
 }
 
-sub claim_failed {
-    my $self = shift;
-    if (@_) {
-        $self->{_claim_failed} = shift;
-        Test::More::note("Got claim failed: ".Data::Dumper::Dumper$self->{_claim_failed});
+BEGIN {
+    foreach my $method ( qw( claim_succeeded claim_failed ) ) {
+        my $hash_key = "_${method}";
+        my $sub = sub {
+            my $self = shift;
+            if (@_) {
+                $self->{$hash_key} = shift;
+                Test::More::note("Got $method: ".Data::Dumper::Dumper$self->{$hash_key});
+            }
+            return $self->{$hash_key};
+        };
+        no strict 'refs';
+        *$method = $sub;
     }
-    return $self->{_claim_failed};
-}
-
-sub claim_succeeded {
-    my $self = shift;
-    if (@_) {
-        $self->{_claim_succeeded} = shift;
-    }
-    return $self->{_claim_succeeded};
 }
 
 
