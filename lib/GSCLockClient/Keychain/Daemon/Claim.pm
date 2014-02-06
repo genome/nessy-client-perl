@@ -69,7 +69,7 @@ sub transition {
     $self->_failure(Carp::shortmess("Illegal transition from ".$self->state." to $new_state"));
 }
 
-sub _failure {
+sub _claim_failure {
     my($self, $error) = @_;
 
     $self->_remove_all_watchers();
@@ -119,7 +119,7 @@ foreach my $prefix ( qw( recv_register_response recv_activating_response recv_re
         my $method = "${prefix}_${status}";
 
         unless (eval { $self->$method($body, $headers); }) {
-             $self->_failure("Exception when handling status $status in ${prefix}(): $@\n"
+             $self->_claim_failure("Exception when handling status $status in ${prefix}(): $@\n"
                  . "Headers: " . Data::Dumper::Dumper($headers) ."\n"
                    . "Body: " . Data::Dumper::Dumper($body)
              );
@@ -178,7 +178,7 @@ sub recv_register_response_202 {
     $self->ttl_timer_watcher($w);
 }
 
-_install_sub('recv_register_response_400', \&_failure);
+_install_sub('recv_register_response_400', \&_claim_failure);
 
 sub send_activating {
     my $self = shift;
@@ -204,8 +204,8 @@ sub recv_activating_response_200 {
     $self->_successfully_activated();
 }
 
-_install_sub('recv_activating_response_400', \&_failure);
-_install_sub('recv_activating_response_404', \&_failure);
+_install_sub('recv_activating_response_400', \&_claim_failure);
+_install_sub('recv_activating_response_404', \&_claim_failure);
 
 sub send_renewal {
     my $self = shift;
