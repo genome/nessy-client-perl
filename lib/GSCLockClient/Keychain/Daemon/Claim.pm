@@ -169,7 +169,7 @@ sub recv_register_response_202 {
 }
 
 sub recv_register_response_400 {
-    shift->state_fail();
+    shift->_failure();
 }
 
 sub send_activating {
@@ -195,11 +195,6 @@ sub _ttl_timer_value {
     return $self->ttl / 4;
 }
 
-sub state_fail {
-    my $self = shift;
-    $self->state(STATE_FAILED);
-    $self->keychain->claim_failed( { resource_name => $self->resource_name });
-}
 
 
 
