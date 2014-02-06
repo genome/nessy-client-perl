@@ -123,7 +123,9 @@ foreach my $prefix ( qw( recv_register_response recv_activating_response ) ) {
                  . "Headers: " . Data::Dumper::Dumper($headers) ."\n"
                    . "Body: " . Data::Dumper::Dumper($body)
              );
+            return 0;
         }
+        return 1;
     };
     Sub::Install::install_sub({
         code => $sub,
