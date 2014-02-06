@@ -153,7 +153,7 @@ sub test_registration_response_400 {
 
     ok( $claim->recv_register_response('', { Status => 400 }),
         'send 400 response to registrtation');
-    is($claim->state(), 'failed', 'Claim state is waiting');
+    is($claim->state(), 'failed', 'Claim state is failed');
     ok(! $claim->ttl_timer_watcher, 'Claim did not created a timer');
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
     ok($keychain->claim_failed, 'Keychain was notified about failure');
@@ -228,7 +228,7 @@ sub test_activating_response_400 {
     ok($claim->recv_activating_response('', { Status => 400 }),
         'send 400 response to activation');
 
-    is($claim->state, 'failed', 'Claim state is active');
+    is($claim->state, 'failed', 'Claim state is failed');
     ok(! $claim->ttl_timer_watcher, 'Claim has no ttl timer');
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
     ok($keychain->claim_failed, 'Keychain was notified about failure');
