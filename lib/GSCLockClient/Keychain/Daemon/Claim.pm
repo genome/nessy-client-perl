@@ -238,9 +238,14 @@ sub recv_renewal_response_200 {
     $self->transition(STATE_ACTIVE);
 }
 
-_install_sub('recv_renewal_response_400', \&_claim_failure);
-_install_sub('recv_renewal_response_404', \&_claim_failure);
-_install_sub('recv_renewal_response_409', \&_claim_failure);
+sub _renewal_failure {
+    my $self = shift;
+    $self->_remove_all_watchers();
+    $self->state(STATE_FAILED);
+}
+_install_sub('recv_renewal_response_400', \&_renewal_failure);
+_install_sub('recv_renewal_response_404', \&_renewal_failure);
+_install_sub('recv_renewal_response_409', \&_renewal_failure);
 
 sub send_release {
     my $self = shift;

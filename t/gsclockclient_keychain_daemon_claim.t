@@ -295,7 +295,7 @@ sub test_renewal_response_400 {
     is($claim->state, 'failed', 'Claim state is failed');
     ok(! $claim->ttl_timer_watcher, 'Claim has no ttl timer');
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
-    ok($keychain->claim_failed, 'Keychain was notified about failure');
+    ok(! $keychain->claim_failed, 'Keychain was notified about failure');
 }
 
 sub test_send_release {
