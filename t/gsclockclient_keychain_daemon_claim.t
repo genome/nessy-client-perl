@@ -152,7 +152,7 @@ sub test_registration_response_400 {
     is($claim->state(), 'failed', 'Claim state is waiting');
     ok(! $claim->ttl_timer_watcher, 'Claim did not created a timer');
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
-    ok($keychain->claim_failed, 'Keychain was not notified about failure');
+    ok($keychain->claim_failed, 'Keychain was notified about failure');
     ok(! $claim->claim_location_url, 'Claim has no location URL');
 }
 
