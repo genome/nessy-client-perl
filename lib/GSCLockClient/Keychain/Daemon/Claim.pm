@@ -72,12 +72,18 @@ sub transition {
 sub _claim_failure {
     my($self, $error) = @_;
 
+    $self->_report_failure_to_keychain('claim_failed', $error);
+}
+
+sub _report_failure_to_keychain {
+    my($self, $keychain_method, $error) = @_;
+
     $self->_remove_all_watchers();
     my $message = { resource_name => $self->resource_name };
     $error && ($message->{error_message} = $error);
 
     $self->state(STATE_FAILED);
-    $self->keychain->claim_failed($message);
+    $self->keychain->$keychain_method($message);
 }
 
 sub _success {
@@ -226,9 +232,9 @@ sub recv_renewal_response_200 {
     $self->transition(STATE_ACTIVE);
 }
 
-_install_sub('recv_renewal_response_400', \&_failure);
-_install_sub('recv_renewal_response_404', \&_failure);
-_install_sub('recv_renewal_response_409', \&_failure);
+_install_sub('recv_renewal_response_400', \&_claim_failure);
+_install_sub('recv_renewal_response_404', \&_claim_failure);
+_install_sub('recv_renewal_response_409', \&_claim_failure);
 
 sub send_release {
     my $self = shift;
