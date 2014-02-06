@@ -17,7 +17,10 @@ our $ttl = 1;
 test_failed_constructor();
 test_constructor();
 test_start_state_machine();
-test_registration_response();
+
+test_registration_response_201();
+test_registration_response_202();
+test_registration_response_400();
 
 sub _new_claim {
     my $keychain = GSCLockClient::Keychain::Daemon::Fake->new();
@@ -100,18 +103,10 @@ sub test_start_state_machine {
     ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
 }
 
-sub test_registration_response {
+sub test_registration_response_201 {
     my $claim = _new_claim();
     ok($claim, 'Create new Claim');
     my $keychain = $claim->keychain;
-
-    my $reset_for_next_try = sub {
-        $keychain->claim_succeeded(undef);
-        $keychain->claim_failed(undef);
-        $claim->state('registering');
-        $claim->ttl_timer_watcher(undef);
-        $claim->claim_location_url(undef);
-    };
 
     $claim->state('registering');
     my $claim_location_url = "${url}/claim/123";
@@ -122,9 +117,14 @@ sub test_registration_response {
     ok($keychain->claim_succeeded, 'Keychain was notified about success');
     ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
     is($claim->claim_location_url, $claim_location_url, 'Claim location URL');
+}
 
-    $reset_for_next_try->();
+sub test_registration_response_202 {
+    my $claim = _new_claim();
+    my $keychain = $claim->keychain;
 
+    $claim->state('registering');
+    my $claim_location_url = "${url}/claim/123";
     ok( $claim->recv_register_response('', { Status => 202, Location => $claim_location_url}),
         'send 202 response to registrtation');
     is($claim->state(), 'waiting', 'Claim state is waiting');
@@ -132,8 +132,13 @@ sub test_registration_response {
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
     ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
     is($claim->claim_location_url, $claim_location_url, 'Claim location URL');
+}
 
-    $reset_for_next_try->();
+sub test_registration_response_400 {
+    my $claim = _new_claim();
+    my $keychain = $claim->keychain;
+
+    $claim->state('registering');
 
     ok( $claim->recv_register_response('', { Status => 400 }),
         'send 400 response to registrtation');
