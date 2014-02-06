@@ -178,9 +178,7 @@ sub recv_register_response_202 {
     $self->ttl_timer_watcher($w);
 }
 
-sub recv_register_response_400 {
-    shift->_failure();
-}
+_install_sub('recv_register_response_400', \&_failure);
 
 sub send_activating {
     my $self = shift;
@@ -206,13 +204,8 @@ sub recv_activating_response_200 {
     $self->_successfully_activated();
 }
 
-sub recv_activating_response_400 {
-    shift->_failure();
-}
-
-sub recv_activating_response_404 {
-    shift->_failure();
-}
+_install_sub('recv_activating_response_400', \&_failure);
+_install_sub('recv_activating_response_404', \&_failure);
 
 sub _create_timer_event {
     my $self = shift;
