@@ -173,6 +173,7 @@ sub test_send_activating {
           'Content-Type' => 'application/json',
         ]);
 
+    is($claim->state, 'activating', 'state is activating');
     my $keychain = $claim->keychain;
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
     ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
