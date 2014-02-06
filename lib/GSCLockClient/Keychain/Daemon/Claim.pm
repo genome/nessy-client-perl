@@ -111,7 +111,7 @@ sub _send_http_request {
 
 # make handlers for receiving responses and forwarding them to individual handlers
 # by response code
-foreach my $prefix ( qw( recv_register_response recv_activating_response ) ) {
+foreach my $prefix ( qw( recv_register_response recv_activating_response recv_renewal_response ) ) {
     my $sub = sub {
         my($self, $body, $headers) = @_;
 
@@ -219,6 +219,16 @@ sub send_renewal {
     );
     $self->transition(STATE_RENEWING);
 }
+
+sub recv_renewal_response_200 {
+    my($self, $body, $headers) = @_;
+
+    $self->transition(STATE_ACTIVE);
+}
+
+_install_sub('recv_renewal_response_400', \&_failure);
+_install_sub('recv_renewal_response_404', \&_failure);
+_install_sub('recv_renewal_response_409', \&_failure);
 
 sub _create_timer_event {
     my $self = shift;

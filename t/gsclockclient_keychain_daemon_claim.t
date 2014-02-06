@@ -8,7 +8,7 @@ use GSCLockClient::Keychain::Daemon::Claim;
 use JSON;
 use Carp;
 use Data::Dumper;
-use Test::More tests => 58;
+use Test::More tests => 79;
 
 # defaults when creating a new claim object for testing
 our $url = 'http://example.org';
@@ -29,6 +29,8 @@ test_activating_response_200();
 test_activating_response_400();
 
 test_send_renewal();
+test_renewal_response_200();
+test_renewal_response_400();
 
 sub _new_claim {
     my $keychain = GSCLockClient::Keychain::Daemon::Fake->new();
@@ -256,6 +258,41 @@ sub test_send_renewal {
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
     ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
 }
+
+sub test_renewal_response_200 {
+    my $claim = _new_claim();
+    my $keychain = $claim->keychain;
+    $claim->state('renewing');
+
+    my $fake_ttl_timer_watcher = $claim->ttl_timer_watcher('abc');
+    my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
+
+    ok($claim->recv_renewal_response('', { Status => 200 }),
+        'send 200 response to renewal');
+
+    is($claim->state, 'active', 'Claim state is active');
+    is($claim->ttl_timer_watcher, $fake_ttl_timer_watcher, 'ttl timer was not changed');
+    ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
+    ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
+    is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
+}
+
+sub test_renewal_response_400 {
+    my $claim = _new_claim();
+    my $keychain = $claim->keychain;
+    $claim->state('renewing');
+
+    my $fake_ttl_timer_watcher = $claim->ttl_timer_watcher('abc');
+
+    ok($claim->recv_renewal_response('', { Status => 400 }),
+        'send 400 response to renewal');
+
+    is($claim->state, 'failed', 'Claim state is failed');
+    ok(! $claim->ttl_timer_watcher, 'Claim has no ttl timer');
+    ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
+    ok($keychain->claim_failed, 'Keychain was notified about failure');
+}
+
 
 
 
