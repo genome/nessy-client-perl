@@ -245,7 +245,8 @@ _install_sub('recv_renewal_response_409', \&_claim_failure);
 sub send_release {
     my $self = shift;
 
-    $self->ttl_timer_watcher(undef);
+    $self->_remove_all_watchers();
+
     $self->_send_http_request(
         PATCH => $self->claim_location_url,
         $json_parser->encode({ status => 'released' }),
