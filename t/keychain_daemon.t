@@ -22,6 +22,8 @@ test_start();
 
 test_add_remove_claim();
 
+test_make_claim();
+
 sub test_constructor_failures {
     my $daemon;
 
@@ -86,20 +88,69 @@ sub test_add_remove_claim {
     is($daemon->lookup_claim('missing'), undef, 'lookup_claim() with non-existent resource_name');
 }
 
+sub test_make_claim {
+    my $daemon = _new_test_daemon();
+
+    my $message = Nessy::Keychain::Message->new(
+                        resource_name => 'foo',
+                        command => 'claim',
+                    );
+    _send_to_socket($message);
+
+    my $cv = AnyEvent->condvar();
+    local $Nessy::Keychain::Daemon::FakeClaim::on_start_cb = sub { $cv->send };
+    _event_loop($daemon, $cv);
+
+    my $response = _read_from_socket();
+    
+    my %expected = ( resource_name => 'foo', command => 'claim', result => 'succeeded' );
+    my $is_ok = 1;
+    foreach my $key ( %expected ) {
+        $is_ok = 0 if ($response->$key ne $expected{$key});
+    }
+    ok($is_ok, 'response');
+
+    my $claim = $daemon->lookup_claim('foo');
+    ok($claim, 'daemon created claim for resource_name foo');
+    ok($claim->_start_called, 'state machine was started for claim');
+}
+
+sub _event_loop {
+    my($daemon, $cv) = @_;
+
+    $cv ||= AnyEvent->condvar;
+    local $SIG{ALRM} = sub { note('_event_loop waited too long'); $cv->send() };
+
+    alarm(3);
+    my $rv = $daemon->start($cv);
+    alarm(0);
+    return $rv;
+
+}
+
 {
-    my $json = JSON->new();
+    my $json; BEGIN { $json = JSON->new->convert_blessed(1); }
     my($select, $socket);
 
     sub _new_test_daemon {
         my $daemon_socket;
         ($socket, $daemon_socket) = IO::Socket->socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC);
-        my $daemon = Nessy::Keychain::TestDaemon->new(client_socket => $daemon_socket, url => 'http://example.com');
         $select = IO::Select->new($socket);
+
+#$socket->syswrite("test message");
+#my $c = $daemon_socket->sysread(my $read, 1024);
+#print "read $c back >>$read<<\n";
+
+
+
+
+print "created my socket fd ",fileno($socket)," daemon socket ",fileno($daemon_socket),"\n";
+        my $daemon = Nessy::Keychain::TestDaemon->new(client_socket => $daemon_socket, url => 'http://example.com');
         return $daemon;
     }
 
-    sub _send_to_daemon {
-        my($daemon, $msg) = @_;
+    sub _send_to_socket {
+        my($msg) = @_;
         if (ref $msg) {
             $msg = $json->encode($msg);
         }
@@ -109,6 +160,7 @@ sub test_add_remove_claim {
             unless ($count) {
                 Carp::croak("Couldn't write ".length($msg)." bytes of message: $!");
             }
+print "wrote $count bytes to fd ",fileno($socket),"\n";
             substr($msg, 0, $count, '');
         }
         if (length $msg) {
@@ -116,8 +168,7 @@ sub test_add_remove_claim {
         }
     }
 
-    sub _read_from_daemon {
-        my $daemon = shift;
+    sub _read_from_socket {
         my $buf = '';
 
         while($select->can_read(0)) {
@@ -126,7 +177,8 @@ sub test_add_remove_claim {
                 Carp::croak("Cound't read from daemon's socket: $!");
             }
         }
-        return $buf;
+        Carp::croak("No data read from socket") unless length($buf);
+        return Nessy::Keychain::Message->from_json($buf);
     }
 }
 
@@ -138,10 +190,20 @@ sub _claim_class { return 'Nessy::Keychain::Daemon::FakeClaim' }
 
 package Nessy::Keychain::Daemon::FakeClaim;
 
+use base 'Nessy::Keychain::Daemon::Claim';
+
+our $on_start_cb;
 sub new {
     return bless {}, shift;
 }
 
 sub start {
-
+    my $self = shift;
+    $self->{_start_called} = 1;
+    $on_start_cb->($self) if ($on_start_cb);
 }
+
+sub _start_called {
+    return shift->{_start_called};
+}
+

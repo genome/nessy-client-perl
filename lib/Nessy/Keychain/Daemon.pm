@@ -20,6 +20,7 @@ sub start {
 
     # enter the event loop
     $cv ||= AnyEvent->condvar;
+print "Daemon Entering event loop\n";
     $cv->recv;
 }
 
@@ -53,16 +54,29 @@ sub create_client_watcher {
 
     my $w = AnyEvent::Handle->new(
                 fh => $self->client_socket,
-                on_error => sub { $self->client_error_event(@_); },
-                on_eof => sub { $self->client_eof_event(@_); },
+                on_error    => sub { $self->client_error_event(@_) },
+                on_eof      => sub { $self->client_eof_event(@_) },
+                on_read     => sub { $self->on_read_handler(@_) },
+                #oob_inline => 0,
                 json => $json_parser,
             );
 
-    $w->push_read( json => sub {
-        $self->client_read_event(@_);
-    });
-
     $self->client_watcher($w);
+print "Created socket watcher for fd ",fileno($self->client_socket),"\n";
+}
+
+sub on_read_handler {
+    my($self, $w) = @_;
+print "In on_read handler\n";
+    $w->unshift_read( json => sub { print "in push_read handler\n";
+                                $self->client_read_event(@_); });
+}
+
+sub client_error_event {
+    my($self, $w, $is_fatal, $msg) = @_;
+use Data::Dumper;
+print Data::Dumper::Dumper(@_);
+
 }
 
 # not a method!
