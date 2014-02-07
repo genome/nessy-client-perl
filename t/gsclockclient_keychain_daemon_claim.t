@@ -129,7 +129,7 @@ sub test_registration_response_201 {
     ok( $claim->recv_register_response('', { Status => 201, Location => $claim_location_url}),
         'send 201 response to registration');
     is($claim->state(), 'active', 'Claim state is active');
-    ok($claim->ttl_timer_watcher, 'Claim created a timer');
+    ok($claim->timer_watcher, 'Claim created a timer');
     ok($keychain->claim_succeeded, 'Keychain was notified about success');
     ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
     is($claim->claim_location_url, $claim_location_url, 'Claim location URL');
@@ -144,7 +144,7 @@ sub test_registration_response_202 {
     ok( $claim->recv_register_response('', { Status => 202, Location => $claim_location_url}),
         'send 202 response to registrtation');
     is($claim->state(), 'waiting', 'Claim state is waiting');
-    ok($claim->ttl_timer_watcher, 'Claim created a timer');
+    ok($claim->timer_watcher, 'Claim created a timer');
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
     ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
     is($claim->claim_location_url, $claim_location_url, 'Claim location URL');
@@ -159,7 +159,7 @@ sub test_registration_response_400 {
     ok( $claim->recv_register_response('', { Status => 400 }),
         'send 400 response to registrtation');
     is($claim->state(), 'failed', 'Claim state is failed');
-    ok(! $claim->ttl_timer_watcher, 'Claim did not created a timer');
+    ok(! $claim->timer_watcher, 'Claim did not created a timer');
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
     ok($keychain->claim_failed, 'Keychain was notified about failure');
     ok(! $claim->claim_location_url, 'Claim has no location URL');
@@ -191,14 +191,14 @@ sub test_activating_response_409 {
     my $keychain = $claim->keychain;
     $claim->state('activating');
 
-    my $fake_ttl_timer_watcher = $claim->ttl_timer_watcher('abc');
+    my $fake_timer_watcher = $claim->timer_watcher('abc');
     my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
 
     ok($claim->recv_activating_response('', { Status => 409 }),
         'send 409 response to activation');
 
     is($claim->state, 'waiting', 'Claim state is waiting');
-    is($claim->ttl_timer_watcher, $fake_ttl_timer_watcher, 'ttl timer was not changed');
+    is($claim->timer_watcher, $fake_timer_watcher, 'ttl timer was not changed');
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
     ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
     is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
@@ -209,15 +209,15 @@ sub test_activating_response_200 {
     my $keychain = $claim->keychain;
     $claim->state('activating');
 
-    my $fake_ttl_timer_watcher = $claim->ttl_timer_watcher('abc');
+    my $fake_timer_watcher = $claim->timer_watcher('abc');
     my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
 
     ok($claim->recv_activating_response('', { Status => 200 }),
         'send 200 response to activation');
 
     is($claim->state, 'active', 'Claim state is active');
-    ok($claim->ttl_timer_watcher, 'Claim has a ttl timer');
-    isnt($claim->ttl_timer_watcher, $fake_ttl_timer_watcher, 'ttl timer was changed');
+    ok($claim->timer_watcher, 'Claim has a ttl timer');
+    isnt($claim->timer_watcher, $fake_timer_watcher, 'ttl timer was changed');
     ok($keychain->claim_succeeded, 'Keychain was notified about success');
     ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
     is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
@@ -228,13 +228,13 @@ sub test_activating_response_400 {
     my $keychain = $claim->keychain;
     $claim->state('activating');
 
-    my $fake_ttl_timer_watcher = $claim->ttl_timer_watcher('abc');
+    my $fake_timer_watcher = $claim->timer_watcher('abc');
 
     ok($claim->recv_activating_response('', { Status => 400 }),
         'send 400 response to activation');
 
     is($claim->state, 'failed', 'Claim state is failed');
-    ok(! $claim->ttl_timer_watcher, 'Claim has no ttl timer');
+    ok(! $claim->timer_watcher, 'Claim has no ttl timer');
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
     ok($keychain->claim_failed, 'Keychain was notified about failure');
 }
@@ -244,7 +244,7 @@ sub test_send_renewal {
 
     $claim->state('active');
     my $claim_location_url = $claim->claim_location_url( "${url}/claims/${resource_name}" );
-    my $fake_ttl_timer_watcher = $claim->ttl_timer_watcher('abc');
+    my $fake_timer_watcher = $claim->timer_watcher('abc');
     ok($claim->send_renewal(), 'send_renewal()');
 
     my $params = $claim->_http_method_params();
@@ -257,7 +257,7 @@ sub test_send_renewal {
 
     is($claim->state, 'renewing', 'state is renewing');
     is($claim->claim_location_url, $claim_location_url, 'claim location url did not change');
-    is($claim->ttl_timer_watcher, $fake_ttl_timer_watcher, 'ttl timer watcher url did not change');
+    is($claim->timer_watcher, $fake_timer_watcher, 'ttl timer watcher url did not change');
 
     my $keychain = $claim->keychain;
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
@@ -269,14 +269,14 @@ sub test_renewal_response_200 {
     my $keychain = $claim->keychain;
     $claim->state('renewing');
 
-    my $fake_ttl_timer_watcher = $claim->ttl_timer_watcher('abc');
+    my $fake_timer_watcher = $claim->timer_watcher('abc');
     my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
 
     ok($claim->recv_renewal_response('', { Status => 200 }),
         'send 200 response to renewal');
 
     is($claim->state, 'active', 'Claim state is active');
-    is($claim->ttl_timer_watcher, $fake_ttl_timer_watcher, 'ttl timer was not changed');
+    is($claim->timer_watcher, $fake_timer_watcher, 'ttl timer was not changed');
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
     ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
     is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
@@ -287,13 +287,13 @@ sub test_renewal_response_400 {
     my $keychain = $claim->keychain;
     $claim->state('renewing');
 
-    my $fake_ttl_timer_watcher = $claim->ttl_timer_watcher('abc');
+    my $fake_timer_watcher = $claim->timer_watcher('abc');
 
     ok($claim->recv_renewal_response('', { Status => 400 }),
         'send 400 response to renewal');
 
     is($claim->state, 'failed', 'Claim state is failed');
-    ok(! $claim->ttl_timer_watcher, 'Claim has no ttl timer');
+    ok(! $claim->timer_watcher, 'Claim has no ttl timer');
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
     ok(! $keychain->claim_failed, 'Keychain was notified about failure');
 }
@@ -303,7 +303,7 @@ sub test_send_release {
 
     $claim->state('active');
     my $claim_location_url = $claim->claim_location_url( "${url}/claims/${resource_name}" );
-    my $fake_ttl_timer_watcher = $claim->ttl_timer_watcher('abc');
+    my $fake_timer_watcher = $claim->timer_watcher('abc');
     ok($claim->release(), 'send_release()');
 
     my $params = $claim->_http_method_params();
@@ -316,7 +316,7 @@ sub test_send_release {
 
     is($claim->state, 'releasing', 'state is releasing');
     is($claim->claim_location_url, $claim_location_url, 'claim location url did not change');
-    is($claim->ttl_timer_watcher, undef, 'ttl timer watcher was removed');
+    is($claim->timer_watcher, undef, 'ttl timer watcher was removed');
 
     my $keychain = $claim->keychain;
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
@@ -334,7 +334,7 @@ sub test_release_response_204 {
         'send 200 response to release');
 
     is($claim->state, 'released', 'Claim state is released');
-    is($claim->ttl_timer_watcher, undef, 'ttl timer was removed');
+    is($claim->timer_watcher, undef, 'ttl timer was removed');
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
     ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
     ok($keychain->release_succeeded, 'Keychain was notified about release success');
@@ -353,7 +353,7 @@ sub test_release_response_400 {
         'send 400 response to release');
 
     is($claim->state, 'failed', 'Claim state is failed');
-    is($claim->ttl_timer_watcher, undef, 'ttl timer was removed');
+    is($claim->timer_watcher, undef, 'ttl timer was removed');
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
     ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
     ok(! $keychain->release_succeeded, 'Keychain was not notified about release success');
@@ -372,7 +372,7 @@ sub test_release_response_409 {
         'send 409 response to release');
 
     is($claim->state, 'failed', 'Claim state is failed');
-    is($claim->ttl_timer_watcher, undef, 'ttl timer was removed');
+    is($claim->timer_watcher, undef, 'ttl timer was removed');
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
     ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
     ok(! $keychain->release_succeeded, 'Keychain was not notified about release success');

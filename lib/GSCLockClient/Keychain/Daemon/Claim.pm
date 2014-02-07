@@ -3,7 +3,7 @@ package GSCLockClient::Keychain::Daemon::Claim;
 use strict;
 use warnings;
 
-use GSCLockClient::Properties qw(resource_name state url claim_location_url keychain ttl_timer_watcher ttl);
+use GSCLockClient::Properties qw(resource_name state url claim_location_url keychain timer_watcher ttl);
 
 use AnyEvent;
 use AnyEvent::HTTP;
@@ -166,7 +166,7 @@ sub _successfully_activated {
                 interval => $ttl,
                 cb => sub { $self->send_renewal() }
             );
-    $self->ttl_timer_watcher($w);
+    $self->timer_watcher($w);
 
     $self->_success();
 }
@@ -183,7 +183,7 @@ sub recv_register_response_202 {
                 interval => $ttl,
                 cb => sub { $self->send_activating() }
             );
-    $self->ttl_timer_watcher($w);
+    $self->timer_watcher($w);
 }
 
 _install_sub('recv_register_response_400', \&_claim_failure);
@@ -280,7 +280,7 @@ sub _ttl_timer_value {
 
 sub _remove_all_watchers {
     my $self = shift;
-    $self->ttl_timer_watcher(undef);
+    $self->timer_watcher(undef);
 }
 
 
