@@ -171,6 +171,12 @@ sub remove_claim {
     return delete $claims->{$resource_name};
 }
 
+sub lookup_claim {
+    my ($self, $resource_name) = @_;
+    my $claims = $self->claims;
+    return $claims->{$resource_name};
+}
+
 sub _respond_to_requestor {
     my($self, $message) = @_;
 

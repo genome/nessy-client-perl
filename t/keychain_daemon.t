@@ -81,6 +81,9 @@ sub test_add_remove_claim {
     is_deeply( $daemon->claims(),
         { bar => $test_claim_bar },
         'claims() returns known claim bar');
+
+    is($daemon->lookup_claim('bar'), $test_claim_bar, 'lookup_claim()');
+    is($daemon->lookup_claim('missing'), undef, 'lookup_claim() with non-existent resource_name');
 }
 
 {
