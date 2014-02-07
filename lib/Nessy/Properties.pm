@@ -4,8 +4,12 @@ use Sub::Install;
 use Sub::Name;
 use Carp;
 
+our @CARP_NOT;
+
 sub import {
     my $package = caller();
+
+    push @CARP_NOT, $package;
 
     foreach my $prop ( @_ ) {
         my $sub = Sub::Name::subname $prop => _property_sub($prop);
