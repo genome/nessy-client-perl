@@ -11,12 +11,14 @@ use AnyEvent::Handle;
 use JSON qw();
 
 sub start {
-    my $class = shift;
-
-    my $self = $class->new(@_);
+    my $self = shift;
+    my $cv = shift;
 
     $self->setup_events();
-    $self->main_loop();
+
+    # enter the event loop
+    $cv ||= AnyEvent->condvar;
+    $cv->recv;
 }
 
 sub new {

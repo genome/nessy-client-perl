@@ -5,14 +5,18 @@ use warnings;
 
 use Nessy::Keychain::Daemon;
 
-use Test::More tests => 5;
+use Test::More tests => 7;
 use Carp;
 use JSON;
 use Socket;
 use IO::Socket;
+use IO::Handle;
+use AnyEvent;
 
 test_constructor();
 test_constructor_failures();
+
+test_start();
 
 sub test_constructor_failures {
     my $daemon;
@@ -32,6 +36,18 @@ sub test_constructor {
     ok($daemon, 'constructor');
 
     is_deeply($daemon->claims, {}, 'daemon claims() initialized to an empty hash');
+}
+
+sub test_start {
+    my $test_handle = IO::Handle->new();
+    my $daemon = Nessy::Keychain::Daemon->new(client_socket => $test_handle, url => 'http://example.org');
+
+    my $cv = AnyEvent->condvar;
+    $cv->send(1);
+
+    ok($daemon->start($cv), 'start() as an instance method method');
+
+    ok($daemon->client_watcher, 'client watcher created');
 }
 
 {

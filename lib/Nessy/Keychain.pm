@@ -33,7 +33,12 @@ sub new {
         return $self;
 
     } elsif(defined $pid) {
-        exit Nessy::Keychain::Daemon->start(url => $params{url}, client_socket => $socket2);
+        eval {
+            my $daemon = Nessy::Keychain::Daemon->new(url => $params{url}, client_socket => $socket2);
+            $daemom->start();
+        }
+        Carp::croak($@) if $@;
+        exit;
     } else {
         die "Can't fork: $!";
     }
