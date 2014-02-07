@@ -418,7 +418,6 @@ sub state {
     if ($expected_next_states) {
         Carp::croak("Tried to switch to state $next and there was no expected next state") unless (@$expected_next_states);
         my $expected_next = shift @$expected_next_states;
-Test::More::diag "going from ".$self->SUPER::state()." to $next, expecting $expected_next";
         Carp::croak("next state $next does not match expected next state $expected_next") unless ($next eq $expected_next);
     }
     $self->SUPER::state($next);
