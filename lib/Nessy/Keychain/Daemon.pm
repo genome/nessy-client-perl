@@ -5,6 +5,7 @@ use warnings;
 use Nessy::Properties qw( url claims client_socket client_watcher server_watcher );
 
 use Nessy::Keychain::Daemon::Claim;
+use Nessy::Keychain::Message;
 
 use AnyEvent;
 use AnyEvent::Handle;
@@ -46,7 +47,7 @@ sub setup_events {
     
 }
 
-my $json_parser = JSON->new();
+my $json_parser = JSON->new->convert_blessed(1);
 sub create_client_watcher {
     my $self = shift;
 
@@ -64,13 +65,25 @@ sub create_client_watcher {
     $self->client_watcher($w);
 }
 
+# not a method!
+sub _construct_message {
+    my $message = shift;
+    if (ref($message) and ref($message) eq 'HASH') {
+        return Nessy::Keychain::Message->new(%$message);
+    } elsif (!ref($message)) {
+        return Nessy::Keychain::Message->from_json(shift);
+    } else {
+        Carp::croak("Don't know how to construct message from $message");
+    }
+}
+
 sub client_read_event {
     my $self = shift;
-    my ($watcher,$message) = @_;
+    my $watcher = shift;
+    my $message = _construct_message(shift);
 
-    my $command = delete $message->{command};
     my $result = eval {
-        $self->dispatch_command( $command, $message )
+        $self->dispatch_command( $message )
     };
 
     $result || $self->claim_failed($message);
@@ -79,23 +92,23 @@ sub client_read_event {
 sub claim_failed {
     my($self, $message) = @_;
     $self->remove_claim($message->{resource_name});
-    $self->_send_return_message($message, 0);
+    $message->result('failed');
+    $self->_send_return_message($message);
 }
 
 sub claim_succeeded {
     my($self, $message) = @_;
+    $message->result('succeeded');
     $self->_send_return_message($message, 1);
 }
 
 sub _send_return_message {
     my($self, $message, $result) = @_;
 
-    $message->{result} = $result ? 'success' : 'failed';
-    $message->{error_message} = $@ if ($@);
+    $message->error_message = $@ if ($@);
 
     my $watcher = $self->client_watcher;
     $watcher->push_write( json => $message );
-    $watcher->push_read;
 }
 
 my %allowed_command = (
@@ -104,10 +117,9 @@ my %allowed_command = (
 );
 
 sub dispatch_command {
-    my $self = shift;
-    my ($command, $message) = @_;
+    my($self, $message) = @_;
     
-    my $sub = $allowed_command{$command};
+    my $sub = $allowed_command{$message->command};
     Carp::croak("Unknown command") unless $sub;
 
     return $self->$sub($message);
