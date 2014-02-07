@@ -9,6 +9,7 @@ use Nessy::Keychain::Daemon::Claim;
 use AnyEvent;
 use AnyEvent::Handle;
 use JSON qw();
+use Carp;
 
 sub start {
     my $self = shift;
@@ -107,7 +108,7 @@ sub dispatch_command {
     my ($command, $message) = @_;
     
     my $sub = $allowed_command{$command};
-    die "Unknown command" unless $sub;
+    Carp::croak("Unknown command") unless $sub;
 
     return $self->$sub($message);
 }
@@ -137,7 +138,7 @@ sub release {
 
     my $resource_name = $message->{resource_name};
     my $claim = $self->remove_claim($resource_name);
-    $claim || die "No claim with resource $resource_name";
+    $claim || Carp::croak("No claim with resource $resource_name");
 
     $claim->release;
 }
