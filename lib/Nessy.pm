@@ -1,11 +1,11 @@
-package GSCLockClient;
+package Nessy;
 
 use strict;
 use warnings;
 
-use GSCLockClient::Properties qw(url default_ttl default_timeout api_version keychain claims);
-use GSCLockClient::Keychain;
-use GSCLockClient::Claim;
+use Nessy::Properties qw(url default_ttl default_timeout api_version keychain claims);
+use Nessy::Keychain;
+use Nessy::Claim;
 
 sub new {
     my($class, %params) = @_;
@@ -21,7 +21,7 @@ sub new {
     $self->default_timeout( $params{timeout} || $self->_default_timeout);
     $self->api_version( $params{api_version} || $self->_default_api_version);
 
-    my $keychain = GSCLockClient::Keychain->new(url => $self->url);
+    my $keychain = Nessy::Keychain->new(url => $self->url);
     die "Unable to create keychain" unless $keychain;
     $self->keychain( $keychain );
 

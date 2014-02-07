@@ -1,9 +1,9 @@
-package GSCLockClient::Keychain::Daemon::Claim;
+package Nessy::Keychain::Daemon::Claim;
 
 use strict;
 use warnings;
 
-use GSCLockClient::Properties qw(resource_name state url claim_location_url keychain timer_watcher ttl);
+use Nessy::Properties qw(resource_name state url claim_location_url keychain timer_watcher ttl);
 
 use AnyEvent;
 use AnyEvent::HTTP;

@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use GSCLockClient::Keychain::Daemon::Claim;
+use Nessy::Keychain::Daemon::Claim;
 
 use JSON;
 use Carp;
@@ -38,8 +38,8 @@ test_release_response_400();
 test_release_response_409();
 
 sub _new_claim {
-    my $keychain = GSCLockClient::Keychain::Daemon::Fake->new();
-    my $claim = GSCLockClient::Keychain::Daemon::TestClaim->new(
+    my $keychain = Nessy::Keychain::Daemon::Fake->new();
+    my $claim = Nessy::Keychain::Daemon::TestClaim->new(
                 url => $url,
                 resource_name => $resource_name,
                 keychain => $keychain,
@@ -52,7 +52,7 @@ sub test_failed_constructor {
 
     my $claim;
 
-    $claim = eval { GSCLockClient::Keychain::Daemon::Claim->new() };
+    $claim = eval { Nessy::Keychain::Daemon::Claim->new() };
     ok($@, 'Calling new() without args throws an exception');
 
     my %all_params = (
@@ -65,7 +65,7 @@ sub test_failed_constructor {
         my %args = %all_params;
         delete $args{$missing_arg};
 
-        $claim = eval { GSCLockClient::Keychain::Daemon::Claim->new( %args ) };
+        $claim = eval { Nessy::Keychain::Daemon::Claim->new( %args ) };
         like($@,
             qr($missing_arg is a required param),
             "missing arg $missing_arg throws an exception");
@@ -74,8 +74,8 @@ sub test_failed_constructor {
 
 sub test_constructor {
     my $claim;
-    my $keychain = GSCLockClient::Keychain::Daemon::Fake->new();
-    $claim = GSCLockClient::Keychain::Daemon::TestClaim->new(
+    my $keychain = Nessy::Keychain::Daemon::Fake->new();
+    $claim = Nessy::Keychain::Daemon::TestClaim->new(
                 url => $url,
                 resource_name => $resource_name,
                 keychain => $keychain,
@@ -383,9 +383,9 @@ sub test_release_response_409 {
 
 
 
-package GSCLockClient::Keychain::Daemon::TestClaim;
+package Nessy::Keychain::Daemon::TestClaim;
 BEGIN {
-    our @ISA = qw( GSCLockClient::Keychain::Daemon::Claim );
+    our @ISA = qw( Nessy::Keychain::Daemon::Claim );
 }
 
 sub new {
@@ -437,7 +437,7 @@ sub _http_method_params {
 }
 
 
-package GSCLockClient::Keychain::Daemon::Fake;
+package Nessy::Keychain::Daemon::Fake;
 
 sub new {
     my $class = shift;

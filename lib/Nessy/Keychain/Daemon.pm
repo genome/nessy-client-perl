@@ -1,10 +1,10 @@
-package GSCLockClient::Keychain::Daemon;
+package Nessy::Keychain::Daemon;
 
 use strict;
 use warnings;
-use GSCLockClient::Properties qw( url claims client_socket client_watcher server_watcher );
+use Nessy::Properties qw( url claims client_socket client_watcher server_watcher );
 
-use GSCLockClient::Keychain::Daemon::Claim;
+use Nessy::Keychain::Daemon::Claim;
 
 use AnyEvent;
 use AnyEvent::Handle;
@@ -114,7 +114,7 @@ sub claim {
     my($self, $message) = @_;
 
     my($resource_name, $data) = @$message{'resource_name','data'};
-    my $claim = GSCLockClient::Keychain::Daemon::Claim->new(
+    my $claim = Nessy::Keychain::Daemon::Claim->new(
                     resource_name => $resource_name,
                     data => $data,
                     keychain => $self);

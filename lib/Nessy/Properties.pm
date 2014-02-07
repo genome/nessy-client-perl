@@ -1,4 +1,4 @@
-package GSCLockClient::Properties;
+package Nessy::Properties;
 
 use Sub::Install;
 use Sub::Name;

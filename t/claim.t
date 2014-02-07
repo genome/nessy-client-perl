@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use GSCLockClient::Claim;
+use Nessy::Claim;
 
 use Test::More tests => 11;
 
@@ -15,22 +15,22 @@ sub test_failing_constructor {
 
     my $claim;
 
-    $claim = eval { GSCLockClient::Claim->new() };
+    $claim = eval { Nessy::Claim->new() };
     ok($@, 'new() with no args throws an exception');
 
-    $claim = eval { GSCLockClient::Claim->new(resource_name => 'foo') };
+    $claim = eval { Nessy::Claim->new(resource_name => 'foo') };
     like($@, qr(keychain is a required param), 'new() without keychain arg throws an exception');
 
-    $claim = eval { GSCLockClient::Claim->new(keychain => 'foo') };
+    $claim = eval { Nessy::Claim->new(keychain => 'foo') };
     like($@, qr(resource_name is a required param), 'new() without resource_name arg throws an exception');
 }
 
 sub test_release {
     my $resource_name = 'foo';
 
-    my $keychain = GSCLockClient::FakeKeychain->new();
+    my $keychain = Nessy::FakeKeychain->new();
 
-    my $claim = GSCLockClient::Claim->new(resource_name => $resource_name, keychain => $keychain);
+    my $claim = Nessy::Claim->new(resource_name => $resource_name, keychain => $keychain);
     ok($claim, 'Created Claim object');
 
     ok($claim->release(), 'release()');
@@ -46,9 +46,9 @@ sub test_release {
 sub test_destructor {
     my $resource_name = 'foo';
 
-    my $keychain = GSCLockClient::FakeKeychain->new();
+    my $keychain = Nessy::FakeKeychain->new();
 
-    my $claim = GSCLockClient::Claim->new(resource_name => $resource_name, keychain => $keychain);
+    my $claim = Nessy::Claim->new(resource_name => $resource_name, keychain => $keychain);
     ok($claim, 'Created Claim object');
 
 
@@ -59,7 +59,7 @@ sub test_destructor {
 }
 
 
-package GSCLockClient::FakeKeychain;
+package Nessy::FakeKeychain;
 
 sub new {
     my $class = shift;

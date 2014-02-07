@@ -1,9 +1,9 @@
-package GSCLockClient::Claim;
+package Nessy::Claim;
 
 use strict;
 use warnings;
 
-use GSCLockClient::Properties qw(resource_name keychain _is_released);
+use Nessy::Properties qw(resource_name keychain _is_released);
 
 sub new {
     my ($class, %params) = @_;

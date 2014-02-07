@@ -1,12 +1,12 @@
-package GSCLockClient::Keychain;
+package Nessy::Keychain;
 
 use strict;
 use warnings;
 
-use GSCLockClient::Properties qw(pid socket socket_watcher);
+use Nessy::Properties qw(pid socket socket_watcher);
 
-use GSCLockClient::Claim;
-use GSCLockClient::Keychain::Daemon;
+use Nessy::Claim;
+use Nessy::Keychain::Daemon;
 
 use Socket;
 use IO::Socket;
@@ -33,7 +33,7 @@ sub new {
         return $self;
 
     } elsif(defined $pid) {
-        exit GSCLockClient::Keychain::Daemon->go(url => $params{url}, client_socket => $socket2);
+        exit Nessy::Keychain::Daemon->go(url => $params{url}, client_socket => $socket2);
     } else {
         die "Can't fork: $!";
     }
@@ -67,7 +67,7 @@ sub claim {
     });
 
     return unless $result->{result};
-    return GSCLockClient::Claim->new(
+    return Nessy::Claim->new(
         resource_name => $resource_name,
         keychain  => $self,
     );
@@ -99,7 +99,7 @@ sub _send_command_and_get_result {
         }));
     my $result = $c->recv;
     return unless $result->{result};
-    return GSCLockClient::Claim->new(
+    return Nessy::Claim->new(
         resource_name => $command->{resource_name},
         keychain  => $self,
     );
