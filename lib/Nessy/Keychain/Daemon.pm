@@ -114,7 +114,8 @@ sub claim {
     my($self, $message) = @_;
 
     my($resource_name, $data) = @$message{'resource_name','data'};
-    my $claim = Nessy::Keychain::Daemon::Claim->new(
+    my $claim_class = $self->_claim_class;
+    my $claim = $claim_class->new(
                     resource_name => $resource_name,
                     data => $data,
                     keychain => $self);
@@ -123,6 +124,10 @@ sub claim {
         $claim->start();
     }
     return $claim;
+}
+
+sub _claim_class {
+    return 'Nessy::Keychain::Daemon::Claim';
 }
 
 sub release {
