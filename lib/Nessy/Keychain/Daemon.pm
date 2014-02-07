@@ -10,7 +10,7 @@ use AnyEvent;
 use AnyEvent::Handle;
 use JSON qw();
 
-sub go {
+sub start {
     my $class = shift;
 
     my $self = $class->new(@_);
