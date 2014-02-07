@@ -5,11 +5,12 @@ use warnings;
 
 use Nessy::Keychain::Daemon;
 
-use Test::More tests => 7;
+use Test::More tests => 15;
 use Carp;
 use JSON;
 use Socket;
 use IO::Socket;
+use IO::Select;
 use IO::Handle;
 use AnyEvent;
 
@@ -17,6 +18,8 @@ test_constructor();
 test_constructor_failures();
 
 test_start();
+
+test_add_remove_claim();
 
 sub test_constructor_failures {
     my $daemon;
@@ -48,6 +51,35 @@ sub test_start {
     ok($daemon->start($cv), 'start() as an instance method method');
 
     ok($daemon->client_watcher, 'client watcher created');
+}
+
+sub test_add_remove_claim {
+    my $daemon = _new_test_daemon();
+
+    my $test_claim_foo = Nessy::Keychain::Daemon::FakeClaim->new();
+    my $test_claim_bar = Nessy::Keychain::Daemon::FakeClaim->new();
+
+    ok( $daemon->add_claim('foo', $test_claim_foo),
+        'add_claim() foo');
+    ok( $daemon->add_claim('bar', $test_claim_bar),
+        'add_claim() bar');
+
+    ok(! $daemon->remove_claim('baz'),
+        'cannot remove unknown claim baz');
+
+    eval { $daemon->add_claim('foo', Nessy::Keychain::Daemon::FakeClaim->new()) };
+    like($@, qr(Attempted to add claim foo when it already exists), 'cannot double add the same claim');
+
+    is_deeply( $daemon->claims(),
+        { foo => $test_claim_foo, bar => $test_claim_bar },
+        'claims() returns known claims');
+
+    is($daemon->remove_claim('foo'), $test_claim_foo, 'remove claim foo');
+    ok(! $daemon->remove_claim('foo'), 'cannot double remove the same claim');
+
+    is_deeply( $daemon->claims(),
+        { bar => $test_claim_bar },
+        'claims() returns known claim bar');
 }
 
 {

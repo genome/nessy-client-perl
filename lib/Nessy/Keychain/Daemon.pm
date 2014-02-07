@@ -147,6 +147,9 @@ sub add_claim {
     my($self, $resource_name, $claim) = @_;
 
     my $claims = $self->claims;
+    if (exists $claims->{$resource_name}) {
+        Carp::croak("Attempted to add claim $resource_name when it already exists");
+    }
     $claims->{$resource_name} = $claim;
 }
 
