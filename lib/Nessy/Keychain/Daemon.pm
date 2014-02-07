@@ -23,7 +23,7 @@ sub new {
     my $class = shift;
     my %params = @_;
 
-    $self->_required_params(\%params, qw(client_socket url));
+    $class->_required_params(\%params, qw(client_socket url));
 
     my $self = bless {}, $class;
 
