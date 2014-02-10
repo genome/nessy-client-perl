@@ -38,7 +38,8 @@ sub test_constructor_failures {
 }
 
 sub test_constructor {
-    my $daemon = Nessy::Keychain::Daemon->new(client_socket => 'abc', url => 1);
+    my $fake_socket = IO::Handle->new();
+    my $daemon = Nessy::Keychain::Daemon->new(client_socket => $fake_socket, url => 1);
     ok($daemon, 'constructor');
 
     is_deeply($daemon->claims, {}, 'daemon claims() initialized to an empty hash');
@@ -199,6 +200,7 @@ sub new {
 
 sub start {
     my $self = shift;
+print "Fake claim is starting!!\n";
     $self->{_start_called} = 1;
     $on_start_cb->($self) if ($on_start_cb);
 }

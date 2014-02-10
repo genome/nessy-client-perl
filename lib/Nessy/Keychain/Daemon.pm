@@ -20,7 +20,6 @@ sub start {
 
     # enter the event loop
     $cv ||= AnyEvent->condvar;
-print "Daemon Entering event loop\n";
     $cv->recv;
 }
 
@@ -67,15 +66,19 @@ sub create_client_watcher {
 
 sub on_read_handler {
     my($self, $w) = @_;
-print "In on_read handler\n";
     $w->unshift_read( json => sub { print "in push_read handler\n";
                                 $self->client_read_event(@_); });
 }
 
 sub client_error_event {
     my($self, $w, $is_fatal, $msg) = @_;
-use Data::Dumper;
-print Data::Dumper::Dumper(@_);
+
+    print "*** Error.  is_fatal: $is_fatal: $msg\n";
+}
+
+sub client_eof_event {
+    my($self, $w) = @_;
+    print "*** at EOF\n";
 
 }
 
