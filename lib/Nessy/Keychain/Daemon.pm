@@ -62,9 +62,7 @@ sub create_client_watcher {
                 #oob_inline => 0,
                 json => $json_parser,
             );
-
-    $self->client_watcher($w);
-print "Created socket watcher for fd ",fileno($self->client_socket),"\n";
+    return $w;
 }
 
 sub on_read_handler {
