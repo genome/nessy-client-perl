@@ -125,7 +125,7 @@ sub _event_loop {
     $cv ||= AnyEvent->condvar;
     local $SIG{ALRM} = sub { note('_event_loop waited too long'); $cv->send() };
 
-    alarm(3);
+    alarm(3) unless defined &DB::DB;
     my $rv = $daemon->start($cv);
     alarm(0);
     return $rv;
