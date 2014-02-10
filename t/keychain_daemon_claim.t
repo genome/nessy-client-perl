@@ -8,7 +8,7 @@ use Nessy::Keychain::Daemon::Claim;
 use JSON;
 use Carp;
 use Data::Dumper;
-use Test::More tests => 112;
+use Test::More tests => 117;
 
 # defaults when creating a new claim object for testing
 our $url = 'http://example.org';
@@ -126,11 +126,13 @@ sub test_registration_response_201 {
 
     $claim->state('registering');
     my $claim_location_url = "${url}/claim/123";
-    ok( $claim->recv_register_response('', { Status => 201, Location => $claim_location_url}),
+
+    my $response_handler = $claim->_make_response_generator('claim', 'recv_register_response');
+    ok( $response_handler->('', { Status => 201, Location => $claim_location_url}),
         'send 201 response to registration');
     is($claim->state(), 'active', 'Claim state is active');
     ok($claim->timer_watcher, 'Claim created a timer');
-    ok($keychain->claim_succeeded, 'Keychain was notified about success');
+    is($keychain->claim_succeeded, $resource_name, 'Keychain was notified about success');
     ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
     is($claim->claim_location_url, $claim_location_url, 'Claim location URL');
 }
@@ -141,7 +143,9 @@ sub test_registration_response_202 {
 
     $claim->state('registering');
     my $claim_location_url = "${url}/claim/123";
-    ok( $claim->recv_register_response('', { Status => 202, Location => $claim_location_url}),
+
+    my $response_handler = $claim->_make_response_generator('claim', 'recv_register_response');
+    ok( $response_handler->('', { Status => 202, Location => $claim_location_url}),
         'send 202 response to registrtation');
     is($claim->state(), 'waiting', 'Claim state is waiting');
     ok($claim->timer_watcher, 'Claim created a timer');
@@ -156,12 +160,23 @@ sub test_registration_response_400 {
 
     $claim->state('registering');
 
-    ok( $claim->recv_register_response('', { Status => 400 }),
+    my $response_handler = $claim->_make_response_generator('claim', 'recv_register_response');
+    ok( $response_handler->('', { Status => 400 }),
         'send 400 response to registrtation');
     is($claim->state(), 'failed', 'Claim state is failed');
     ok(! $claim->timer_watcher, 'Claim did not created a timer');
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
-    ok($keychain->claim_failed, 'Keychain was notified about failure');
+
+    my $message = $keychain->claim_failed;
+    ok($message, 'Keychain was notified about failure');
+    _compare_message_to_expected(
+            $message,
+            {
+                command => 'claim',
+                result  => 'failed',
+                resource_name => $resource_name,
+                error_message => 'bad request',
+            });
     ok(! $claim->claim_location_url, 'Claim has no location URL');
 }
 
@@ -169,7 +184,7 @@ sub test_send_activating {
     my $claim = _new_claim();
 
     $claim->state('waiting');
-    my $claim_location_url = $claim->claim_location_url( "${url}/claims/${resource_name}" );
+    my $claim_location_url = $claim->claim_location_url( "${url}/claims/123" );
     ok($claim->send_activating(), 'send_activating()');
 
     my $params = $claim->_http_method_params();
@@ -194,7 +209,8 @@ sub test_activating_response_409 {
     my $fake_timer_watcher = $claim->timer_watcher('abc');
     my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
 
-    ok($claim->recv_activating_response('', { Status => 409 }),
+    my $response_handler = $claim->_make_response_generator('claim', 'recv_activating_response');
+    ok($response_handler->('', { Status => 409 }),
         'send 409 response to activation');
 
     is($claim->state, 'waiting', 'Claim state is waiting');
@@ -212,13 +228,14 @@ sub test_activating_response_200 {
     my $fake_timer_watcher = $claim->timer_watcher('abc');
     my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
 
-    ok($claim->recv_activating_response('', { Status => 200 }),
+    my $response_handler = $claim->_make_response_generator('claim', 'recv_activating_response');
+    ok($response_handler->('', { Status => 200 }),
         'send 200 response to activation');
 
     is($claim->state, 'active', 'Claim state is active');
     ok($claim->timer_watcher, 'Claim has a ttl timer');
     isnt($claim->timer_watcher, $fake_timer_watcher, 'ttl timer was changed');
-    ok($keychain->claim_succeeded, 'Keychain was notified about success');
+    is($keychain->claim_succeeded, $resource_name, 'Keychain was notified about success');
     ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
     is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
 }
@@ -230,13 +247,24 @@ sub test_activating_response_400 {
 
     my $fake_timer_watcher = $claim->timer_watcher('abc');
 
-    ok($claim->recv_activating_response('', { Status => 400 }),
+    my $response_handler = $claim->_make_response_generator('claim', 'recv_activating_response');
+    ok($response_handler->('', { Status => 400 }),
         'send 400 response to activation');
 
     is($claim->state, 'failed', 'Claim state is failed');
     ok(! $claim->timer_watcher, 'Claim has no ttl timer');
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
-    ok($keychain->claim_failed, 'Keychain was notified about failure');
+
+    my $message = $keychain->claim_failed;
+    ok($message, 'Keychain was notified about failure');
+    _compare_message_to_expected(
+            $message,
+            {
+                command => 'claim',
+                result  => 'failed',
+                resource_name => $resource_name,
+                error_message => 'activating: bad request',
+            });
 }
 
 sub test_send_renewal {
@@ -296,6 +324,9 @@ sub test_renewal_response_400 {
     ok(! $claim->timer_watcher, 'Claim has no ttl timer');
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
     ok(! $keychain->claim_failed, 'Keychain was notified about failure');
+    is($keychain->fatal_error_was_called(),
+        "claim $resource_name failed renewal with code 400",
+        'Keychain was notified with renewal failure with fatal error');
 }
 
 sub test_send_release {
@@ -330,7 +361,8 @@ sub test_release_response_204 {
 
     my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
 
-    ok($claim->recv_release_response('', { Status => 204 }),
+    my $response_handler = $claim->_make_response_generator('claim', 'recv_release_response');
+    ok($response_handler->('', { Status => 204 }),
         'send 200 response to release');
 
     is($claim->state, 'released', 'Claim state is released');
@@ -349,7 +381,8 @@ sub test_release_response_400 {
 
     my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
 
-    ok($claim->recv_release_response('', { Status => 400 }),
+    my $response_handler = $claim->_make_response_generator('claim', 'recv_release_response');
+    ok($response_handler->('', { Status => 400 }),
         'send 400 response to release');
 
     is($claim->state, 'failed', 'Claim state is failed');
@@ -357,7 +390,17 @@ sub test_release_response_400 {
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
     ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
     ok(! $keychain->release_succeeded, 'Keychain was not notified about release success');
-    ok($keychain->release_failed, 'Keychain was notified about release success');
+
+    my $message = $keychain->release_failed;
+    ok($message, 'Keychain was notified about failure');
+    _compare_message_to_expected(
+            $message,
+            {
+                command => 'release',
+                result  => 'failed',
+                resource_name => $resource_name,
+                error_message => 'release: bad request',
+            });
     is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
 }
 
@@ -368,7 +411,8 @@ sub test_release_response_409 {
 
     my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
 
-    ok($claim->recv_release_response('', { Status => 409 }),
+    my $response_handler = $claim->_make_response_generator('claim', 'recv_release_response');
+    ok($response_handler->('', { Status => 409 }),
         'send 409 response to release');
 
     is($claim->state, 'failed', 'Claim state is failed');
@@ -376,12 +420,31 @@ sub test_release_response_409 {
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
     ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
     ok(! $keychain->release_succeeded, 'Keychain was not notified about release success');
-    ok($keychain->release_failed, 'Keychain was notified about release success');
+
+    my $message = $keychain->release_failed;
+    ok($message, 'Keychain was notified about failure');
+    _compare_message_to_expected(
+            $message,
+            {
+                command => 'release',
+                result  => 'failed',
+                resource_name => $resource_name,
+                error_message => 'release: lost claim',
+            });
     is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
 }
 
+sub _compare_message_to_expected {
+    my($got, $expected) = @_;
 
-
+    my $different = '';
+    foreach my $k ( keys %$expected ) {
+        if ($got->$k ne $expected->{$k}) {
+            $different = "got $k >>". $got->$k."<< expected ".$expected->{$k};
+        }
+    }
+    ok(!$different, $different || 'message matched');
+}
 
 package Nessy::Keychain::Daemon::TestClaim;
 BEGIN {
@@ -457,6 +520,15 @@ BEGIN {
         no strict 'refs';
         *$method = $sub;
     }
+}
+
+sub fatal_error {
+    my($self, $message) = @_;
+    $self->{_fatal_error_message} = $message;
+}
+
+sub fatal_error_was_called {
+    return shift->{_fatal_error_message};
 }
 
 

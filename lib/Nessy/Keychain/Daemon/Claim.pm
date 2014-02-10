@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 use Nessy::Properties qw(resource_name state url claim_location_url keychain timer_watcher ttl);
+use Nessy::Keychain::Message;
 
 use AnyEvent;
 use AnyEvent::HTTP;
@@ -62,27 +63,37 @@ sub transition {
             return 1;
         }
     }
-    $self->_failure(Carp::shortmess("Illegal transition from ".$self->state." to $new_state"));
+    $self->send_fatal_error(Carp::shortmess("Illegal transition from ".$self->state." to $new_state"));
 }
 
-sub _claim_failure {
-    my($self, $error) = @_;
+sub _claim_failure_generator {
+    my($class, $error) = @_;
 
-    $self->_report_failure_to_keychain('claim_failed', $error);
+    return sub {
+        my $self = shift;
+        $self->_report_failure_to_keychain('claim', $self->resource_name, $error);
+    };
 }
 
-sub _release_failure {
-    my($self, $error) = @_;
+sub _release_failure_generator {
+    my($class, $error) = @_;
 
-    $self->_report_failure_to_keychain('release_failed', $error);
+    return sub {
+        my $self = shift;
+        $self->_report_failure_to_keychain('release', $self->resource_name, $error);
+    };
 }
 
 sub _report_failure_to_keychain {
-    my($self, $keychain_method, $error) = @_;
+    my($self, $command, $resource_name, $error) = @_;
 
+    my $keychain_method = "${command}_failed";
     $self->_remove_all_watchers();
-    my $message = { resource_name => $self->resource_name };
-    $error && ($message->{error_message} = $error);
+    my $message = Nessy::Keychain::Message->new(
+                    resource_name => $resource_name,
+                    command => $command,
+                    result => 'failed',
+                    error_message => $error);
 
     $self->state(STATE_FAILED);
     $self->keychain->$keychain_method($message);
@@ -91,17 +102,20 @@ sub _report_failure_to_keychain {
 sub _success {
     my $self = shift;
 
-    $self->keychain->claim_succeeded({ resource_name => $self->resource_name });
+    $self->keychain->claim_succeeded($self->resource_name);
 }
 
 sub send_register {
     my $self = shift;
 
+    my $responder = $self->_make_response_generator(
+                        'claim',
+                        'recv_register_response');
     $self->_send_http_request(
         POST => $self->url . '/claims',
         $json_parser->encode({ resource => $self->resource_name }),
         'Content-Type' => 'application/json',
-        sub { $self->recv_register_response(@_) }
+        $responder,
     );
     $self->transition(STATE_REGISTERING);
 }
@@ -117,25 +131,32 @@ sub _send_http_request {
     AnyEvent::HTTP::http_request($method => $url, $body, @headers, $cb);
 }
 
-# make handlers for receiving responses and forwarding them to individual handlers
-# by response code
-foreach my $prefix ( qw( recv_register_response recv_activating_response recv_renewal_response recv_release_response ) ) {
+sub _response_status {
+    my($self, $headers) = @_;
+    return $headers->{Status};
+}
+
+sub _make_response_generator {
+    my ($self, $command, $prefix) = @_;
+
     my $sub = sub {
-        my($self, $body, $headers) = @_;
+        my($body, $headers) = @_;
 
-        my $status = $headers->{Status};
+        my $status = $self->_response_status($headers);
         my $method = "${prefix}_${status}";
-
         unless (eval { $self->$method($body, $headers); }) {
-             $self->_claim_failure("Exception when handling status $status in ${prefix}(): $@\n"
-                 . "Headers: " . Data::Dumper::Dumper($headers) ."\n"
-                   . "Body: " . Data::Dumper::Dumper($body)
-             );
+            $self->_claim_failure(
+                        $command,
+                        $self->resource_name,
+                        "Exception when handling status $status in ${prefix}(): $@\n"
+                            . "Headers: " . Data::Dumper::Dumper($headers) ."\n"
+                            . "Body: " . Data::Dumper::Dumper($body)
+                    );
             return 0;
         }
         return 1;
     };
-    _install_sub($prefix, $sub);
+    return $sub;
 }
 
 sub _install_sub {
@@ -186,16 +207,19 @@ sub recv_register_response_202 {
     $self->timer_watcher($w);
 }
 
-_install_sub('recv_register_response_400', \&_claim_failure);
+_install_sub('recv_register_response_400', __PACKAGE__->_claim_failure_generator('bad request'));
 
 sub send_activating {
     my $self = shift;
 
+    my $responder = $self->_make_response_generator(
+                        'claim',
+                        'recv_activating_response');
     $self->_send_http_request(
         PATCH => $self->claim_location_url,
         $json_parser->encode({ status => 'active' }),
         'Content-Type' => 'application/json',
-        sub { $self->recv_activating_response() }
+        $responder,
     );
     $self->transition(STATE_ACTIVATING);
 }
@@ -212,8 +236,8 @@ sub recv_activating_response_200 {
     $self->_successfully_activated();
 }
 
-_install_sub('recv_activating_response_400', \&_claim_failure);
-_install_sub('recv_activating_response_404', \&_claim_failure);
+_install_sub('recv_activating_response_400', __PACKAGE__->_claim_failure_generator('activating: bad request'));
+_install_sub('recv_activating_response_404', __PACKAGE__->_claim_failure_generator('activating: non-existent claim'));
 
 sub send_renewal {
     my $self = shift;
@@ -223,36 +247,43 @@ sub send_renewal {
         PATCH => $self->claim_location_url,
         $json_parser->encode({ ttl => $ttl }),
         'Content-Type' => 'application/json',
-        sub { $self->recv_renewal_response() }
+        sub { $self->recv_renewal_response },
     );
     $self->transition(STATE_RENEWING);
 }
 
-sub recv_renewal_response_200 {
+sub recv_renewal_response {
     my($self, $body, $headers) = @_;
 
-    $self->transition(STATE_ACTIVE);
+    my $status = $self->_response_status($headers);
+    if ($status == 200) {
+        $self->transition(STATE_ACTIVE);
+        return 1;
+    }
+
+    $self->send_fatal_error('claim '.$self->resource_name." failed renewal with code $status");
 }
 
-sub _renewal_failure {
-    my $self = shift;
-    $self->_remove_all_watchers();
+sub send_fatal_error {
+    my($self, $message) = @_;
     $self->state(STATE_FAILED);
+    $self->_remove_all_watchers();
+    $self->keychain->fatal_error($message);
 }
-_install_sub('recv_renewal_response_400', \&_renewal_failure);
-_install_sub('recv_renewal_response_404', \&_renewal_failure);
-_install_sub('recv_renewal_response_409', \&_renewal_failure);
 
 sub release {
     my $self = shift;
 
     $self->_remove_all_watchers();
 
+    my $responder = $self->_make_response_generator(
+                        'release',
+                        'recv_release_response');
     $self->_send_http_request(
         PATCH => $self->claim_location_url,
         $json_parser->encode({ status => 'released' }),
         'Content-Type' => 'application/json',
-        sub { $self->recv_release_response() },
+        $responder,
     );
     $self->transition(STATE_RELEASING);
 }
@@ -263,9 +294,9 @@ sub recv_release_response_204 {
     $self->keychain->release_succeeded({ resource_name => $self->resource_name });
 }
 
-_install_sub('recv_release_response_400', \&_release_failure);
-_install_sub('recv_release_response_404', \&_release_failure);
-_install_sub('recv_release_response_409', \&_release_failure);
+_install_sub('recv_release_response_400', __PACKAGE__->_release_failure_generator('release: bad request'));
+_install_sub('recv_release_response_404', __PACKAGE__->_release_failure_generator('release: non-existent claim'));
+_install_sub('recv_release_response_409', __PACKAGE__->_release_failure_generator('release: lost claim'));
 
 sub _create_timer_event {
     my $self = shift;
@@ -282,8 +313,5 @@ sub _remove_all_watchers {
     my $self = shift;
     $self->timer_watcher(undef);
 }
-
-
-
 
 1;
