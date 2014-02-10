@@ -197,6 +197,28 @@ sub _respond_to_requestor {
     my($self, $message) = @_;
 
 }
-    
 
+sub fatal_error {
+    my($self, $message) = @_;
+
+    Carp::carp("Fatal error: $message");
+    $self->_try_kill_parent('TERM');
+    sleep($self->fatal_error_delay_time);
+    $self->_exit_if_parent_dead(1);
+    $self->_try_kill_parent(9);
+    exit(1);
+}
+
+sub fatal_error_delay_time { 10 } # seconds
+
+sub _try_kill_parent {
+    my($self, $signal) = @_;
+
+    kill($signal, $self->ppid);
+}
+
+sub _exit_if_parent_dead {
+    my($self, $exit_code) = @_
+    exit($exit_code) if (kill(0, $self->ppid));
+}
 1;
