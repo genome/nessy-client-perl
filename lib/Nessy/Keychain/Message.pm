@@ -20,7 +20,7 @@ sub new {
     my $self = bless {}, $class;
 
     foreach my $accessor ( @property_list ) {
-        $self->$accessor($params{$accessor});
+        $self->$accessor($params{$accessor}) if (exists $params{$accessor});
     }
     return $self;
 }
