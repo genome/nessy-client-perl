@@ -60,8 +60,10 @@ sub test_start {
 sub test_add_remove_claim {
     my $daemon = _new_test_daemon();
 
-    my $test_claim_foo = Nessy::Keychain::Daemon::FakeClaim->new();
-    my $test_claim_bar = Nessy::Keychain::Daemon::FakeClaim->new();
+    my $test_claim_foo = Nessy::Keychain::Daemon::FakeClaim->new(
+        resource_name => 'foo', keychain => $daemon);
+    my $test_claim_bar = Nessy::Keychain::Daemon::FakeClaim->new(
+        resource_name => 'bar', keychain => $daemon);
 
     ok( $daemon->add_claim('foo', $test_claim_foo),
         'add_claim() foo');
@@ -71,7 +73,11 @@ sub test_add_remove_claim {
     ok(! $daemon->remove_claim('baz'),
         'cannot remove unknown claim baz');
 
-    eval { $daemon->add_claim('foo', Nessy::Keychain::Daemon::FakeClaim->new()) };
+    eval {
+        $daemon->add_claim('foo',
+            Nessy::Keychain::Daemon::FakeClaim->new(
+                resource_name => 'foo', keychain => $daemon))
+    };
     like($@, qr(Attempted to add claim foo when it already exists), 'cannot double add the same claim');
 
     is_deeply( $daemon->claims(),
@@ -201,8 +207,16 @@ package Nessy::Keychain::Daemon::FakeClaim;
 use base 'Nessy::Keychain::Daemon::Claim';
 
 our $on_start_cb;
+
 sub new {
-    return bless {}, shift;
+    my $class = shift;
+    my %params = (
+        url           => 'http://example.org',
+        resource_name => 'foo',
+        ttl           => 10,
+        @_,
+    );
+    return $class->SUPER::new(%params);
 }
 
 sub start {
