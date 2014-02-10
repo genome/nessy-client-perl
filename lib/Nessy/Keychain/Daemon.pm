@@ -24,6 +24,19 @@ sub start {
     $cv->recv;
 }
 
+sub shutdown {
+    my $self = shift;
+
+    if (my $w = $self->client_watcher) {
+        $self->client_watcher( undef );
+        $w->destroy;
+    }
+
+    $self->client_socket( undef );
+
+    $_->release for $self->all_claims;
+}
+
 sub new {
     my $class = shift;
     my %params = @_;
@@ -209,6 +222,12 @@ sub lookup_claim {
     return $claims->{$resource_name};
 }
 
+sub all_claims {
+    my $self = shift;
+    my $claims = $self->claims;
+    values %$claims;
+}
+
 sub _respond_to_requestor {
     my($self, $message) = @_;
 
@@ -236,5 +255,10 @@ sub _try_kill_parent {
 sub _exit_if_parent_dead {
     my($self, $exit_code) = @_
     exit($exit_code) if (kill(0, $self->ppid));
+}
+
+sub DESTROY {
+    my $self = shift;
+    $self->shutdown;
 }
 1;

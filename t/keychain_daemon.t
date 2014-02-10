@@ -231,3 +231,5 @@ sub _start_called {
     return shift->{_start_called};
 }
 
+sub release { }
+
