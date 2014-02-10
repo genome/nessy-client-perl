@@ -2,7 +2,7 @@ package Nessy::Keychain::Daemon;
 
 use strict;
 use warnings;
-use Nessy::Properties qw( url claims client_socket client_watcher server_watcher );
+use Nessy::Properties qw( url claims client_socket client_watcher server_watcher ppid);
 
 use Nessy::Keychain::Daemon::Claim;
 use Nessy::Keychain::Message;
@@ -34,6 +34,8 @@ sub new {
 
     $self->client_socket($params{client_socket});
     $self->url($params{url});
+
+    $self->ppid(getppid);
 
     $self->claims({});
 
