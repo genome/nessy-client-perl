@@ -87,7 +87,6 @@ sub on_read_handler {
 
 sub client_error_event {
     my($self, $w, $is_fatal, $msg) = @_;
-
     print "*** Error.  is_fatal: $is_fatal: $msg\n";
 }
 
@@ -127,7 +126,7 @@ sub client_read_event {
 }
 
 sub claim_failed {
-    my($self, $resource_name, $error_message = @_;
+    my($self, $resource_name, $error_message) = @_;
     my $message = Nessy::Keychain::Message->new(
                     resource_name => $resource_name,
                     command => 'claim',
@@ -150,9 +149,10 @@ sub claim_succeeded {
 sub _send_return_message {
     my($self, $message) = @_;
 
-    $message->error_message = $@ if ($@);
+    $message->error_message($@) if ($@);
 
     my $watcher = $self->client_watcher;
+    return unless $watcher;
     $watcher->push_write( json => $message );
 }
 
@@ -253,7 +253,7 @@ sub _try_kill_parent {
 }
 
 sub _exit_if_parent_dead {
-    my($self, $exit_code) = @_
+    my($self, $exit_code) = @_;
     exit($exit_code) if (kill(0, $self->ppid));
 }
 

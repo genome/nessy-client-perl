@@ -112,7 +112,7 @@ sub test_make_claim {
     
     my %expected = ( resource_name => 'foo', command => 'claim', result => 'succeeded' );
     my $is_ok = 1;
-    foreach my $key ( %expected ) {
+    foreach my $key ( keys %expected ) {
         $is_ok = 0 if ($response->$key ne $expected{$key});
     }
     ok($is_ok, 'response');
@@ -221,7 +221,6 @@ sub new {
 
 sub start {
     my $self = shift;
-print "Fake claim is starting!!\n";
     $self->{_start_called} = 1;
     $on_start_cb->($self) if ($on_start_cb);
     $self->keychain->claim_succeeded( $self->resource_name );
