@@ -100,24 +100,37 @@ sub client_read_event {
         $self->dispatch_command( $message )
     };
 
-    $result || $self->claim_failed($message);
+    unless ($result) {
+        $message->error_message('unknown command');
+        $message->result('failed');
+        $self->_send_return_message($message);
+    }
+    return $result
 }
 
 sub claim_failed {
-    my($self, $message) = @_;
-    $self->remove_claim($message->{resource_name});
-    $message->result('failed');
+    my($self, $resource_name, $error_message = @_;
+    my $message = Nessy::Keychain::Message->new(
+                    resource_name => $resource_name,
+                    command => 'claim',
+                    result => 'failed',
+                    error_message => $error_message);
+    $self->remove_claim($resource_name);
     $self->_send_return_message($message);
 }
 
 sub claim_succeeded {
-    my($self, $message) = @_;
-    $message->result('succeeded');
-    $self->_send_return_message($message, 1);
+    my($self, $resource_name) = @_;
+
+    my $message = Nessy::Keychain::Message->new(
+                    resource_name => $resource_name,
+                    command => 'claim',
+                    result => 'succeeded' );
+    $self->_send_return_message($message);
 }
 
 sub _send_return_message {
-    my($self, $message, $result) = @_;
+    my($self, $message) = @_;
 
     $message->error_message = $@ if ($@);
 
@@ -142,7 +155,7 @@ sub dispatch_command {
 sub claim {
     my($self, $message) = @_;
 
-    my($resource_name, $data) = @$message{'resource_name','data'};
+    my($resource_name, $data) = map { $message->$_ } qw(resource_name data);
     my $claim_class = $self->_claim_class;
     my $claim = $claim_class->new(
                     resource_name => $resource_name,
