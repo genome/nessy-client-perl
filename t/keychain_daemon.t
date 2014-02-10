@@ -203,6 +203,7 @@ sub start {
 print "Fake claim is starting!!\n";
     $self->{_start_called} = 1;
     $on_start_cb->($self) if ($on_start_cb);
+    $self->keychain->claim_succeeded( $self->resource_name );
 }
 
 sub _start_called {
