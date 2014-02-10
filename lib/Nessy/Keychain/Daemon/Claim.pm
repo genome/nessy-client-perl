@@ -3,13 +3,14 @@ package Nessy::Keychain::Daemon::Claim;
 use strict;
 use warnings;
 
-use Nessy::Properties qw(resource_name state url claim_location_url keychain timer_watcher ttl);
+use Nessy::Properties qw(resource_name state url claim_location_url timer_watcher ttl);
 use Nessy::Keychain::Message;
 
 use AnyEvent;
 use AnyEvent::HTTP;
 use JSON;
 use Data::Dumper;
+use Scalar::Util qw();
 use Sub::Name;
 use Sub::Install;
 
@@ -45,6 +46,15 @@ sub new {
     $self->_required_params(\%params, qw(url resource_name keychain ttl));
     $self->state(STATE_NEW);
     return $self;
+}
+
+sub keychain {
+    my $self = shift;
+    if (@_) {
+        $self->{keychain} = shift;
+        Scalar::Util::weaken( $self->{keychain} );
+    }
+    return $self->{keychain};
 }
 
 sub start {
