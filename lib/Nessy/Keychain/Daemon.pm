@@ -240,7 +240,7 @@ sub fatal_error {
     $self->_try_kill_parent('TERM');
     sleep($self->fatal_error_delay_time);
     $self->_exit_if_parent_dead(1);
-    $self->_try_kill_parent(9);
+    $self->_try_kill_parent('KILL');
     exit(1);
 }
 
