@@ -11,6 +11,7 @@ use AnyEvent;
 use AnyEvent::Handle;
 use JSON qw();
 use Carp;
+use Scalar::Util qw();
 
 sub start {
     my $self = shift;
@@ -53,6 +54,7 @@ my $json_parser = JSON->new->convert_blessed(1);
 sub create_client_watcher {
     my $self = shift;
 
+    Scalar::Util::weaken( $self );
     my $w = AnyEvent::Handle->new(
                 fh => $self->client_socket,
                 on_error    => sub { $self->client_error_event(@_) },

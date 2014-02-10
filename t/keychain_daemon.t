@@ -114,6 +114,9 @@ sub test_make_claim {
     my $claim = $daemon->lookup_claim('foo');
     ok($claim, 'daemon created claim for resource_name foo');
     ok($claim->_start_called, 'state machine was started for claim');
+    $Nessy::Keychain::TestDaemon::destroy_called = 0;
+    undef $daemon;
+    ok($Nessy::Keychain::TestDaemon::destroy_called, 'Daemon destroyed');
 }
 
 sub _event_loop {
@@ -188,6 +191,10 @@ package Nessy::Keychain::TestDaemon;
 use base 'Nessy::Keychain::Daemon';
 
 sub _claim_class { return 'Nessy::Keychain::Daemon::FakeClaim' }
+sub DESTROY {
+    our $destroy_called = 1;
+    shift->SUPER::DESTROY;
+}
 
 package Nessy::Keychain::Daemon::FakeClaim;
 
