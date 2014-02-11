@@ -37,7 +37,7 @@ test_release_response_204();
 test_release_response_400();
 test_release_response_409();
 
-sub _new_claim {
+sub _new_claim_and_keychain {
     my $keychain = Nessy::Keychain::Daemon::Fake->new();
     my $claim = Nessy::Keychain::Daemon::TestClaim->new(
                 url => $url,
@@ -45,7 +45,7 @@ sub _new_claim {
                 keychain => $keychain,
                 ttl => $ttl,
             );
-    return $claim;
+    return ($claim, $keychain);
 }
 
 sub test_failed_constructor {
@@ -58,7 +58,7 @@ sub test_failed_constructor {
     my %all_params = (
             url => 'http://test.org',
             resource_name => 'foo',
-            keychain => 'bar',
+            keychain => \'bar',
             ttl => 1,
         );
     foreach my $missing_arg ( keys %all_params ) {
@@ -98,7 +98,7 @@ sub _verify_http_params {
 
 sub test_start_state_machine {
 
-    my $claim = _new_claim();
+    my ($claim, $keychain) = _new_claim_and_keychain();
     ok($claim, 'Create new Claim');
     is($claim->state, 'new', 'Newly created Claim is in state new');
 
@@ -114,15 +114,13 @@ sub test_start_state_machine {
           'Content-Type' => 'application/json',
         ]);
 
-    my $keychain = $claim->keychain;
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
     ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
 }
 
 sub test_registration_response_201 {
-    my $claim = _new_claim();
+    my ($claim, $keychain) = _new_claim_and_keychain();
     ok($claim, 'Create new Claim');
-    my $keychain = $claim->keychain;
 
     $claim->state('registering');
     my $claim_location_url = "${url}/claim/123";
@@ -138,8 +136,7 @@ sub test_registration_response_201 {
 }
 
 sub test_registration_response_202 {
-    my $claim = _new_claim();
-    my $keychain = $claim->keychain;
+    my ($claim, $keychain) = _new_claim_and_keychain();
 
     $claim->state('registering');
     my $claim_location_url = "${url}/claim/123";
@@ -155,8 +152,7 @@ sub test_registration_response_202 {
 }
 
 sub test_registration_response_400 {
-    my $claim = _new_claim();
-    my $keychain = $claim->keychain;
+    my ($claim, $keychain) = _new_claim_and_keychain();
 
     $claim->state('registering');
 
@@ -181,7 +177,7 @@ sub test_registration_response_400 {
 }
 
 sub test_send_activating {
-    my $claim = _new_claim();
+    my ($claim, $keychain) = _new_claim_and_keychain();
 
     $claim->state('waiting');
     my $claim_location_url = $claim->claim_location_url( "${url}/claims/123" );
@@ -196,14 +192,12 @@ sub test_send_activating {
         ]);
 
     is($claim->state, 'activating', 'state is activating');
-    my $keychain = $claim->keychain;
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
     ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
 }
 
 sub test_activating_response_409 {
-    my $claim = _new_claim();
-    my $keychain = $claim->keychain;
+    my ($claim, $keychain) = _new_claim_and_keychain();
     $claim->state('activating');
 
     my $fake_timer_watcher = $claim->timer_watcher('abc');
@@ -221,8 +215,7 @@ sub test_activating_response_409 {
 }
 
 sub test_activating_response_200 {
-    my $claim = _new_claim();
-    my $keychain = $claim->keychain;
+    my ($claim, $keychain) = _new_claim_and_keychain();
     $claim->state('activating');
 
     my $fake_timer_watcher = $claim->timer_watcher('abc');
@@ -241,8 +234,7 @@ sub test_activating_response_200 {
 }
 
 sub test_activating_response_400 {
-    my $claim = _new_claim();
-    my $keychain = $claim->keychain;
+    my ($claim, $keychain) = _new_claim_and_keychain();
     $claim->state('activating');
 
     my $fake_timer_watcher = $claim->timer_watcher('abc');
@@ -268,7 +260,7 @@ sub test_activating_response_400 {
 }
 
 sub test_send_renewal {
-    my $claim = _new_claim();
+    my ($claim, $keychain) = _new_claim_and_keychain();
 
     $claim->state('active');
     my $claim_location_url = $claim->claim_location_url( "${url}/claims/${resource_name}" );
@@ -287,14 +279,12 @@ sub test_send_renewal {
     is($claim->claim_location_url, $claim_location_url, 'claim location url did not change');
     is($claim->timer_watcher, $fake_timer_watcher, 'ttl timer watcher url did not change');
 
-    my $keychain = $claim->keychain;
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
     ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
 }
 
 sub test_renewal_response_200 {
-    my $claim = _new_claim();
-    my $keychain = $claim->keychain;
+    my ($claim, $keychain) = _new_claim_and_keychain();
     $claim->state('renewing');
 
     my $fake_timer_watcher = $claim->timer_watcher('abc');
@@ -311,8 +301,7 @@ sub test_renewal_response_200 {
 }
 
 sub test_renewal_response_400 {
-    my $claim = _new_claim();
-    my $keychain = $claim->keychain;
+    my ($claim, $keychain) = _new_claim_and_keychain();
     $claim->state('renewing');
 
     my $fake_timer_watcher = $claim->timer_watcher('abc');
@@ -330,7 +319,7 @@ sub test_renewal_response_400 {
 }
 
 sub test_send_release {
-    my $claim = _new_claim();
+    my ($claim, $keychain) = _new_claim_and_keychain();
 
     $claim->state('active');
     my $claim_location_url = $claim->claim_location_url( "${url}/claims/${resource_name}" );
@@ -349,14 +338,12 @@ sub test_send_release {
     is($claim->claim_location_url, $claim_location_url, 'claim location url did not change');
     is($claim->timer_watcher, undef, 'ttl timer watcher was removed');
 
-    my $keychain = $claim->keychain;
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
     ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
 }
 
 sub test_release_response_204 {
-    my $claim = _new_claim();
-    my $keychain = $claim->keychain;
+    my ($claim, $keychain) = _new_claim_and_keychain();
     $claim->state('releasing');
 
     my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
@@ -375,8 +362,7 @@ sub test_release_response_204 {
 }
 
 sub test_release_response_400 {
-    my $claim = _new_claim();
-    my $keychain = $claim->keychain;
+    my ($claim, $keychain) = _new_claim_and_keychain();
     $claim->state('releasing');
 
     my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
@@ -405,8 +391,7 @@ sub test_release_response_400 {
 }
 
 sub test_release_response_409 {
-    my $claim = _new_claim();
-    my $keychain = $claim->keychain;
+    my ($claim, $keychain) = _new_claim_and_keychain();
     $claim->state('releasing');
 
     my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
