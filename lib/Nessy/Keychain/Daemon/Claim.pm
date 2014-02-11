@@ -152,15 +152,17 @@ sub _make_response_generator {
         my($body, $headers) = @_;
 
         my $status = $self->_response_status($headers);
-        my $method = "${prefix}_${status}";
-        unless (eval { $self->$method($body, $headers); }) {
-            $self->_claim_failure(
-                        $command,
-                        $self->resource_name,
-                        "Exception when handling status $status in ${prefix}(): $@\n"
-                            . "Headers: " . Data::Dumper::Dumper($headers) ."\n"
-                            . "Body: " . Data::Dumper::Dumper($body)
-                    );
+        my $status_class = substr($status,0,1);
+
+        my $coderef = $self->can("${prefix}_${status}")
+            || $self->can("${prefix}_${status_class}XX");
+
+        unless (eval { $coderef && $self->$coderef($body, $headers); }) {
+            $self->send_fatal_error(
+                "Exception when handling status $status"
+                    ." in ${prefix} for $command: $@\n"
+                    . "Headers: " . Data::Dumper::Dumper($headers) ."\n"
+                    . "Body: " . Data::Dumper::Dumper($body));
             return 0;
         }
         return 1;
