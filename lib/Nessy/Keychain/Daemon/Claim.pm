@@ -222,6 +222,7 @@ sub recv_register_response_202 {
 }
 
 _install_sub('recv_register_response_400', __PACKAGE__->_claim_failure_generator('bad request'));
+_install_sub('recv_register_response_5XX', __PACKAGE__->_claim_failure_generator('server error'));
 
 sub send_activating {
     my $self = shift;

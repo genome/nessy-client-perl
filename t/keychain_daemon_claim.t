@@ -8,7 +8,7 @@ use Nessy::Keychain::Daemon::Claim;
 use JSON;
 use Carp;
 use Data::Dumper;
-use Test::More tests => 118;
+use Test::More tests => 125;
 
 # defaults when creating a new claim object for testing
 our $url = 'http://example.org';
@@ -21,7 +21,7 @@ test_start_state_machine();
 
 test_registration_response_201();
 test_registration_response_202();
-test_registration_response_400();
+test_registration_response_failure();
 
 test_send_activating();
 test_activating_response_409();
@@ -151,14 +151,26 @@ sub test_registration_response_202 {
     is($claim->claim_location_url, $claim_location_url, 'Claim location URL');
 }
 
-sub test_registration_response_400 {
+sub test_registration_response_failure {
+    my %status_error_message = (
+        '400'   => 'bad request',
+        '500'   => 'server error',
+    );
+
+    while (my ($status, $message) = each %status_error_message) {
+        _test_registration_response_failure($status,$message);
+    }
+}
+
+sub _test_registration_response_failure {
+    my ($status_code, $error_message) = @_;
     my ($claim, $keychain) = _new_claim_and_keychain();
 
     $claim->state('registering');
 
     my $response_handler = $claim->_make_response_generator('claim', 'recv_register_response');
-    ok( $response_handler->('', { Status => 400 }),
-        'send 400 response to registrtation');
+    ok( $response_handler->('', { Status => $status_code }),
+        "send $status_code response to registrtation");
     is($claim->state(), 'failed', 'Claim state is failed');
     ok(! $claim->timer_watcher, 'Claim did not created a timer');
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
@@ -171,7 +183,7 @@ sub test_registration_response_400 {
                 command => 'claim',
                 result  => 'failed',
                 resource_name => $resource_name,
-                error_message => 'bad request',
+                error_message => $error_message,
             });
     ok(! $claim->claim_location_url, 'Claim has no location URL');
 }
