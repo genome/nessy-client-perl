@@ -6,7 +6,7 @@ use warnings;
 use Nessy::Keychain::Daemon;
 use Nessy::Keychain::Message;
 
-use Test::More tests => 15;
+use Test::More tests => 21;
 use Carp;
 use JSON;
 use Socket;
