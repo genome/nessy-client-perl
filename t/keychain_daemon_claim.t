@@ -110,8 +110,8 @@ sub test_start_state_machine {
     my $json = JSON->new();
     _verify_http_params($params,
         [ 'POST' => "${url}/claims",
-          $json->encode({ resource => $resource_name }),
-          'Content-Type' => 'application/json',
+          headers => {'Content-Type' => 'application/json'},
+          body => $json->encode({ resource => $resource_name }),
         ]);
 
     ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
@@ -187,8 +187,8 @@ sub test_send_activating {
     my $json = JSON->new();
     _verify_http_params($params,
         [ 'PATCH' => $claim_location_url,
-          $json->encode({ status => 'active' }),
-          'Content-Type' => 'application/json',
+          headers => {'Content-Type' => 'application/json'},
+          body => $json->encode({ status => 'active' }),
         ]);
 
     is($claim->state, 'activating', 'state is activating');
@@ -291,8 +291,8 @@ sub test_send_renewal {
     my $json = JSON->new();
     _verify_http_params($params,
         [ 'PATCH' => $claim_location_url,
-          $json->encode({ ttl => $ttl/4}),
-          'Content-Type' => 'application/json',
+          headers => {'Content-Type' => 'application/json'},
+          body => $json->encode({ ttl => $ttl/4}),
         ]);
 
     is($claim->state, 'renewing', 'state is renewing');
@@ -350,8 +350,8 @@ sub test_send_release {
     my $json = JSON->new();
     _verify_http_params($params,
         [ 'PATCH' => $claim_location_url,
-          $json->encode({ status => 'released' }),
-          'Content-Type' => 'application/json',
+          headers => {'Content-Type' => 'application/json'},
+          body => $json->encode({ status => 'released' }),
         ]);
 
     is($claim->state, 'releasing', 'state is releasing');

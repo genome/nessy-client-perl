@@ -124,8 +124,8 @@ sub send_register {
                         'recv_register_response');
     $self->_send_http_request(
         POST => $self->url . '/claims',
-        $json_parser->encode({ resource => $self->resource_name }),
-        'Content-Type' => 'application/json',
+        headers => {'Content-Type' => 'application/json'},
+        body => $json_parser->encode({ resource => $self->resource_name }),
         $responder,
     );
 }
@@ -134,11 +134,10 @@ sub _send_http_request {
     my $self = shift;
     my $method = shift;
     my $url = shift;
-    my $body = shift;
-    my @headers = @_;
-    my $cb = pop @headers;
 
-    AnyEvent::HTTP::http_request($method => $url, $body, @headers, $cb);
+    AnyEvent::HTTP::http_request(
+        $method => $url,
+        timeout => $self->_default_http_timeout_seconds, @_);
 }
 
 sub _response_status {
@@ -231,8 +230,8 @@ sub send_activating {
                         'recv_activating_response');
     $self->_send_http_request(
         PATCH => $self->claim_location_url,
-        $json_parser->encode({ status => 'active' }),
-        'Content-Type' => 'application/json',
+        headers => {'Content-Type' => 'application/json'},
+        body => $json_parser->encode({ status => 'active' }),
         $responder,
     );
 }
@@ -258,8 +257,8 @@ sub send_renewal {
     my $ttl = $self->_ttl_timer_value;
     $self->_send_http_request(
         PATCH => $self->claim_location_url,
-        $json_parser->encode({ ttl => $ttl }),
-        'Content-Type' => 'application/json',
+        headers => {'Content-Type' => 'application/json'},
+        body => $json_parser->encode({ ttl => $ttl }),
         sub { $self->recv_renewal_response },
     );
 }
@@ -295,8 +294,8 @@ sub release {
                         'recv_release_response');
     $self->_send_http_request(
         PATCH => $self->claim_location_url,
-        $json_parser->encode({ status => 'released' }),
-        'Content-Type' => 'application/json',
+        headers => {'Content-Type' => 'application/json'},
+        body => $json_parser->encode({ status => 'released' }),
         $responder,
     );
 }
@@ -335,5 +334,7 @@ sub _log_error {
         print STDERR AnyEvent::Debug::backtrace(2);
     };
 }
+
+sub _default_http_timeout_seconds { 5 }
 
 1;
