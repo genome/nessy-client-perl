@@ -117,6 +117,7 @@ sub _success {
 
 sub send_register {
     my $self = shift;
+    $self->transition(STATE_REGISTERING);
 
     my $responder = $self->_make_response_generator(
                         'claim',
@@ -127,7 +128,6 @@ sub send_register {
         'Content-Type' => 'application/json',
         $responder,
     );
-    $self->transition(STATE_REGISTERING);
 }
 
 sub _send_http_request {
@@ -221,6 +221,7 @@ _install_sub('recv_register_response_400', __PACKAGE__->_claim_failure_generator
 
 sub send_activating {
     my $self = shift;
+    $self->transition(STATE_ACTIVATING);
 
     my $responder = $self->_make_response_generator(
                         'claim',
@@ -231,7 +232,6 @@ sub send_activating {
         'Content-Type' => 'application/json',
         $responder,
     );
-    $self->transition(STATE_ACTIVATING);
 }
 
 sub recv_activating_response_409 {
@@ -251,7 +251,7 @@ _install_sub('recv_activating_response_404', __PACKAGE__->_claim_failure_generat
 
 sub send_renewal {
     my $self = shift;
-
+    $self->transition(STATE_RENEWING);
     my $ttl = $self->_ttl_timer_value;
     $self->_send_http_request(
         PATCH => $self->claim_location_url,
@@ -259,7 +259,6 @@ sub send_renewal {
         'Content-Type' => 'application/json',
         sub { $self->recv_renewal_response },
     );
-    $self->transition(STATE_RENEWING);
 }
 
 sub recv_renewal_response {
@@ -283,6 +282,7 @@ sub send_fatal_error {
 
 sub release {
     my $self = shift;
+    $self->transition(STATE_RELEASING);
 
     $self->_remove_all_watchers();
 
@@ -295,7 +295,6 @@ sub release {
         'Content-Type' => 'application/json',
         $responder,
     );
-    $self->transition(STATE_RELEASING);
 }
 
 sub recv_release_response_204 {
