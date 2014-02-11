@@ -147,14 +147,6 @@ sub _event_loop {
         ($socket, $daemon_socket) = IO::Socket->socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC);
         $select = IO::Select->new($socket);
 
-#$socket->syswrite("test message");
-#my $c = $daemon_socket->sysread(my $read, 1024);
-#print "read $c back >>$read<<\n";
-
-
-
-
-print "created my socket fd ",fileno($socket)," daemon socket ",fileno($daemon_socket),"\n";
         my $daemon = Nessy::Keychain::TestDaemon->new(client_socket => $daemon_socket, url => 'http://example.com');
         return $daemon;
     }
@@ -170,7 +162,6 @@ print "created my socket fd ",fileno($socket)," daemon socket ",fileno($daemon_s
             unless ($count) {
                 Carp::croak("Couldn't write ".length($msg)." bytes of message: $!");
             }
-print "wrote $count bytes to fd ",fileno($socket),"\n";
             substr($msg, 0, $count, '');
         }
         if (length $msg) {
