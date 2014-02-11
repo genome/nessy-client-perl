@@ -498,7 +498,6 @@ BEGIN {
             my $self = shift;
             if (@_) {
                 $self->{$hash_key} = shift;
-                Test::More::note("Got $method: ".Data::Dumper::Dumper$self->{$hash_key});
             }
             return $self->{$hash_key};
         };
