@@ -256,25 +256,38 @@ _install_sub('recv_activating_response_404', __PACKAGE__->_claim_failure_generat
 sub send_renewal {
     my $self = shift;
     $self->transition(STATE_RENEWING);
+
+    my $responder = $self->_make_response_generator(
+                        'renew',
+                        'recv_renewal_response');
     my $ttl = $self->_ttl_timer_value;
     $self->_send_http_request(
         PATCH => $self->claim_location_url,
         headers => {'Content-Type' => 'application/json'},
         body => $json_parser->encode({ ttl => $ttl }),
-        sub { $self->recv_renewal_response },
-    );
+        $responder);
 }
 
-sub recv_renewal_response {
+sub recv_renewal_response_200 {
     my($self, $body, $headers) = @_;
+    $self->transition(STATE_ACTIVE);
+    return 1;
+}
 
-    my $status = $self->_response_status($headers);
-    if ($status == 200) {
-        $self->transition(STATE_ACTIVE);
-        return 1;
-    }
+sub recv_renewal_response_4XX {
+    my($self, $body, $headers) = @_;
+    $self->state(STATE_FAILED);
 
-    $self->send_fatal_error('claim '.$self->resource_name." failed renewal with code $status");
+    my $status = $headers->{Status};
+    $self->send_fatal_error(
+        'claim '.$self->resource_name." failed renewal with code $status");
+    return 1;
+}
+
+sub recv_renewal_response_5XX {
+    my($self, $body, $headers) = @_;
+    $self->transition(STATE_ACTIVE);
+    return 1;
 }
 
 sub send_fatal_error {

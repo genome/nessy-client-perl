@@ -310,7 +310,8 @@ sub test_renewal_response_200 {
     my $fake_timer_watcher = $claim->timer_watcher('abc');
     my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
 
-    ok($claim->recv_renewal_response('', { Status => 200 }),
+    my $response_handler = $claim->_make_response_generator('claim', 'recv_renewal_response');
+    ok($response_handler->('', { Status => 200 }),
         'send 200 response to renewal');
 
     is($claim->state, 'active', 'Claim state is active');
@@ -326,7 +327,8 @@ sub test_renewal_response_400 {
 
     my $fake_timer_watcher = $claim->timer_watcher('abc');
 
-    ok($claim->recv_renewal_response('', { Status => 400 }),
+    my $response_handler = $claim->_make_response_generator('claim', 'recv_renewal_response');
+    ok($response_handler->('', { Status => 400 }),
         'send 400 response to renewal');
 
     is($claim->state, 'failed', 'Claim state is failed');
