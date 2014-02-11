@@ -277,6 +277,7 @@ sub send_fatal_error {
     my($self, $message) = @_;
     $self->state(STATE_FAILED);
     $self->_remove_all_watchers();
+    $self->_log_error($message);
     $self->keychain->fatal_error($message);
 }
 
@@ -321,6 +322,15 @@ sub _ttl_timer_value {
 sub _remove_all_watchers {
     my $self = shift;
     $self->timer_watcher(undef);
+}
+
+sub _log_error {
+    my $self = shift;
+    print STDERR shift()."\n";
+    eval {
+        require AnyEvent::Debug;
+        print STDERR AnyEvent::Debug::backtrace(2);
+    };
 }
 
 1;
