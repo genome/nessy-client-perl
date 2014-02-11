@@ -8,7 +8,7 @@ use Nessy::Keychain::Daemon::Claim;
 use JSON;
 use Carp;
 use Data::Dumper;
-use Test::More tests => 117;
+use Test::More tests => 118;
 
 # defaults when creating a new claim object for testing
 our $url = 'http://example.org';
@@ -217,20 +217,40 @@ sub test_activating_response_409 {
 sub test_activating_response_200 {
     my ($claim, $keychain) = _new_claim_and_keychain();
     $claim->state('activating');
+    $claim->ttl(0);
 
-    my $fake_timer_watcher = $claim->timer_watcher('abc');
-    my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
+    my $exit_cond = AnyEvent->condvar;
+    {
+        my $activating_timer = $claim->_create_timer_event(
+            after => 1,
+            cb    => sub { $exit_cond->send(0,
+                'The activating timer fired when it should not have') });
+        $claim->timer_watcher( $activating_timer );
 
-    my $response_handler = $claim->_make_response_generator('claim', 'recv_activating_response');
-    ok($response_handler->('', { Status => 200 }),
-        'send 200 response to activation');
+        my $fake_claim_location_url =
+            $claim->claim_location_url("${url}/claim/abc");
+        my $response_handler = $claim->_make_response_generator(
+            'claim', 'recv_activating_response');
+        ok($response_handler->('', { Status => 200 }),
+            'send 200 response to activation');
 
-    is($claim->state, 'active', 'Claim state is active');
-    ok($claim->timer_watcher, 'Claim has a ttl timer');
-    isnt($claim->timer_watcher, $fake_timer_watcher, 'ttl timer was changed');
-    is($keychain->claim_succeeded, $resource_name, 'Keychain was notified about success');
-    ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
-    is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
+        is($claim->state, 'active', 'Claim state is active');
+        ok($claim->timer_watcher, 'Claim has a ttl timer');
+        isnt($claim->timer_watcher, $activating_timer,
+            'ttl timer was changed');
+
+        is($keychain->claim_succeeded, $resource_name,
+            'Keychain was notified about success');
+        ok(! $keychain->claim_failed,
+            'Keychain was not notified about failure');
+        is($claim->claim_location_url, $fake_claim_location_url,
+            'Claim has a location URL');
+    }
+
+    $claim->on_send_renewal(sub {$exit_cond->send(1,
+        'The activating timer was replaced with the renewal timer')});
+    my ($ok, $message) = $exit_cond->recv;
+    ok($ok, $message);
 }
 
 sub test_activating_response_400 {
@@ -481,6 +501,29 @@ sub _send_http_request {
 
 sub _http_method_params {
     return shift->{_http_method_params};
+}
+
+sub on_send_renewal {
+    my $self = shift;
+    if (@_) {
+        ($self->{_send_renewal}) = @_;
+    }
+    return $self->{_send_renewal};
+}
+
+sub send_renewal {
+    my $self = shift; 
+
+    if (my $cb = $self->on_send_renewal) {
+        $self->$cb(@_);
+    }
+    else {
+        $self->SUPER::send_renewal(@_);
+    }
+}
+
+sub _log_error {
+    #Throw out log message
 }
 
 

@@ -192,13 +192,16 @@ sub _successfully_activated {
     $self->transition(STATE_ACTIVE);
 
     my $ttl = $self->_ttl_timer_value;
-    my $w = $self->_create_timer_event(
-                after => $ttl,
-                interval => $ttl,
-                cb => sub { $self->send_renewal() }
-            );
-    $self->timer_watcher($w);
+    my %params = (
+        after => $ttl,
+        cb => sub { $self->send_renewal() });
 
+    if ($ttl > 0) {
+        $params{interval} = $ttl;
+    }
+
+    my $w = $self->_create_timer_event(%params);
+    $self->timer_watcher($w);
     $self->_success();
 }
 
