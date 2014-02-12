@@ -8,6 +8,7 @@ use Nessy::Properties qw(pid socket socket_watcher);
 use Nessy::Claim;
 use Nessy::Keychain::Daemon;
 
+use Carp;
 use Socket;
 use IO::Socket;
 use JSON qw();
@@ -40,7 +41,7 @@ sub new {
         Carp::croak($@) if $@;
         exit;
     } else {
-        die "Can't fork: $!";
+        Carp::croak("Can't fork: $!");
     }
 }
 

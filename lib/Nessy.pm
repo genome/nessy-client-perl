@@ -3,6 +3,8 @@ package Nessy;
 use strict;
 use warnings;
 
+use Carp;
+
 use Nessy::Properties qw(url default_ttl default_timeout api_version keychain claims);
 use Nessy::Keychain;
 use Nessy::Claim;
@@ -14,7 +16,7 @@ sub new {
     $self->claims([]);
 
     unless ($self->url($params{url})) {
-        die "new() requires a 'url parameter";
+        Carp::croak("new() requires a 'url parameter");
     }
 
     $self->default_ttl( $params{ttl} || $self->_default_ttl);
@@ -22,7 +24,7 @@ sub new {
     $self->api_version( $params{api_version} || $self->_default_api_version);
 
     my $keychain = Nessy::Keychain->new(url => $self->url);
-    die "Unable to create keychain" unless $keychain;
+    Carp::croak("Unable to create keychain") unless $keychain;
     $self->keychain( $keychain );
 
     return $self;
