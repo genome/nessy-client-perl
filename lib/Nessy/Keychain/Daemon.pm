@@ -81,8 +81,7 @@ sub create_client_watcher {
 
 sub on_read_handler {
     my($self, $w) = @_;
-    $w->unshift_read( json => sub { print "in push_read handler\n";
-                                $self->client_read_event(@_); });
+    $w->unshift_read( json => sub { $self->client_read_event(@_); });
 }
 
 sub client_error_event {
