@@ -117,7 +117,11 @@ sub client_read_event {
     };
 
     unless ($result) {
-        $message->error_message('unknown command');
+        if ($@) {
+            $message->error_message(sprintf('command %s exception: %s', $message->command, $@));
+        } else {
+            $message->error_message(sprintf("command %s returned false: $result", $message->command));
+        }
         $message->result('failed');
         $self->_send_return_message($message);
     }
@@ -165,7 +169,7 @@ sub dispatch_command {
     my($self, $message) = @_;
     
     my $sub = $allowed_command{$message->command};
-    Carp::croak("Unknown command") unless $sub;
+    Carp::croak("Unknown command: ".$message->command) unless $sub;
 
     return $self->$sub($message);
 }
