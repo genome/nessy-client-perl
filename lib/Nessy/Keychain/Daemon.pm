@@ -149,6 +149,27 @@ sub claim_succeeded {
     $self->_send_return_message($message);
 }
 
+sub release_failed {
+    my($self, $resource_name, $error_message) = @_;
+
+    my $message = Nessy::Keychain::Message->new(
+                    resource_name => $resource_name,
+                    command => 'release',
+                    result => 'failed',
+                    error_message => $error_message);
+    $self->_send_return_message($message);
+}
+
+sub release_succeeded {
+    my($self, $resource_name) = @_;
+
+    my $message = Nessy::Keychain::Message->new(
+                    resource_name => $resource_name,
+                    command => 'release',
+                    result => 'succeeded' );
+    $self->_send_return_message($message);
+}
+
 sub _send_return_message {
     my($self, $message) = @_;
 

@@ -6,7 +6,7 @@ use warnings;
 use Nessy::Keychain::Daemon;
 use Nessy::Keychain::Message;
 
-use Test::More tests => 23;
+use Test::More tests => 32;
 use Carp;
 use JSON;
 use Socket;
@@ -23,6 +23,7 @@ test_start();
 test_add_remove_claim();
 
 test_make_claim();
+test_release_claim();
 
 sub test_constructor_failures {
     my $daemon;
@@ -118,9 +119,45 @@ sub test_make_claim {
     my $claim = $daemon->lookup_claim('foo');
     ok($claim, 'daemon created claim for resource_name foo');
     ok($claim->_start_called, 'state machine was started for claim');
+
+    eval { _read_from_socket() };
+    like($@, qr(No data read from socket), 'Daemon has no more messages for us');
+
     $Nessy::Keychain::TestDaemon::destroy_called = 0;
     undef $daemon;
     ok($Nessy::Keychain::TestDaemon::destroy_called, 'Daemon destroyed');
+
+    eval { _read_from_socket() };
+    like($@, qr(No data read from socket), 'After destruction, daemon has no more messages for us');
+}
+
+sub test_release_claim {
+    my $daemon = _new_test_daemon();
+    my $claim = Nessy::Keychain::Daemon::FakeClaim->new(keychain => $daemon);
+    ok($daemon->add_claim($claim->resource_name, $claim), 'Add claim to keychain');
+
+    my $message = Nessy::Keychain::Message->new(
+                        resource_name => $claim->resource_name,
+                        command => 'release',
+                    );
+    _send_to_socket($message);
+
+    my $cv = AnyEvent->condvar();
+    local $Nessy::Keychain::Daemon::FakeClaim::on_release_cb = sub { $cv->send; 1; };
+    _event_loop($daemon, $cv);
+
+    my $response = _read_from_socket();
+
+    my %expected = ( resource_name => $claim->resource_name, command => 'release', result => 'succeeded' );
+    foreach my $key ( keys %expected ) {
+        is($response->$key, $expected{$key}, "response key $key");
+    }
+
+    ok(! $daemon->lookup_claim( $claim->resource_name ), 'Daemon no longer holds the claim');
+    ok($claim->_release_called, 'Claim had release() called');
+
+    eval { _read_from_socket() };
+    like($@, qr(No data read from socket), 'Daemon has no more messages for us');
 }
 
 sub _event_loop {
@@ -195,7 +232,7 @@ package Nessy::Keychain::Daemon::FakeClaim;
 
 use base 'Nessy::Keychain::Daemon::Claim';
 
-our $on_start_cb;
+our($on_start_cb, $on_release_cb);
 
 sub new {
     my $class = shift;
@@ -232,5 +269,13 @@ sub _start_called {
     return shift->{_start_called};
 }
 
-sub release { }
+sub release {
+    my $self = shift;
+    $self->{_release_called} = 1;
+    $self->_run_cb_and_report_to_keychain($on_release_cb, 'release');
+}
+
+sub _release_called {
+    return shift->{_release_called};
+}
 
