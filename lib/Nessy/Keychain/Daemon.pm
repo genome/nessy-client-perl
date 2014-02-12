@@ -180,6 +180,7 @@ sub _send_return_message {
 my %allowed_command = (
     claim   => \&claim,
     release => \&release,
+    ping    => \&ping,
 );
 
 sub dispatch_command {
@@ -189,6 +190,13 @@ sub dispatch_command {
     Carp::croak("Unknown command: ".$message->command) unless $sub;
 
     return $self->$sub($message);
+}
+
+sub ping {
+    my($self, $message) = @_;
+print "Got a ping!\n";
+    $message->succeed;
+    $self->_send_return_message($message);
 }
 
 sub claim {

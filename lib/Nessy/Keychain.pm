@@ -90,6 +90,18 @@ sub release {
     return $result->{result} eq 'success';
 }
 
+sub ping {
+    my $self = shift;
+
+    my $message = Nessy::Keychain::Message->new(
+                    resource_name => '',
+                    command => 'ping',
+                );
+
+    my $result = $self->_send_command_and_get_result($message);
+    return $result->is_succeeded;
+}
+
 my $json_parser = JSON->new();
 sub _send_command_and_get_result {
     my $self = shift;
