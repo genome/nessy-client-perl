@@ -112,10 +112,11 @@ sub test_make_claim {
 
     my $response = _read_from_socket();
     
-    my %expected = ( resource_name => 'foo', command => 'claim', result => 'succeeded' );
+    my %expected = ( resource_name => 'foo', command => 'claim');
     foreach my $key ( keys %expected ) {
         is($response->$key, $expected{$key}, "Response key $key");
     }
+    ok($response->is_succeeded, 'successful response');
 
     my $claim = $daemon->lookup_claim('foo');
     ok($claim, 'daemon created claim for resource_name foo');
@@ -166,11 +167,11 @@ sub test_make_claim_failure {
     like($@, qr(No data read from socket), 'After destruction, daemon has no more messages for us');
 }
 sub test_release_claim_success_and_failure {
-    _test_release_claim_success_and_failure(@$_) foreach ( [ 1, 'succeeded'], [0, 'failed'] );
+    _test_release_claim_success_and_failure($_) foreach ( 1, 0 );
 }
 
 sub _test_release_claim_success_and_failure {
-    my($cb_retval, $expected_result) = @_;
+    my($should_succeed) = @_;
 
     my $daemon = _new_test_daemon();
     my $claim = Nessy::Keychain::Daemon::FakeClaim->new(keychain => $daemon);
@@ -183,15 +184,17 @@ sub _test_release_claim_success_and_failure {
     _send_to_socket($message);
 
     my $cv = AnyEvent->condvar();
-    local $Nessy::Keychain::Daemon::FakeClaim::on_release_cb = sub { $cv->send; $cb_retval; };
+    local $Nessy::Keychain::Daemon::FakeClaim::on_release_cb = sub { $cv->send; $should_succeed; };
     _event_loop($daemon, $cv);
 
     my $response = _read_from_socket();
 
-    my %expected = ( resource_name => $claim->resource_name, command => 'release', result => $expected_result );
+    my %expected = ( resource_name => $claim->resource_name, command => 'release');
     foreach my $key ( keys %expected ) {
         is($response->$key, $expected{$key}, "response key $key $expected{$key}");
     }
+    my $result_method = $should_succeed ? 'is_succeeded' : 'is_failed';
+    ok($response->$result_method, $result_method);
 
     ok(! $daemon->lookup_claim( $claim->resource_name ), 'Daemon no longer holds the claim');
     ok($claim->_release_called, 'Claim had release() called');

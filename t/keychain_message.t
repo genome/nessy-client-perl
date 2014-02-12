@@ -6,13 +6,15 @@ use warnings;
 use Nessy::Keychain::Message;
 use JSON;
 
-use Test::More tests => 16;
+use Test::More tests => 32;
 
 test_constructor();
 test_constructor_and_properties();
 test_failed_constructor();
 
 test_encode();
+
+test_success_fail();
 
 
 sub test_constructor {
@@ -80,4 +82,31 @@ sub test_encode {
         $is_ok = 0 if ($m->$key ne $params{$key});
     }
     ok($is_ok, 'json copy succeeded');
+}
+
+sub test_success_fail {
+    my $m = Nessy::Keychain::Message->new( command => 'hi', resource_name => 'foo');
+    ok($m, 'new message');
+    ok($m->succeed, 'Set message successful');
+    ok($m->is_succeeded, 'Message was successful');
+    ok(! $m->is_failed, 'Message was not failed');
+
+    ok(! eval { $m->succeed }, 'Could not change status after it was set');
+    like($@, qr(Cannot set Message to succeeded), 'exception');
+
+    ok(! eval { $m->fail }, 'Could not change status after it was set');
+    like($@, qr(Cannot set Message to failed), 'exception');
+
+
+    $m = Nessy::Keychain::Message->new( command => 'hi', resource_name => 'foo');
+    ok($m, 'new message');
+    ok($m->fail, 'Set message failed');
+    ok(! $m->is_succeeded, 'Message was not successful');
+    ok($m->is_failed, 'Message was failed');
+
+    ok(! eval { $m->succeed }, 'Could not change status after it was set');
+    like($@, qr(Cannot set Message to succeeded), 'exception');
+
+    ok(! eval { $m->fail }, 'Could not change status after it was set');
+    like($@, qr(Cannot set Message to failed), 'exception');
 }

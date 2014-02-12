@@ -118,7 +118,7 @@ sub client_read_event {
         } else {
             $message->error_message(sprintf("command %s returned false: $result", $message->command));
         }
-        $message->result('failed');
+        $message->fail;
         $self->_send_return_message($message);
     }
     return $result
@@ -129,8 +129,8 @@ sub claim_failed {
     my $message = Nessy::Keychain::Message->new(
                     resource_name => $resource_name,
                     command => 'claim',
-                    result => 'failed',
                     error_message => $error_message);
+    $message->fail;
     $self->remove_claim($resource_name);
     $self->_send_return_message($message);
 }
@@ -140,8 +140,8 @@ sub claim_succeeded {
 
     my $message = Nessy::Keychain::Message->new(
                     resource_name => $resource_name,
-                    command => 'claim',
-                    result => 'succeeded' );
+                    command => 'claim');
+    $message->succeed();
     $self->_send_return_message($message);
 }
 
@@ -151,8 +151,8 @@ sub release_failed {
     my $message = Nessy::Keychain::Message->new(
                     resource_name => $resource_name,
                     command => 'release',
-                    result => 'failed',
                     error_message => $error_message);
+    $message->fail;
     $self->_send_return_message($message);
 }
 
@@ -161,8 +161,8 @@ sub release_succeeded {
 
     my $message = Nessy::Keychain::Message->new(
                     resource_name => $resource_name,
-                    command => 'release',
-                    result => 'succeeded' );
+                    command => 'release');
+    $message->succeed;
     $self->_send_return_message($message);
 }
 
