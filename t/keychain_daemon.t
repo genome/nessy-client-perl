@@ -6,7 +6,7 @@ use warnings;
 use Nessy::Keychain::Daemon;
 use Nessy::Keychain::Message;
 
-use Test::More tests => 21;
+use Test::More tests => 23;
 use Carp;
 use JSON;
 use Socket;
@@ -111,11 +111,9 @@ sub test_make_claim {
     my $response = _read_from_socket();
     
     my %expected = ( resource_name => 'foo', command => 'claim', result => 'succeeded' );
-    my $is_ok = 1;
     foreach my $key ( keys %expected ) {
-        $is_ok = 0 if ($response->$key ne $expected{$key});
+        is($response->$key, $expected{$key}, "Response key $key");
     }
-    ok($is_ok, 'response');
 
     my $claim = $daemon->lookup_claim('foo');
     ok($claim, 'daemon created claim for resource_name foo');
