@@ -129,6 +129,7 @@ sub claim_failed {
     my $message = Nessy::Keychain::Message->new(
                     resource_name => $resource_name,
                     command => 'claim',
+                    serial => 'GARBAGE',
                     error_message => $error_message);
     $message->fail;
     $self->remove_claim($resource_name);
@@ -140,6 +141,7 @@ sub claim_succeeded {
 
     my $message = Nessy::Keychain::Message->new(
                     resource_name => $resource_name,
+                    serial => 'GARBAGE',
                     command => 'claim');
     $message->succeed();
     $self->_send_return_message($message);
@@ -151,6 +153,7 @@ sub release_failed {
     my $message = Nessy::Keychain::Message->new(
                     resource_name => $resource_name,
                     command => 'release',
+                    serial => 'GARBAGE',
                     error_message => $error_message);
     $message->fail;
     $self->_send_return_message($message);
@@ -161,6 +164,7 @@ sub release_succeeded {
 
     my $message = Nessy::Keychain::Message->new(
                     resource_name => $resource_name,
+                    serial => 'GARBAGE',
                     command => 'release');
     $message->succeed;
     $self->_send_return_message($message);

@@ -103,6 +103,7 @@ sub test_make_claim {
     my $message = Nessy::Keychain::Message->new(
                         resource_name => 'foo',
                         command => 'claim',
+                        serial => 1,
                     );
     _send_to_socket($message);
 
@@ -139,6 +140,7 @@ sub test_make_claim_failure {
     my $message = Nessy::Keychain::Message->new(
                         resource_name => 'foo',
                         command => 'claim',
+                        serial => 1,
                     );
     _send_to_socket($message);
 
@@ -180,6 +182,7 @@ sub _test_release_claim_success_and_failure {
     my $message = Nessy::Keychain::Message->new(
                         resource_name => $claim->resource_name,
                         command => 'release',
+                        serial => 1,
                     );
     _send_to_socket($message);
 

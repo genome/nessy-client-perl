@@ -18,7 +18,7 @@ test_success_fail();
 
 
 sub test_constructor {
-    my $m = Nessy::Keychain::Message->new(resource_name => 'foo', command => 'bar');
+    my $m = Nessy::Keychain::Message->new(resource_name => 'foo', command => 'bar', serial => 1);
     ok($m, 'constructor');
     is($m->resource_name, 'foo', 'resource_name property');
     is($m->command, 'bar', 'command property');
@@ -26,7 +26,7 @@ sub test_constructor {
 
 sub test_constructor_and_properties {
 
-    my @construction_params = (resource_name => 'foo', command => 'bar');
+    my @construction_params = (resource_name => 'foo', command => 'bar', serial => 1);
     my @remaining_params = (data => 123, result => 'abc', error_message => 'hi');
     while (@remaining_params) {
         push(@construction_params, splice(@remaining_params, 0, 2));
@@ -65,6 +65,7 @@ sub test_encode {
             other => [ 1, 2, { foo => 'bar' } ],
         },
         result => 'hooray',
+        serial => 1,
         error_message => 'nothing');
 
     my $m = Nessy::Keychain::Message->new(%params);
@@ -85,7 +86,7 @@ sub test_encode {
 }
 
 sub test_success_fail {
-    my $m = Nessy::Keychain::Message->new( command => 'hi', resource_name => 'foo');
+    my $m = Nessy::Keychain::Message->new( command => 'hi', resource_name => 'foo', serial => 1);
     ok($m, 'new message');
     ok($m->succeed, 'Set message successful');
     ok($m->is_succeeded, 'Message was successful');
@@ -98,7 +99,7 @@ sub test_success_fail {
     like($@, qr(Cannot set Message to failed), 'exception');
 
 
-    $m = Nessy::Keychain::Message->new( command => 'hi', resource_name => 'foo');
+    $m = Nessy::Keychain::Message->new( command => 'hi', resource_name => 'foo', serial => 1);
     ok($m, 'new message');
     ok($m->fail, 'Set message failed');
     ok(! $m->is_succeeded, 'Message was not successful');

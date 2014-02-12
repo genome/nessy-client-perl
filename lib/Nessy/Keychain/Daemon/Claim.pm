@@ -103,6 +103,7 @@ sub _report_failure_to_keychain {
                     resource_name => $resource_name,
                     command => $command,
                     result => 'failed',
+                    serial => 'GARBAGE',
                     error_message => $error);
 
     $self->state(STATE_FAILED);
