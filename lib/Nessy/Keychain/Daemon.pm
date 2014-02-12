@@ -153,6 +153,7 @@ sub _send_return_message {
     my $watcher = $self->client_watcher;
     return unless $watcher;
     $watcher->push_write( json => $message );
+    return $message;
 }
 
 my %allowed_command = (
