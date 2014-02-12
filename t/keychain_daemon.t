@@ -105,7 +105,7 @@ sub test_make_claim {
     _send_to_socket($message);
 
     my $cv = AnyEvent->condvar();
-    local $Nessy::Keychain::Daemon::FakeClaim::on_start_cb = sub { $cv->send };
+    local $Nessy::Keychain::Daemon::FakeClaim::on_start_cb = sub { $cv->send; 1; };
     _event_loop($daemon, $cv);
 
     my $response = _read_from_socket();
@@ -213,8 +213,21 @@ sub new {
 sub start {
     my $self = shift;
     $self->{_start_called} = 1;
-    $on_start_cb->($self) if ($on_start_cb);
-    $self->keychain->claim_succeeded( $self->resource_name );
+    $self->_run_cb_and_report_to_keychain($on_start_cb, 'claim');
+}
+
+sub _run_cb_and_report_to_keychain {
+    my($self, $cb, $method_prefix) = @_;
+
+    my $succeeded = 1;
+    if ($cb) {
+        $succeeded = $self->$cb();
+    }
+
+    my $resolution_method = sprintf("%s_%s",
+                                $method_prefix,
+                                $succeeded ? 'succeeded' : 'failed');
+    $self->keychain->$resolution_method( $self->resource_name );
 }
 
 sub _start_called {
