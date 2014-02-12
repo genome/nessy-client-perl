@@ -6,7 +6,7 @@ use warnings;
 use Nessy::Keychain::Daemon;
 use Nessy::Keychain::Message;
 
-use Test::More tests => 39;
+use Test::More tests => 46;
 use Carp;
 use JSON;
 use Socket;
@@ -23,6 +23,7 @@ test_start();
 test_add_remove_claim();
 
 test_make_claim();
+test_make_claim_failure();
 test_release_claim_success_and_failure();
 
 sub test_constructor_failures {
@@ -131,6 +132,39 @@ sub test_make_claim {
     like($@, qr(No data read from socket), 'After destruction, daemon has no more messages for us');
 }
 
+sub test_make_claim_failure {
+    my $daemon = _new_test_daemon();
+
+    my $message = Nessy::Keychain::Message->new(
+                        resource_name => 'foo',
+                        command => 'claim',
+                    );
+    _send_to_socket($message);
+
+    my $cv = AnyEvent->condvar();
+    local $Nessy::Keychain::Daemon::FakeClaim::on_start_cb = sub { $cv->send; 0; };
+    _event_loop($daemon, $cv);
+
+    my $response = _read_from_socket();
+    
+    my %expected = ( resource_name => 'foo', command => 'claim', result => 'failed' );
+    foreach my $key ( keys %expected ) {
+        is($response->$key, $expected{$key}, "Response key $key");
+    }
+
+    my $claim = $daemon->lookup_claim('foo');
+    ok(! $claim, 'daemon did not create claim for resource_name foo');
+
+    eval { _read_from_socket() };
+    like($@, qr(No data read from socket), 'Daemon has no more messages for us');
+
+    $Nessy::Keychain::TestDaemon::destroy_called = 0;
+    undef $daemon;
+    ok($Nessy::Keychain::TestDaemon::destroy_called, 'Daemon destroyed');
+
+    eval { _read_from_socket() };
+    like($@, qr(No data read from socket), 'After destruction, daemon has no more messages for us');
+}
 sub test_release_claim_success_and_failure {
     _test_release_claim_success_and_failure(@$_) foreach ( [ 1, 'succeeded'], [0, 'failed'] );
 }
