@@ -41,12 +41,8 @@ sub new {
     my $class = shift;
     my %params = @_;
 
-    $class->_required_params(\%params, qw(client_socket url));
-
     my $self = bless {}, $class;
-
-    $self->client_socket($params{client_socket});
-    $self->url($params{url});
+    $self->_required_params(\%params, qw(client_socket url));
 
     $self->ppid(getppid);
 

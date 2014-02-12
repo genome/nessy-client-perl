@@ -249,9 +249,10 @@ sub _event_loop {
 
         while($select->can_read(0)) {
             my $count = $socket->sysread($buf, 1024, length($buf));
-            unless ($count) {
+            unless (defined $count) {
                 Carp::croak("Cound't read from daemon's socket: $!");
             }
+            last unless $count;
         }
         Carp::croak("No data read from socket") unless length($buf);
         return Nessy::Keychain::Message->from_json($buf);

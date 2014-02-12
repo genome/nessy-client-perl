@@ -1,0 +1,55 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+use Test::More tests => 11;
+
+print "starting\n";
+{
+    my $obj = eval { Nessy::Test::Class->new() };
+    ok(! $obj, 'constructor fails with no params');
+    like($@, qr(prop_a is a required param), 'Exception');
+}
+
+{
+    my $obj = Nessy::Test::Class->new(prop_a => 1);
+    ok($obj, 'Created object with required param');
+    is($obj->prop_a, 1, 'prop_a');
+    is($obj->prop_b, undef, 'prop_b');
+}
+
+{
+    my %obj1_params = (prop_a => 'a', prop_b => 'b');
+    my %obj2_params = (prop_a => 1, prop_b => 2);
+    my $obj1 = Nessy::Test::Class->new(%obj1_params);
+    ok($obj1, 'Create test instance 1');
+
+    my $obj2 = Nessy::Test::Class->new(%obj2_params);
+    ok($obj2, 'Create test instance 2');
+
+    my $check_params = sub {
+        my($obj, $expected) = @_;
+        foreach my $k ( keys %$expected ) {
+            is($obj->$k, $expected->{$k}, "property $k is ".$expected->{$k});
+        }
+    };
+
+    $check_params->($obj1, \%obj1_params);
+    $check_params->($obj2, \%obj2_params);
+}
+
+package Nessy::Test::Class;
+
+use Nessy::Properties qw(prop_a prop_b);
+
+sub new {
+    my $class = shift;
+    my(%properties) = @_;
+
+    my $self = bless {}, $class;
+    $self->_required_params(\%properties, qw(prop_a));
+    $self->prop_b($properties{prop_b});
+
+    return $self;
+}

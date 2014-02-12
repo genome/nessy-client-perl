@@ -1,5 +1,8 @@
 package Nessy::Properties;
 
+use strict;
+use warnings;
+
 use Sub::Install;
 use Sub::Name;
 use Carp;
@@ -41,6 +44,7 @@ sub _property_sub {
 
 sub _required_params {
     my($self, $params, @required) = @_;
+    Carp::croak('_requried params must be called on an instance') unless (ref $self);
 
     foreach my $param_name ( @required ) {
         Carp::croak("$param_name is a required param") unless exists ($params->{$param_name});

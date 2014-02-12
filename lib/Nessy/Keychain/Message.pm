@@ -16,8 +16,8 @@ sub new {
     my $class = shift;
     my %params = @_;
 
-    $class->_required_params(\%params, qw(resource_name command ));
     my $self = bless {}, $class;
+    $self->_required_params(\%params, qw(resource_name command ));
 
     foreach my $accessor ( @property_list ) {
         $self->$accessor($params{$accessor}) if (exists $params{$accessor});
