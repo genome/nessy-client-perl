@@ -6,7 +6,7 @@ use warnings;
 use Nessy::Keychain::Daemon;
 use Nessy::Keychain::Message;
 
-use Test::More tests => 32;
+use Test::More tests => 39;
 use Carp;
 use JSON;
 use Socket;
@@ -23,7 +23,7 @@ test_start();
 test_add_remove_claim();
 
 test_make_claim();
-test_release_claim();
+test_release_claim_success_and_failure();
 
 sub test_constructor_failures {
     my $daemon;
@@ -131,7 +131,13 @@ sub test_make_claim {
     like($@, qr(No data read from socket), 'After destruction, daemon has no more messages for us');
 }
 
-sub test_release_claim {
+sub test_release_claim_success_and_failure {
+    _test_release_claim_success_and_failure(@$_) foreach ( [ 1, 'succeeded'], [0, 'failed'] );
+}
+
+sub _test_release_claim_success_and_failure {
+    my($cb_retval, $expected_result) = @_;
+
     my $daemon = _new_test_daemon();
     my $claim = Nessy::Keychain::Daemon::FakeClaim->new(keychain => $daemon);
     ok($daemon->add_claim($claim->resource_name, $claim), 'Add claim to keychain');
@@ -143,14 +149,14 @@ sub test_release_claim {
     _send_to_socket($message);
 
     my $cv = AnyEvent->condvar();
-    local $Nessy::Keychain::Daemon::FakeClaim::on_release_cb = sub { $cv->send; 1; };
+    local $Nessy::Keychain::Daemon::FakeClaim::on_release_cb = sub { $cv->send; $cb_retval; };
     _event_loop($daemon, $cv);
 
     my $response = _read_from_socket();
 
-    my %expected = ( resource_name => $claim->resource_name, command => 'release', result => 'succeeded' );
+    my %expected = ( resource_name => $claim->resource_name, command => 'release', result => $expected_result );
     foreach my $key ( keys %expected ) {
-        is($response->$key, $expected{$key}, "response key $key");
+        is($response->$key, $expected{$key}, "response key $key $expected{$key}");
     }
 
     ok(! $daemon->lookup_claim( $claim->resource_name ), 'Daemon no longer holds the claim');
