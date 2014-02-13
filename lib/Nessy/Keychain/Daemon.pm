@@ -34,7 +34,15 @@ sub shutdown {
 
     $self->client_socket( undef );
 
-    $_->release for $self->all_claims;
+    foreach my $claim ( $self->all_claims ) {
+        $claim->release(
+                on_success => sub { 1 },
+                on_fail => sub {
+                        my ($claim, $error) = @_;
+                        $self->_log_error($error);
+                },
+            );
+    }
 }
 
 sub new {
@@ -116,56 +124,41 @@ sub client_read_event {
         if ($@) {
             $message->error_message(sprintf('command %s exception: %s', $message->command, $@));
         } else {
+            no warnings 'uninitialized';
             $message->error_message(sprintf("command %s returned false: $result", $message->command));
         }
-        $message->fail;
         $self->_send_return_message($message);
     }
     return $result
 }
 
 sub claim_failed {
-    my($self, $resource_name, $error_message) = @_;
-    my $message = Nessy::Keychain::Message->new(
-                    resource_name => $resource_name,
-                    command => 'claim',
-                    serial => 'GARBAGE',
-                    error_message => $error_message);
+    my($self, $claim, $message, $error_message) = @_;
+
+    $message->error_message($error_message);
     $message->fail;
-    $self->remove_claim($resource_name);
+    $self->remove_claim($claim->resource_name);
     $self->_send_return_message($message);
 }
 
 sub claim_succeeded {
-    my($self, $resource_name) = @_;
+    my($self, $claim, $message) = @_;
 
-    my $message = Nessy::Keychain::Message->new(
-                    resource_name => $resource_name,
-                    serial => 'GARBAGE',
-                    command => 'claim');
     $message->succeed();
     $self->_send_return_message($message);
 }
 
 sub release_failed {
-    my($self, $resource_name, $error_message) = @_;
+    my($self, $claim, $message, $error_message) = @_;
 
-    my $message = Nessy::Keychain::Message->new(
-                    resource_name => $resource_name,
-                    command => 'release',
-                    serial => 'GARBAGE',
-                    error_message => $error_message);
+    $message->error_message($error_message);
     $message->fail;
     $self->_send_return_message($message);
 }
 
 sub release_succeeded {
-    my($self, $resource_name) = @_;
+    my($self, $claim, $message) = @_;
 
-    my $message = Nessy::Keychain::Message->new(
-                    resource_name => $resource_name,
-                    serial => 'GARBAGE',
-                    command => 'release');
     $message->succeed;
     $self->_send_return_message($message);
 }
@@ -201,6 +194,7 @@ sub ping {
 print "Got a ping!\n";
     $message->succeed;
     $self->_send_return_message($message);
+    1;
 }
 
 sub claim {
@@ -211,10 +205,17 @@ sub claim {
     my $claim = $claim_class->new(
                     resource_name => $resource_name,
                     data => $data,
+                    on_fatal_error => sub { die "XXXX fatal error ".$_[1] },
                     keychain => $self);
     if ($claim) {
         $self->add_claim($resource_name, $claim);
-        $claim->start();
+        $claim->start(
+            on_success => sub { $self->claim_succeeded($claim, $message) },
+            on_fail => sub {
+                            my(undef, $error_message) = @_;
+                            $self->claim_failed($claim, $message, $error_message);
+                        },
+        );
     }
     return $claim;
 }
@@ -230,7 +231,13 @@ sub release {
     my $claim = $self->remove_claim($resource_name);
     $claim || Carp::croak("No claim with resource $resource_name");
 
-    $claim->release;
+    $claim->release(
+            on_success => sub { $self->release_succeeded($claim, $message) },
+            on_fail => sub {
+                            my(undef, $error_message) = @_;
+                            $self->claim_failed($claim, $message, $error_message);
+                        },
+        );
 }
 
 sub add_claim {
@@ -288,6 +295,15 @@ sub _try_kill_parent {
 sub _exit_if_parent_dead {
     my($self, $exit_code) = @_;
     exit($exit_code) if (kill(0, $self->ppid));
+}
+
+sub _log_error {
+    my($self, $error_message) = @_;
+    print STDERR $error_message,"\n";
+    eval {
+        require AnyEvent::Debug;
+        print STDERR AnyEvent::Debug::backtrace(2);
+    };
 }
 
 sub DESTROY {

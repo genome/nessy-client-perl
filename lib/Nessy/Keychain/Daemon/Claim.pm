@@ -3,7 +3,9 @@ package Nessy::Keychain::Daemon::Claim;
 use strict;
 use warnings;
 
-use Nessy::Properties qw(resource_name state url claim_location_url timer_watcher ttl);
+use Nessy::Properties qw(
+            resource_name state url claim_location_url timer_watcher ttl
+            on_success_cb on_fail_cb on_fatal_error);
 use Nessy::Keychain::Message;
 
 use AnyEvent;
@@ -25,7 +27,7 @@ use constant STATE_RELEASING    => 'releasing';
 use constant STATE_FAILED       => 'failed';
 
 my %STATE = (
-    STATE_NEW()         => [ STATE_REGISTERING ],
+    STATE_NEW()         => [ STATE_REGISTERING, STATE_RELEASED ],
     STATE_REGISTERING() => [ STATE_WAITING, STATE_ACTIVE ],
     STATE_WAITING()     => [ STATE_ACTIVATING ],
     STATE_ACTIVATING()  => [ STATE_ACTIVE, STATE_WAITING ],
@@ -43,7 +45,7 @@ sub new {
 
     my $self = bless {}, $class;
 
-    $self->_required_params(\%params, qw(url resource_name keychain ttl));
+    $self->_required_params(\%params, qw(url resource_name keychain ttl on_fatal_error));
     $self->state(STATE_NEW);
     return $self;
 }
@@ -59,6 +61,10 @@ sub keychain {
 
 sub start {
     my $self = shift;
+    my(%params) = @_;
+
+    $self->on_success_cb($params{on_success}) || Carp::croak('on_success is required');
+    $self->on_fail_cb($params{on_fail}) || Carp::croak('on_fail is required');
 
     $self->send_register();
 }
@@ -76,12 +82,27 @@ sub transition {
     $self->send_fatal_error(Carp::shortmess("Illegal transition from ".$self->state." to $new_state"));
 }
 
+sub _call_success_fail_callback {
+    my($self, $callback_name, @args) = @_;
+
+    my $cb = $self->$callback_name;
+
+    $self->on_fail_cb(undef);
+    $self->on_success_cb(undef);
+
+    $self->$cb(@args);
+}
+
 sub _claim_failure_generator {
     my($class, $error) = @_;
 
     return sub {
         my $self = shift;
-        $self->_report_failure_to_keychain('claim', $self->resource_name, $error);
+        #$self->_report_failure_to_keychain('claim', $self->resource_name, $error);
+        $self->_remove_all_watchers();
+        $self->state(STATE_FAILED);
+        $self->_call_success_fail_callback('on_fail_cb', $error);
+        1;
     };
 }
 
@@ -90,7 +111,10 @@ sub _release_failure_generator {
 
     return sub {
         my $self = shift;
-        $self->_report_failure_to_keychain('release', $self->resource_name, $error);
+        $self->_remove_all_watchers();
+        $self->state(STATE_FAILED);
+        $self->_call_success_fail_callback('on_fail_cb', $error);
+        1;
     };
 }
 
@@ -204,7 +228,8 @@ sub _successfully_activated {
 
     my $w = $self->_create_timer_event(%params);
     $self->timer_watcher($w);
-    $self->_success();
+    $self->_call_success_fail_callback('on_success_cb');
+    1;
 }
 
 sub recv_register_response_202 {
@@ -296,12 +321,16 @@ sub send_fatal_error {
     my($self, $message) = @_;
     $self->state(STATE_FAILED);
     $self->_remove_all_watchers();
-    $self->_log_error($message);
-    $self->keychain->fatal_error($message);
+    $self->on_fatal_error->($self,$message);
 }
 
 sub release {
     my $self = shift;
+    my(%params) = @_;
+
+    $self->on_success_cb($params{on_success}) || Carp::croak('on_success is required');
+    $self->on_fail_cb($params{on_fail}) || Carp::croak('on_fail is required');
+
     $self->transition(STATE_RELEASING);
 
     $self->_remove_all_watchers();
@@ -320,7 +349,8 @@ sub release {
 sub recv_release_response_204 {
     my $self = shift;
     $self->state(STATE_RELEASED);
-    $self->keychain->release_succeeded({ resource_name => $self->resource_name });
+    $self->_call_success_fail_callback('on_success_cb');
+    1;
 }
 
 _install_sub('recv_release_response_400', __PACKAGE__->_release_failure_generator('release: bad request'));

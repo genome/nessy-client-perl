@@ -6,7 +6,7 @@ use warnings;
 use Nessy::Keychain::Daemon;
 use Nessy::Keychain::Message;
 
-use Test::More tests => 46;
+use Test::More tests => 69;
 use Carp;
 use JSON;
 use Socket;
@@ -59,13 +59,20 @@ sub test_start {
     ok($daemon->client_watcher, 'client watcher created');
 }
 
+sub _unexpected_fatal_error { my($obj, $message) = @_; Carp::croak("unexpected fatal error: $message") };
+
 sub test_add_remove_claim {
     my $daemon = _new_test_daemon();
 
     my $test_claim_foo = Nessy::Keychain::Daemon::FakeClaim->new(
-        resource_name => 'foo', keychain => $daemon);
+        resource_name => 'foo',
+        keychain => $daemon,
+        on_fatal_error => \&_unexpected_fatal_error);
     my $test_claim_bar = Nessy::Keychain::Daemon::FakeClaim->new(
-        resource_name => 'bar', keychain => $daemon);
+        resource_name => 'bar',
+        keychain => $daemon,
+        on_fatal_error => \&_unexpected_fatal_error);
+
 
     ok( $daemon->add_claim('foo', $test_claim_foo),
         'add_claim() foo');
@@ -78,7 +85,9 @@ sub test_add_remove_claim {
     eval {
         $daemon->add_claim('foo',
             Nessy::Keychain::Daemon::FakeClaim->new(
-                resource_name => 'foo', keychain => $daemon))
+                resource_name => 'foo',
+                keychain => $daemon,
+                on_fatal_error => \&_unexpected_fatal_error));
     };
     like($@, qr(Attempted to add claim foo when it already exists), 'cannot double add the same claim');
 
@@ -109,6 +118,13 @@ sub test_make_claim {
 
     my $cv = AnyEvent->condvar();
     local $Nessy::Keychain::Daemon::FakeClaim::on_start_cb = sub { $cv->send; 1; };
+    my $expected_claim_location_url = 'something';
+    @Nessy::Keychain::Daemon::FakeClaim::next_http_response = ([
+            '',
+            {   Status => 201,
+                Location => $expected_claim_location_url,
+            }]);
+
     _event_loop($daemon, $cv);
 
     my $response = _read_from_socket();
@@ -122,6 +138,7 @@ sub test_make_claim {
     my $claim = $daemon->lookup_claim('foo');
     ok($claim, 'daemon created claim for resource_name foo');
     ok($claim->_start_called, 'state machine was started for claim');
+    is($claim->claim_location_url, $expected_claim_location_url, 'claim location url');
 
     eval { _read_from_socket() };
     like($@, qr(No data read from socket), 'Daemon has no more messages for us');
@@ -146,6 +163,11 @@ sub test_make_claim_failure {
 
     my $cv = AnyEvent->condvar();
     local $Nessy::Keychain::Daemon::FakeClaim::on_start_cb = sub { $cv->send; 0; };
+    @Nessy::Keychain::Daemon::FakeClaim::next_http_response = ([
+        '',
+        { Status => 400 },
+    ]);
+
     _event_loop($daemon, $cv);
 
     my $response = _read_from_socket();
@@ -169,15 +191,20 @@ sub test_make_claim_failure {
     like($@, qr(No data read from socket), 'After destruction, daemon has no more messages for us');
 }
 sub test_release_claim_success_and_failure {
-    _test_release_claim_success_and_failure($_) foreach ( 1, 0 );
+    _test_release_claim_success_and_failure($_) foreach ( 204, 400, 404, 409 );
 }
 
 sub _test_release_claim_success_and_failure {
-    my($should_succeed) = @_;
+    my($response_code) = @_;
 
     my $daemon = _new_test_daemon();
-    my $claim = Nessy::Keychain::Daemon::FakeClaim->new(keychain => $daemon);
-    ok($daemon->add_claim($claim->resource_name, $claim), 'Add claim to keychain');
+    my $fatal_error = 0;
+    my $claim = Nessy::Keychain::Daemon::FakeClaim->new(
+                    keychain => $daemon,
+                    on_fatal_error => sub { $fatal_error++ });
+
+    ok($claim->state('active'), 'Set claim active');
+    ok($daemon->add_claim($claim->resource_name, $claim), "Add claim to keychain for response code $response_code");
 
     my $message = Nessy::Keychain::Message->new(
                         resource_name => $claim->resource_name,
@@ -187,7 +214,12 @@ sub _test_release_claim_success_and_failure {
     _send_to_socket($message);
 
     my $cv = AnyEvent->condvar();
-    local $Nessy::Keychain::Daemon::FakeClaim::on_release_cb = sub { $cv->send; $should_succeed; };
+    local $Nessy::Keychain::Daemon::FakeClaim::on_release_cb = sub { $cv->send; 1; };
+
+    @Nessy::Keychain::Daemon::FakeClaim::next_http_response = ([
+        '',
+        { Status => $response_code },
+    ]);
     _event_loop($daemon, $cv);
 
     my $response = _read_from_socket();
@@ -196,7 +228,8 @@ sub _test_release_claim_success_and_failure {
     foreach my $key ( keys %expected ) {
         is($response->$key, $expected{$key}, "response key $key $expected{$key}");
     }
-    my $result_method = $should_succeed ? 'is_succeeded' : 'is_failed';
+
+    my $result_method = $response_code =~ m/^2/ ? 'is_succeeded' : 'is_failed';
     ok($response->$result_method, $result_method);
 
     ok(! $daemon->lookup_claim( $claim->resource_name ), 'Daemon no longer holds the claim');
@@ -204,6 +237,8 @@ sub _test_release_claim_success_and_failure {
 
     eval { _read_from_socket() };
     like($@, qr(No data read from socket), 'Daemon has no more messages for us');
+
+    is($fatal_error, 0, 'no fatal errors');
 }
 
 sub _event_loop {
@@ -270,6 +305,12 @@ package Nessy::Keychain::TestDaemon;
 use base 'Nessy::Keychain::Daemon';
 
 sub _claim_class { return 'Nessy::Keychain::Daemon::FakeClaim' }
+
+sub new {
+    our $destroy_called = 0;
+    shift->SUPER::new(@_);
+}
+
 sub DESTROY {
     our $destroy_called = 1;
     shift->SUPER::DESTROY;
@@ -295,21 +336,27 @@ sub new {
 sub start {
     my $self = shift;
     $self->{_start_called} = 1;
-    $self->_run_cb_and_report_to_keychain($on_start_cb, 'claim');
+    $self->SUPER::start(@_);
+    $on_start_cb->() if $on_start_cb;
 }
 
-sub _run_cb_and_report_to_keychain {
-    my($self, $cb, $method_prefix) = @_;
+our @next_http_response;
+sub _send_http_request {
+    my $cb = pop;
+    my($self, $http_method, $url, %params) = @_;
 
-    my $succeeded = 1;
-    if ($cb) {
-        $succeeded = $self->$cb();
+    my @args;
+    if ($Nessy::Keychain::TestDaemon::destroy_called) {
+        @args = ('in shutdown', { Status => 204 });
+
+    } elsif (@next_http_response) {
+        @args = @{ shift @next_http_response };
+
+    } else {
+        Carp::croak("Asked to send http request $http_method to $url, but there is no prepared \@next_http_response");
     }
 
-    my $resolution_method = sprintf("%s_%s",
-                                $method_prefix,
-                                $succeeded ? 'succeeded' : 'failed');
-    $self->keychain->$resolution_method( $self->resource_name );
+    return $cb->(@args);
 }
 
 sub _start_called {
@@ -318,8 +365,9 @@ sub _start_called {
 
 sub release {
     my $self = shift;
+    $self->SUPER::release(@_);
     $self->{_release_called} = 1;
-    $self->_run_cb_and_report_to_keychain($on_release_cb, 'release');
+    $on_release_cb->() if $on_release_cb;
 }
 
 sub _release_called {

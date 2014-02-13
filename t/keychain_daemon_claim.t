@@ -8,7 +8,7 @@ use Nessy::Keychain::Daemon::Claim;
 use JSON;
 use Carp;
 use Data::Dumper;
-use Test::More tests => 125;
+use Test::More tests => 127;
 
 # defaults when creating a new claim object for testing
 our $url = 'http://example.org';
@@ -18,6 +18,8 @@ our $ttl = 1;
 test_failed_constructor();
 test_constructor();
 test_start_state_machine();
+
+test_start_state_machine_failure();
 
 test_registration_response_201();
 test_registration_response_202();
@@ -37,15 +39,17 @@ test_release_response_204();
 test_release_response_400();
 test_release_response_409();
 
+test_release_failure();
+
 sub _new_claim_and_keychain {
-    my $keychain = Nessy::Keychain::Daemon::Fake->new();
     my $claim = Nessy::Keychain::Daemon::TestClaim->new(
                 url => $url,
                 resource_name => $resource_name,
-                keychain => $keychain,
+                keychain => \'TEST',
                 ttl => $ttl,
+                on_fatal_error => sub { Carp::croak("unexpected fatal error: $_[1]") },
             );
-    return ($claim, $keychain);
+    return ($claim);
 }
 
 sub test_failed_constructor {
@@ -74,12 +78,13 @@ sub test_failed_constructor {
 
 sub test_constructor {
     my $claim;
-    my $keychain = Nessy::Keychain::Daemon::Fake->new();
     $claim = Nessy::Keychain::Daemon::TestClaim->new(
                 url => $url,
                 resource_name => $resource_name,
-                keychain => $keychain,
+                #keychain => $keychain,
+                keychain => \'TEST',
                 ttl => $ttl,
+                on_fatal_error => sub { Carp::croak('unexpected fatal error') },
             );
     ok($claim, 'Create Claim');
 }
@@ -98,12 +103,19 @@ sub _verify_http_params {
 
 sub test_start_state_machine {
 
-    my ($claim, $keychain) = _new_claim_and_keychain();
+    my ($claim) = _new_claim_and_keychain();
     ok($claim, 'Create new Claim');
     is($claim->state, 'new', 'Newly created Claim is in state new');
 
     $claim->expected_state_transitions('registering');
-    ok($claim->start(),'start()');
+
+    my $callback_called = 0;
+    my $on_success = sub { $callback_called++ };
+    my $on_fail = sub { $callback_called++ };
+    my $started = $claim->start(
+                    on_success => $on_success,
+                    on_fail => $on_fail );
+    ok($started,'start()');
     is(scalar($claim->remaining_state_transitions), 0, 'expected state transitions for start()');
 
     my $params = $claim->_http_method_params();
@@ -114,13 +126,57 @@ sub test_start_state_machine {
           body => $json->encode({ resource => $resource_name }),
         ]);
 
-    ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
-    ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
+    is($callback_called, 0, 'neither success nor fail callbacks were called');
 }
 
+sub test_start_state_machine_failure {
+    _test_method_requires_arguments(
+        'start',
+        [ qw(on_success on_fail) ],
+        [ 'on_success is required', 'on_fail is required' ],
+    );
+}
+
+sub test_release_failure {
+    _test_method_requires_arguments(
+        'release',
+        [ qw(on_success on_fail) ],
+        [ 'on_success is required', 'on_fail is required' ],
+    );
+}
+
+sub _test_method_requires_arguments {
+    my($method_name, $required_args, $expected_exceptions) = @_;
+
+    my ($claim) = _new_claim_and_keychain();
+
+    my $callback_called = 0;
+    my $callback = sub { $callback_called++ };
+
+    my $worked = eval { $claim->$method_name() };
+    ok(! $worked, "$method_name fails with no args");
+    ok($@, 'threw an exception');
+
+    for (my $i = 0; $i < @$required_args; $i++) {
+        my @args_this_call = @$required_args;
+        my($missing_arg) = splice(@args_this_call, $i, 1);
+        @args_this_call = map { $_ => $callback } @args_this_call;
+
+        $worked = eval { $claim->$method_name( @args_this_call ) };
+        ok(! $worked, "$method_name without $missing_arg fails");
+        like($@, qr($expected_exceptions->[$i]), 'expected exception');
+    }
+}
+
+
 sub test_registration_response_201 {
-    my ($claim, $keychain) = _new_claim_and_keychain();
+    my($claim) = _new_claim_and_keychain();
     ok($claim, 'Create new Claim');
+
+    my($success, $fail) = (0,0);
+    my @success_args;
+    $claim->on_success_cb(sub { @success_args = @_; $success++ });
+    $claim->on_fail_cb(sub { $fail++ });
 
     $claim->state('registering');
     my $claim_location_url = "${url}/claim/123";
@@ -130,24 +186,28 @@ sub test_registration_response_201 {
         'send 201 response to registration');
     is($claim->state(), 'active', 'Claim state is active');
     ok($claim->timer_watcher, 'Claim created a timer');
-    is($keychain->claim_succeeded, $resource_name, 'Keychain was notified about success');
-    ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
+    is($success, 1, 'success callback fired');
+    is_deeply(\@success_args, [$claim], 'success callback got expected args');
+    is($fail, 0, 'fail callback not fired');
     is($claim->claim_location_url, $claim_location_url, 'Claim location URL');
 }
 
 sub test_registration_response_202 {
-    my ($claim, $keychain) = _new_claim_and_keychain();
+    my($claim) = _new_claim_and_keychain();
 
     $claim->state('registering');
     my $claim_location_url = "${url}/claim/123";
+
+    my $callback_fired = 0;
+    $claim->on_success_cb(sub { $callback_fired++ });
+    $claim->on_fail_cb(sub { $callback_fired++ });
 
     my $response_handler = $claim->_make_response_generator('claim', 'recv_register_response');
     ok( $response_handler->('', { Status => 202, Location => $claim_location_url}),
         'send 202 response to registrtation');
     is($claim->state(), 'waiting', 'Claim state is waiting');
     ok($claim->timer_watcher, 'Claim created a timer');
-    ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
-    ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
+    is($callback_fired, 0, 'neither success nor fail callback fired');
     is($claim->claim_location_url, $claim_location_url, 'Claim location URL');
 }
 
@@ -164,32 +224,34 @@ sub test_registration_response_failure {
 
 sub _test_registration_response_failure {
     my ($status_code, $error_message) = @_;
-    my ($claim, $keychain) = _new_claim_and_keychain();
+    my ($claim) = _new_claim_and_keychain();
 
     $claim->state('registering');
+
+    my($success, $fail) = (0,0);
+    my @fail_args;
+    $claim->on_success_cb(sub { $success++ });
+    $claim->on_fail_cb(sub { @fail_args = @_; $fail++ });
 
     my $response_handler = $claim->_make_response_generator('claim', 'recv_register_response');
     ok( $response_handler->('', { Status => $status_code }),
         "send $status_code response to registrtation");
     is($claim->state(), 'failed', 'Claim state is failed');
     ok(! $claim->timer_watcher, 'Claim did not created a timer');
-    ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
 
-    my $message = $keychain->claim_failed;
-    ok($message, 'Keychain was notified about failure');
-    _compare_message_to_expected(
-            $message,
-            {
-                command => 'claim',
-                result  => 'failed',
-                resource_name => $resource_name,
-                error_message => $error_message,
-            });
+    is($success, 0, 'success callback not fired');
+    is($fail, 1, 'fail callback fired');
+    is_deeply(\@fail_args, [$claim, $error_message], 'Error callback got expected args');
+
     ok(! $claim->claim_location_url, 'Claim has no location URL');
 }
 
 sub test_send_activating {
-    my ($claim, $keychain) = _new_claim_and_keychain();
+    my ($claim) = _new_claim_and_keychain();
+
+    my $callback_fired = 0;
+    $claim->on_success_cb(sub { $callback_fired++ });
+    $claim->on_fail_cb(sub { $callback_fired++ });
 
     $claim->state('waiting');
     my $claim_location_url = $claim->claim_location_url( "${url}/claims/123" );
@@ -204,13 +266,17 @@ sub test_send_activating {
         ]);
 
     is($claim->state, 'activating', 'state is activating');
-    ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
-    ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
+    is($callback_fired, 0, 'neither success nor fail callback fired');
 }
 
 sub test_activating_response_409 {
-    my ($claim, $keychain) = _new_claim_and_keychain();
+    my ($claim) = _new_claim_and_keychain();
+
+    my $callback_fired = 0;
+
     $claim->state('activating');
+    $claim->on_success_cb(sub { $callback_fired++ });
+    $claim->on_fail_cb(sub { $callback_fired++ });
 
     my $fake_timer_watcher = $claim->timer_watcher('abc');
     my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
@@ -221,15 +287,19 @@ sub test_activating_response_409 {
 
     is($claim->state, 'waiting', 'Claim state is waiting');
     is($claim->timer_watcher, $fake_timer_watcher, 'ttl timer was not changed');
-    ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
-    ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
+    is($callback_fired, 0, 'neither success nor fail callback fired');
     is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
 }
 
 sub test_activating_response_200 {
-    my ($claim, $keychain) = _new_claim_and_keychain();
+    my ($claim) = _new_claim_and_keychain();
     $claim->state('activating');
     $claim->ttl(0);
+
+    my($success, $fail) = (0,0);
+    my @success_args;
+    $claim->on_success_cb(sub { @success_args = @_; $success++ });
+    $claim->on_fail_cb(sub { $fail++ });
 
     my $exit_cond = AnyEvent->condvar;
     {
@@ -251,10 +321,9 @@ sub test_activating_response_200 {
         isnt($claim->timer_watcher, $activating_timer,
             'ttl timer was changed');
 
-        is($keychain->claim_succeeded, $resource_name,
-            'Keychain was notified about success');
-        ok(! $keychain->claim_failed,
-            'Keychain was not notified about failure');
+        is($success, 1, 'success callback fired');
+        is_deeply(\@success_args, [ $claim ], 'success callback got expected args');
+        is($fail, 0, 'fail callback not fired');
         is($claim->claim_location_url, $fake_claim_location_url,
             'Claim has a location URL');
     }
@@ -266,8 +335,13 @@ sub test_activating_response_200 {
 }
 
 sub test_activating_response_400 {
-    my ($claim, $keychain) = _new_claim_and_keychain();
+    my ($claim) = _new_claim_and_keychain();
     $claim->state('activating');
+
+    my($success, $fail) = (0,0);
+    my @fail_args;
+    $claim->on_success_cb(sub { $success++ });
+    $claim->on_fail_cb(sub { @fail_args = @_; $fail++ });
 
     my $fake_timer_watcher = $claim->timer_watcher('abc');
 
@@ -277,22 +351,17 @@ sub test_activating_response_400 {
 
     is($claim->state, 'failed', 'Claim state is failed');
     ok(! $claim->timer_watcher, 'Claim has no ttl timer');
-    ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
-
-    my $message = $keychain->claim_failed;
-    ok($message, 'Keychain was notified about failure');
-    _compare_message_to_expected(
-            $message,
-            {
-                command => 'claim',
-                result  => 'failed',
-                resource_name => $resource_name,
-                error_message => 'activating: bad request',
-            });
+    is($success, 0, 'success callback not fired');
+    is($fail, 1, 'fail callback fired');
+    is_deeply(\@fail_args, [ $claim, 'activating: bad request' ], 'fail callback got expected args');
 }
 
 sub test_send_renewal {
-    my ($claim, $keychain) = _new_claim_and_keychain();
+    my ($claim) = _new_claim_and_keychain();
+
+    my $callback_fired = 0;
+    $claim->on_success_cb(sub { $callback_fired++ });
+    $claim->on_fail_cb(sub { $callback_fired++ });
 
     $claim->state('active');
     my $claim_location_url = $claim->claim_location_url( "${url}/claims/${resource_name}" );
@@ -311,12 +380,16 @@ sub test_send_renewal {
     is($claim->claim_location_url, $claim_location_url, 'claim location url did not change');
     is($claim->timer_watcher, $fake_timer_watcher, 'ttl timer watcher url did not change');
 
-    ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
-    ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
+    is($callback_fired, 0, 'neither success nor fail callback fired');
 }
 
 sub test_renewal_response_200 {
-    my ($claim, $keychain) = _new_claim_and_keychain();
+    my ($claim) = _new_claim_and_keychain();
+
+    my $callback_fired = 0;
+    $claim->on_success_cb(sub { $callback_fired++ });
+    $claim->on_fail_cb(sub { $callback_fired++ });
+
     $claim->state('renewing');
 
     my $fake_timer_watcher = $claim->timer_watcher('abc');
@@ -328,14 +401,20 @@ sub test_renewal_response_200 {
 
     is($claim->state, 'active', 'Claim state is active');
     is($claim->timer_watcher, $fake_timer_watcher, 'ttl timer was not changed');
-    ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
-    ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
+    is($callback_fired, 0, 'neither success nor fail callback fired');
     is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
 }
 
 sub test_renewal_response_400 {
-    my ($claim, $keychain) = _new_claim_and_keychain();
-    $claim->state('renewing');
+    my ($claim) = _new_claim_and_keychain();
+
+    my $callback_fired = 0;
+    $claim->on_success_cb(sub { $callback_fired++ });
+    $claim->on_fail_cb(sub { $callback_fired++ });
+
+    my $fatal_error = 0;
+    my @fatal_error_args;
+    $claim->on_fatal_error(sub { @fatal_error_args = @_; $fatal_error++ });
 
     my $fake_timer_watcher = $claim->timer_watcher('abc');
 
@@ -345,20 +424,27 @@ sub test_renewal_response_400 {
 
     is($claim->state, 'failed', 'Claim state is failed');
     ok(! $claim->timer_watcher, 'Claim has no ttl timer');
-    ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
-    ok(! $keychain->claim_failed, 'Keychain was notified about failure');
-    is($keychain->fatal_error_was_called(),
-        "claim $resource_name failed renewal with code 400",
-        'Keychain was notified with renewal failure with fatal error');
+    is($callback_fired, 0, 'neither success nor fail callback fired');
+    is($fatal_error, 1, 'Fatal error callback fired');
+    is_deeply(\@fatal_error_args, [ $claim, 'claim foo failed renewal with code 400' ],
+            'fatal error callback got expected args');
 }
 
 sub test_send_release {
-    my ($claim, $keychain) = _new_claim_and_keychain();
+    my ($claim) = _new_claim_and_keychain();
 
     $claim->state('active');
     my $claim_location_url = $claim->claim_location_url( "${url}/claims/${resource_name}" );
     my $fake_timer_watcher = $claim->timer_watcher('abc');
-    ok($claim->release(), 'send_release()');
+
+    my $callback_fired = 0;
+    my $on_success = sub { $callback_fired++ };
+    my $on_fail = sub { $callback_fired++ };
+    my $release = $claim->release(
+                        on_success => $on_success,
+                        on_fail => $on_fail,
+                    );
+    ok($release, 'send_release()');
 
     my $params = $claim->_http_method_params();
     my $json = JSON->new();
@@ -372,12 +458,17 @@ sub test_send_release {
     is($claim->claim_location_url, $claim_location_url, 'claim location url did not change');
     is($claim->timer_watcher, undef, 'ttl timer watcher was removed');
 
-    ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
-    ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
+    is($callback_fired, 0, 'neither success nor fail callback fired');
 }
 
 sub test_release_response_204 {
-    my ($claim, $keychain) = _new_claim_and_keychain();
+    my ($claim) = _new_claim_and_keychain();
+
+    my($success, $fail) = (0,0);
+    my @success_args;
+    $claim->on_success_cb(sub { @success_args = @_; $success++ });
+    $claim->on_fail_cb(sub { $fail++ });
+
     $claim->state('releasing');
 
     my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
@@ -388,15 +479,20 @@ sub test_release_response_204 {
 
     is($claim->state, 'released', 'Claim state is released');
     is($claim->timer_watcher, undef, 'ttl timer was removed');
-    ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
-    ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
-    ok($keychain->release_succeeded, 'Keychain was notified about release success');
-    ok(! $keychain->release_failed, 'Keychain was not notified about release success');
+    is($success, 1, 'success callback fired');
+    is_deeply(\@success_args, [ $claim ], 'success callback got expected args');
+    is($fail, 0, 'fail callback not fired');
     is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
 }
 
 sub test_release_response_400 {
-    my ($claim, $keychain) = _new_claim_and_keychain();
+    my ($claim) = _new_claim_and_keychain();
+
+    my($success, $fail) = (0,0);
+    my @fail_args;
+    $claim->on_success_cb(sub { $success++ });
+    $claim->on_fail_cb(sub { @fail_args = @_; $fail++ });
+
     $claim->state('releasing');
 
     my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
@@ -407,25 +503,20 @@ sub test_release_response_400 {
 
     is($claim->state, 'failed', 'Claim state is failed');
     is($claim->timer_watcher, undef, 'ttl timer was removed');
-    ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
-    ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
-    ok(! $keychain->release_succeeded, 'Keychain was not notified about release success');
-
-    my $message = $keychain->release_failed;
-    ok($message, 'Keychain was notified about failure');
-    _compare_message_to_expected(
-            $message,
-            {
-                command => 'release',
-                result  => 'failed',
-                resource_name => $resource_name,
-                error_message => 'release: bad request',
-            });
+    is($success, 0, 'success callback not fired');
+    is($fail, 1, 'fail callback fired');
+    is_deeply(\@fail_args, [ $claim, 'release: bad request' ], 'fail callback got expected args');
     is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
 }
 
 sub test_release_response_409 {
     my ($claim, $keychain) = _new_claim_and_keychain();
+
+    my($success, $fail) = (0,0);
+    my @fail_args;
+    $claim->on_success_cb(sub { $success++ });
+    $claim->on_fail_cb(sub { @fail_args = @_; $fail++ });
+
     $claim->state('releasing');
 
     my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
@@ -436,20 +527,9 @@ sub test_release_response_409 {
 
     is($claim->state, 'failed', 'Claim state is failed');
     is($claim->timer_watcher, undef, 'ttl timer was removed');
-    ok(! $keychain->claim_succeeded, 'Keychain was not notified about success');
-    ok(! $keychain->claim_failed, 'Keychain was not notified about failure');
-    ok(! $keychain->release_succeeded, 'Keychain was not notified about release success');
-
-    my $message = $keychain->release_failed;
-    ok($message, 'Keychain was notified about failure');
-    _compare_message_to_expected(
-            $message,
-            {
-                command => 'release',
-                result  => 'failed',
-                resource_name => $resource_name,
-                error_message => 'release: lost claim',
-            });
+    is($success, 0, 'success callback not fired');
+    is($fail, 1, 'fail callback fired');
+    is_deeply(\@fail_args, [ $claim, 'release: lost claim' ], 'fail callback got expected args' );
     is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
 }
 
