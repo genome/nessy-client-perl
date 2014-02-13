@@ -533,18 +533,6 @@ sub test_release_response_409 {
     is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
 }
 
-sub _compare_message_to_expected {
-    my($got, $expected) = @_;
-
-    my $different = '';
-    foreach my $k ( keys %$expected ) {
-        if ($got->$k ne $expected->{$k}) {
-            $different = "got $k >>". $got->$k."<< expected ".$expected->{$k};
-        }
-    }
-    ok(!$different, $different || 'message matched');
-}
-
 package Nessy::Keychain::Daemon::TestClaim;
 BEGIN {
     our @ISA = qw( Nessy::Keychain::Daemon::Claim );
@@ -619,38 +607,4 @@ sub send_renewal {
 sub _log_error {
     #Throw out log message
 }
-
-
-package Nessy::Keychain::Daemon::Fake;
-
-sub new {
-    my $class = shift;
-    return bless {}, $class;
-}
-
-BEGIN {
-    foreach my $method ( qw( claim_succeeded claim_failed release_succeeded release_failed ) ) {
-        my $hash_key = "_${method}";
-        my $sub = sub {
-            my $self = shift;
-            if (@_) {
-                $self->{$hash_key} = shift;
-            }
-            return $self->{$hash_key};
-        };
-        no strict 'refs';
-        *$method = $sub;
-    }
-}
-
-sub fatal_error {
-    my($self, $message) = @_;
-    $self->{_fatal_error_message} = $message;
-}
-
-sub fatal_error_was_called {
-    return shift->{_fatal_error_message};
-}
-
-
 

@@ -98,7 +98,6 @@ sub _claim_failure_generator {
 
     return sub {
         my $self = shift;
-        #$self->_report_failure_to_keychain('claim', $self->resource_name, $error);
         $self->_remove_all_watchers();
         $self->state(STATE_FAILED);
         $self->_call_success_fail_callback('on_fail_cb', $error);
@@ -116,28 +115,6 @@ sub _release_failure_generator {
         $self->_call_success_fail_callback('on_fail_cb', $error);
         1;
     };
-}
-
-sub _report_failure_to_keychain {
-    my($self, $command, $resource_name, $error) = @_;
-
-    my $keychain_method = "${command}_failed";
-    $self->_remove_all_watchers();
-    my $message = Nessy::Keychain::Message->new(
-                    resource_name => $resource_name,
-                    command => $command,
-                    result => 'failed',
-                    serial => 'GARBAGE',
-                    error_message => $error);
-
-    $self->state(STATE_FAILED);
-    $self->keychain->$keychain_method($message);
-}
-
-sub _success {
-    my $self = shift;
-
-    $self->keychain->claim_succeeded($self->resource_name);
 }
 
 sub send_register {
@@ -377,15 +354,6 @@ sub _ttl_timer_value {
 sub _remove_all_watchers {
     my $self = shift;
     $self->timer_watcher(undef);
-}
-
-sub _log_error {
-    my $self = shift;
-    print STDERR shift()."\n";
-    eval {
-        require AnyEvent::Debug;
-        print STDERR AnyEvent::Debug::backtrace(2);
-    };
 }
 
 sub _default_http_timeout_seconds { 5 }
