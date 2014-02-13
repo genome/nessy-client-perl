@@ -182,10 +182,10 @@ sub _make_response_generator {
         my $coderef = $self->can("${prefix}_${status}")
             || $self->can("${prefix}_${status_class}XX");
 
-        unless (eval { $coderef && $self->$coderef($body, $headers); }) {
+        unless (my $rv = eval { $coderef && $self->$coderef($body, $headers); }) {
             $self->send_fatal_error(
-                "Exception when handling status $status"
-                    ." in ${prefix} for $command: $@\n"
+                "Error when handling status $status"
+                    ." in ${prefix} for $command. returned: $rv\n\texception: $@\n"
                     . "Headers: " . Data::Dumper::Dumper($headers) ."\n"
                     . "Body: " . Data::Dumper::Dumper($body));
             return 0;
