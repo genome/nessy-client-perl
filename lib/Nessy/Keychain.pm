@@ -3,7 +3,7 @@ package Nessy::Keychain;
 use strict;
 use warnings;
 
-use Nessy::Properties qw(pid socket socket_watcher);
+use Nessy::Properties qw(pid socket socket_watcher serial_responder_registry);
 
 use Nessy::Claim;
 use Nessy::Keychain::Daemon;
@@ -15,6 +15,8 @@ use JSON qw();
 use AnyEvent;
 use AnyEvent::Handle;
 
+my $MESSAGE_SERIAL = 1;
+
 # The keychain process that acts as an intermediary between the client code
 # and the lock server 
 
@@ -25,25 +27,31 @@ sub new {
 
     $_->autoflush(1) foreach ($socket1, $socket2);
 
-    my $pid = fork();
+    my $pid = _fork();
     if ($pid) {
         my $self = bless {}, $class;
         $self->pid($pid);
         $self->socket($socket1);
+        $self->serial_responder_registry({});
+
+        my $watcher = $self->_create_socket_watcher();
+        $self->socket_watcher($watcher);
 
         return $self;
 
-    } elsif(defined $pid) {
+    } elsif (defined $pid) {
         eval {
             my $daemon = Nessy::Keychain::Daemon->new(url => $params{url}, client_socket => $socket2);
-            $daemom->start();
-        }
+            $daemon->start();
+        };
         Carp::croak($@) if $@;
         exit;
     } else {
         Carp::croak("Can't fork: $!");
     }
 }
+
+sub _fork { fork }
 
 sub shutdown {
     my $self = shift;
@@ -92,50 +100,79 @@ sub release {
 
 sub ping {
     my $self = shift;
+    my $cb = shift;
 
-    my $message = Nessy::Keychain::Message->new(
-                    resource_name => '',
-                    command => 'ping',
-                );
+    my $is_blocking = ! $cb;
+    $cb ||= AnyEvent->condvar;
 
-    my $result = $self->_send_command_and_get_result($message);
-    return $result->is_succeeded;
+    my $report_response_succeeded = sub {
+        my $response = shift;
+        $cb->( $response->is_succeeded );
+    };
+
+    $self->_send_command_with_callback(
+                $report_response_succeeded,
+                resource_name => '',
+                command => 'ping',
+            );
+
+    if ($is_blocking) {
+        return $cb->recv;
+    }
+    return;
 }
 
-my $json_parser = JSON->new();
-sub _send_command_and_get_result {
-    my $self = shift;
-    my ($command) = @_;
+sub _send_command_with_callback {
+    my($self, $cb, %message_args) = @_;
 
-    my $c = AnyEvent->condvar;
-    my $watcher = $self->create_socket_watcher;
+    my $message = Nessy::Keychain::Message->new(serial => $MESSAGE_SERIAL++, %message_args);
 
-    $watcher->on_read( $c );
+    $self->_register_responder_for_message($cb, $message);
+    $self->socket_watcher->push_write(json => $message);
+}
 
-    $self->socket->print( $json_parser->encode($command) );
-    $self->socket->print( $json_parser->encode({
-        }));
-    my $result = $c->recv;
-    return unless $result->{result};
-    return Nessy::Claim->new(
-        resource_name => $command->{resource_name},
-        keychain  => $self,
-    );
+sub _register_responder_for_message {
+    my($self, $responder, $message) = @_;
+
+    my $registry = $self->serial_responder_registry;
+    $registry->{ $message->serial } = $responder;
+}
+
+sub _daemon_response_handler {
+    my($self, $w, $message) = @_;
+
+    my $registry = $self->serial_responder_registry;
+    my $serial = $message->serial;
+    my $responder = delete $registry->{$serial};
+
+    $self->bailout('no responder for message '.$message->serial) unless ($responder);
+
+    $responder->($message);
 }
 
 
-sub create_socket_watcher {
+my $json_parser = JSON->new()->convert_blessed(1);
+sub _create_socket_watcher {
     my $self = shift;
+
+    my $on_read = sub { shift->unshift_read(json => sub { $self->_on_read_event(@_) }) };
+
     my $w = AnyEvent::Handle->new(
         fh => $self->socket,
         on_error => sub {
             my (undef, undef, $message) = @_;
             $self->bailout($message);
         },
+        on_read => $on_read,
         on_eof => sub { $self->bailout('End of file while reading from keychain.') },
         json => $json_parser,
     );
+}
 
+sub _on_read_event {
+    my($self, $w, $message) = @_;
+    $message = Nessy::Keychain::Message->new(%$message);
+    $self->_daemon_response_handler($w, $message);
 }
 
 sub bailout {
