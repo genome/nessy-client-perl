@@ -331,6 +331,12 @@ sub release {
     $self->on_success_cb($params{on_success}) || Carp::croak('on_success is required');
     $self->on_fail_cb($params{on_fail}) || Carp::croak('on_fail is required');
 
+    if ($self->state eq STATE_NEW) {
+        $self->transition(STATE_RELEASED);
+        $self->_call_success_fail_callback('on_success_cb');
+        return 1;
+    }
+
     $self->transition(STATE_RELEASING);
 
     $self->_remove_all_watchers();
