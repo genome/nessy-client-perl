@@ -6,7 +6,6 @@ use warnings;
 use Nessy::Properties qw(
             resource_name state url claim_location_url timer_watcher ttl
             on_success_cb on_fail_cb on_fatal_error);
-use Nessy::Keychain::Message;
 
 use AnyEvent;
 use AnyEvent::HTTP;
