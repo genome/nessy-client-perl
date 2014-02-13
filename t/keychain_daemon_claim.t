@@ -8,7 +8,7 @@ use Nessy::Keychain::Daemon::Claim;
 use JSON;
 use Carp;
 use Data::Dumper;
-use Test::More tests => 127;
+use Test::More tests => 126;
 
 # defaults when creating a new claim object for testing
 our $url = 'http://example.org';
@@ -41,15 +41,14 @@ test_release_response_409();
 
 test_release_failure();
 
-sub _new_claim_and_keychain {
+sub _new_claim {
     my $claim = Nessy::Keychain::Daemon::TestClaim->new(
                 url => $url,
                 resource_name => $resource_name,
-                keychain => \'TEST',
                 ttl => $ttl,
                 on_fatal_error => sub { Carp::croak("unexpected fatal error: $_[1]") },
             );
-    return ($claim);
+    return $claim;
 }
 
 sub test_failed_constructor {
@@ -62,7 +61,6 @@ sub test_failed_constructor {
     my %all_params = (
             url => 'http://test.org',
             resource_name => 'foo',
-            keychain => \'bar',
             ttl => 1,
         );
     foreach my $missing_arg ( keys %all_params ) {
@@ -81,8 +79,6 @@ sub test_constructor {
     $claim = Nessy::Keychain::Daemon::TestClaim->new(
                 url => $url,
                 resource_name => $resource_name,
-                #keychain => $keychain,
-                keychain => \'TEST',
                 ttl => $ttl,
                 on_fatal_error => sub { Carp::croak('unexpected fatal error') },
             );
@@ -103,7 +99,7 @@ sub _verify_http_params {
 
 sub test_start_state_machine {
 
-    my ($claim) = _new_claim_and_keychain();
+    my $claim = _new_claim();
     ok($claim, 'Create new Claim');
     is($claim->state, 'new', 'Newly created Claim is in state new');
 
@@ -148,7 +144,7 @@ sub test_release_failure {
 sub _test_method_requires_arguments {
     my($method_name, $required_args, $expected_exceptions) = @_;
 
-    my ($claim) = _new_claim_and_keychain();
+    my $claim = _new_claim();
 
     my $callback_called = 0;
     my $callback = sub { $callback_called++ };
@@ -170,7 +166,7 @@ sub _test_method_requires_arguments {
 
 
 sub test_registration_response_201 {
-    my($claim) = _new_claim_and_keychain();
+    my $claim = _new_claim();
     ok($claim, 'Create new Claim');
 
     my($success, $fail) = (0,0);
@@ -193,7 +189,7 @@ sub test_registration_response_201 {
 }
 
 sub test_registration_response_202 {
-    my($claim) = _new_claim_and_keychain();
+    my $claim = _new_claim();
 
     $claim->state('registering');
     my $claim_location_url = "${url}/claim/123";
@@ -224,7 +220,7 @@ sub test_registration_response_failure {
 
 sub _test_registration_response_failure {
     my ($status_code, $error_message) = @_;
-    my ($claim) = _new_claim_and_keychain();
+    my $claim = _new_claim();
 
     $claim->state('registering');
 
@@ -247,7 +243,7 @@ sub _test_registration_response_failure {
 }
 
 sub test_send_activating {
-    my ($claim) = _new_claim_and_keychain();
+    my $claim = _new_claim();
 
     my $callback_fired = 0;
     $claim->on_success_cb(sub { $callback_fired++ });
@@ -270,7 +266,7 @@ sub test_send_activating {
 }
 
 sub test_activating_response_409 {
-    my ($claim) = _new_claim_and_keychain();
+    my $claim = _new_claim();
 
     my $callback_fired = 0;
 
@@ -292,7 +288,7 @@ sub test_activating_response_409 {
 }
 
 sub test_activating_response_200 {
-    my ($claim) = _new_claim_and_keychain();
+    my $claim = _new_claim();
     $claim->state('activating');
     $claim->ttl(0);
 
@@ -335,7 +331,7 @@ sub test_activating_response_200 {
 }
 
 sub test_activating_response_400 {
-    my ($claim) = _new_claim_and_keychain();
+    my $claim = _new_claim();
     $claim->state('activating');
 
     my($success, $fail) = (0,0);
@@ -357,7 +353,7 @@ sub test_activating_response_400 {
 }
 
 sub test_send_renewal {
-    my ($claim) = _new_claim_and_keychain();
+    my $claim = _new_claim();
 
     my $callback_fired = 0;
     $claim->on_success_cb(sub { $callback_fired++ });
@@ -384,7 +380,7 @@ sub test_send_renewal {
 }
 
 sub test_renewal_response_200 {
-    my ($claim) = _new_claim_and_keychain();
+    my $claim = _new_claim();
 
     my $callback_fired = 0;
     $claim->on_success_cb(sub { $callback_fired++ });
@@ -406,7 +402,7 @@ sub test_renewal_response_200 {
 }
 
 sub test_renewal_response_400 {
-    my ($claim) = _new_claim_and_keychain();
+    my $claim = _new_claim();
 
     my $callback_fired = 0;
     $claim->on_success_cb(sub { $callback_fired++ });
@@ -431,7 +427,7 @@ sub test_renewal_response_400 {
 }
 
 sub test_send_release {
-    my ($claim) = _new_claim_and_keychain();
+    my $claim = _new_claim();
 
     $claim->state('active');
     my $claim_location_url = $claim->claim_location_url( "${url}/claims/${resource_name}" );
@@ -462,7 +458,7 @@ sub test_send_release {
 }
 
 sub test_release_response_204 {
-    my ($claim) = _new_claim_and_keychain();
+    my $claim = _new_claim();
 
     my($success, $fail) = (0,0);
     my @success_args;
@@ -486,7 +482,7 @@ sub test_release_response_204 {
 }
 
 sub test_release_response_400 {
-    my ($claim) = _new_claim_and_keychain();
+    my $claim = _new_claim();
 
     my($success, $fail) = (0,0);
     my @fail_args;
@@ -510,7 +506,7 @@ sub test_release_response_400 {
 }
 
 sub test_release_response_409 {
-    my ($claim, $keychain) = _new_claim_and_keychain();
+    my $claim = _new_claim();
 
     my($success, $fail) = (0,0);
     my @fail_args;

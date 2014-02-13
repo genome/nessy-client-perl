@@ -45,18 +45,9 @@ sub new {
 
     my $self = bless {}, $class;
 
-    $self->_required_params(\%params, qw(url resource_name keychain ttl on_fatal_error));
+    $self->_required_params(\%params, qw(url resource_name ttl on_fatal_error));
     $self->state(STATE_NEW);
     return $self;
-}
-
-sub keychain {
-    my $self = shift;
-    if (@_) {
-        $self->{keychain} = shift;
-        Scalar::Util::weaken( $self->{keychain} );
-    }
-    return $self->{keychain};
 }
 
 sub start {

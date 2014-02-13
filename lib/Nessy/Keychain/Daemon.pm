@@ -206,7 +206,7 @@ sub claim {
                     resource_name => $resource_name,
                     data => $data,
                     on_fatal_error => sub { die "XXXX fatal error ".$_[1] },
-                    keychain => $self);
+                );
     if ($claim) {
         $self->add_claim($resource_name, $claim);
         $claim->start(
