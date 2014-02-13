@@ -14,6 +14,7 @@ use IO::Socket;
 use JSON qw();
 use AnyEvent;
 use AnyEvent::Handle;
+use Scalar::Util;
 
 my $MESSAGE_SERIAL = 1;
 
@@ -31,16 +32,16 @@ sub new {
     if ($pid) {
         my $self = bless {}, $class;
         $self->pid($pid);
-        $self->socket($socket1);
         $self->serial_responder_registry({});
 
-        my $watcher = $self->_create_socket_watcher();
+        my $watcher = $self->_create_socket_watcher($socket1);
         $self->socket_watcher($watcher);
 
         return $self;
 
     } elsif (defined $pid) {
         eval {
+            $socket1->close();
             my $daemon = Nessy::Keychain::Daemon->new(url => $params{url}, client_socket => $socket2);
             $daemon->start();
         };
@@ -154,17 +155,21 @@ sub _daemon_response_handler {
 my $json_parser = JSON->new()->convert_blessed(1);
 sub _create_socket_watcher {
     my $self = shift;
+    my $socket = shift;
 
-    my $on_read = sub { shift->unshift_read(json => sub { $self->_on_read_event(@_) }) };
+    my $self_copy = $self;
+    Scalar::Util::weaken($self_copy);
+
+    my $on_read = sub { shift->unshift_read(json => sub { $self_copy->_on_read_event(@_) }) };
 
     my $w = AnyEvent::Handle->new(
-        fh => $self->socket,
+        fh => $socket,
         on_error => sub {
             my (undef, undef, $message) = @_;
-            $self->bailout($message);
+            $self_copy->bailout($message);
         },
         on_read => $on_read,
-        on_eof => sub { $self->bailout('End of file while reading from keychain.') },
+        on_eof => sub { $self_copy->bailout('End of file while reading from keychain.') },
         json => $json_parser,
     );
 }
@@ -176,6 +181,8 @@ sub _on_read_event {
 }
 
 sub bailout {
+    my($self, $message) = @_;
+    Carp::croak($message);
 }
 
 1;

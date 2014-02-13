@@ -2,7 +2,7 @@ package Nessy::Keychain::Daemon;
 
 use strict;
 use warnings;
-use Nessy::Properties qw( url claims client_socket client_watcher server_watcher ppid);
+use Nessy::Properties qw( url claims client_socket client_watcher server_watcher ppid event_loop_cv);
 
 use Nessy::Keychain::Daemon::Claim;
 use Nessy::Keychain::Message;
@@ -21,6 +21,7 @@ sub start {
 
     # enter the event loop
     $cv ||= AnyEvent->condvar;
+    $self->event_loop_cv($cv);
     $cv->recv;
 }
 
@@ -90,13 +91,26 @@ sub on_read_handler {
 
 sub client_error_event {
     my($self, $w, $is_fatal, $msg) = @_;
-    print "*** Error.  is_fatal: $is_fatal: $msg\n";
+    if ($is_fatal) {
+        $self->fatal_error($msg);
+    } else {
+        $self->_log_error("client_error_event: $msg");
+    }
 }
 
 sub client_eof_event {
     my($self, $w) = @_;
-    print "*** at EOF\n";
+    $self->_exit_cleanly(0);
+}
 
+sub _exit_cleanly {
+    my($self, $code) = @_;
+    $self->event_loop_cv->send($code);
+    $self->_exit($code);
+}
+
+sub _exit {
+    exit shift;
 }
 
 # not a method!
@@ -202,10 +216,13 @@ sub claim {
 
     my($resource_name, $data) = map { $message->$_ } qw(resource_name data);
     my $claim_class = $self->_claim_class;
+
+    my $self_copy = $self;
+    Scalar::Util::weaken($self_copy);
     my $claim = $claim_class->new(
                     resource_name => $resource_name,
                     data => $data,
-                    on_fatal_error => sub { die "XXXX fatal error ".$_[1] },
+                    on_fatal_error => sub { $self_copy->fatal_error($_[1]) },
                 );
     if ($claim) {
         $self->add_claim($resource_name, $claim);
@@ -276,7 +293,7 @@ sub _respond_to_requestor {
 sub fatal_error {
     my($self, $message) = @_;
 
-    Carp::carp("Fatal error: $message");
+    $self->_log_error("Fatal error: $message");
     $self->_try_kill_parent('TERM');
     sleep($self->fatal_error_delay_time);
     $self->_exit_if_parent_dead(1);

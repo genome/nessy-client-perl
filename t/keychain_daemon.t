@@ -6,7 +6,7 @@ use warnings;
 use Nessy::Keychain::Daemon;
 use Nessy::Keychain::Message;
 
-use Test::More tests => 69;
+use Test::More tests => 70;
 use Carp;
 use JSON;
 use Socket;
@@ -25,6 +25,8 @@ test_add_remove_claim();
 test_make_claim();
 test_make_claim_failure();
 test_release_claim_success_and_failure();
+
+test_daemon_exits_when_socket_closes();
 
 sub test_constructor_failures {
     my $daemon;
@@ -190,6 +192,7 @@ sub test_make_claim_failure {
     eval { _read_from_socket() };
     like($@, qr(No data read from socket), 'After destruction, daemon has no more messages for us');
 }
+
 sub test_release_claim_success_and_failure {
     _test_release_claim_success_and_failure($_) foreach ( 204, 400, 404, 409 );
 }
@@ -241,6 +244,16 @@ sub _test_release_claim_success_and_failure {
     is($fatal_error, 0, 'no fatal errors');
 }
 
+sub test_daemon_exits_when_socket_closes {
+    my $daemon = _new_test_daemon();
+
+    _close_socket();
+
+    _event_loop($daemon);
+
+    is($daemon->exit_cleanly_was_called, 1, 'daemon calls exit_cleanly() when socket closes');
+}
+
 sub _event_loop {
     my($daemon, $cv) = @_;
 
@@ -257,6 +270,10 @@ sub _event_loop {
 {
     my $json; BEGIN { $json = JSON->new->convert_blessed(1); }
     my($select, $socket);
+
+    sub _close_socket {
+        $socket->close();
+    }
 
     sub _new_test_daemon {
         my $daemon_socket;
@@ -315,6 +332,16 @@ sub DESTROY {
     our $destroy_called = 1;
     shift->SUPER::DESTROY;
 }
+
+sub _exit_cleanly {
+    my $self = shift;
+    $self->{_exit_cleanly_called} = 1;
+    $self->SUPER::_exit_cleanly(@_);
+}
+sub exit_cleanly_was_called {
+    return shift->{_exit_cleanly_called};
+}
+sub _exit {} # don't exit
 
 package Nessy::Keychain::Daemon::FakeClaim;
 
