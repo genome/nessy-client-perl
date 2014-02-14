@@ -47,6 +47,7 @@ sub _new_claim {
                 resource_name => $resource_name,
                 ttl => $ttl,
                 on_fatal_error => sub { Carp::croak("unexpected fatal error: $_[1]") },
+                api_version => 'v1',
             );
     return $claim;
 }
@@ -81,6 +82,7 @@ sub test_constructor {
                 resource_name => $resource_name,
                 ttl => $ttl,
                 on_fatal_error => sub { Carp::croak('unexpected fatal error') },
+                api_version => 'v1',
             );
     ok($claim, 'Create Claim');
 }
@@ -117,7 +119,7 @@ sub test_start_state_machine {
     my $params = $claim->_http_method_params();
     my $json = JSON->new();
     _verify_http_params($params,
-        [ 'POST' => "${url}/claims",
+        [ 'POST' => "${url}/v1/claims",
           headers => {'Content-Type' => 'application/json'},
           body => $json->encode({ resource => $resource_name }),
         ]);

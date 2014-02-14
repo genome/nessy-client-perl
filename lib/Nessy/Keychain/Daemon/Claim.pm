@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use Nessy::Properties qw(
-            resource_name state url claim_location_url timer_watcher ttl
+            resource_name state url claim_location_url timer_watcher ttl api_version
             on_success_cb on_fail_cb on_fatal_error);
 
 use AnyEvent;
@@ -44,7 +44,7 @@ sub new {
 
     my $self = bless {}, $class;
 
-    $self->_required_params(\%params, qw(url resource_name ttl on_fatal_error));
+    $self->_required_params(\%params, qw(url resource_name ttl on_fatal_error api_version));
     $self->state(STATE_NEW);
     return $self;
 }
@@ -115,7 +115,7 @@ sub send_register {
                         'claim',
                         'recv_register_response');
     $self->_send_http_request(
-        POST => $self->url . '/claims',
+        POST => $self->url . '/' . $self->api_version . '/claims',
         headers => {'Content-Type' => 'application/json'},
         body => $json_parser->encode({ resource => $self->resource_name }),
         $responder,

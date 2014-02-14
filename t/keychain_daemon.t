@@ -6,7 +6,7 @@ use warnings;
 use Nessy::Keychain::Daemon;
 use Nessy::Keychain::Message;
 
-use Test::More tests => 70;
+use Test::More tests => 72;
 use Carp;
 use JSON;
 use Socket;
@@ -34,16 +34,22 @@ sub test_constructor_failures {
     $daemon = eval { Nessy::Keychain::Daemon->new() };
     ok($@, 'Calling constructor with no args generates an exception');
 
-    $daemon = eval { Nessy::Keychain::Daemon->new(client_socket => 1) };
-    like($@, qr(url is a required param), 'constructor throws exception when missing url param');
-
-    $daemon = eval { Nessy::Keychain::Daemon->new(url => 1) };
-    like($@, qr(client_socket is a required param), 'constructor throws exception when missing client_socket param');
+    my %all_params = ( client_socket => 1, url => 1, default_ttl => 1, api_version => 1 );
+    foreach my $omit ( keys %all_params ) {
+        my %params = %all_params;
+        delete $params{$omit};
+        $daemon = eval { Nessy::Keychain::Daemon->new(%params) };
+        like($@, qr($omit is a required param), "constructor throws exception when missing $omit param");
+    }
 }
 
 sub test_constructor {
     my $fake_socket = IO::Handle->new();
-    my $daemon = Nessy::Keychain::Daemon->new(client_socket => $fake_socket, url => 1, default_ttl => 1);
+    my $daemon = Nessy::Keychain::Daemon->new(
+                    client_socket => $fake_socket,
+                    url => 1,
+                    default_ttl => 1,
+                    api_version => 'v1');
     ok($daemon, 'constructor');
 
     is_deeply($daemon->claims, {}, 'daemon claims() initialized to an empty hash');
@@ -54,7 +60,8 @@ sub test_start {
     my $daemon = Nessy::Keychain::Daemon->new(
                         client_socket => $test_handle,
                         url => 'http://example.org',
-                        default_ttl => 1);
+                        default_ttl => 1,
+                        api_version => 'v1');
 
     my $cv = AnyEvent->condvar;
     $cv->send(1);
@@ -72,11 +79,13 @@ sub test_add_remove_claim {
     my $test_claim_foo = Nessy::Keychain::Daemon::FakeClaim->new(
         resource_name => 'foo',
         keychain => $daemon,
-        on_fatal_error => \&_unexpected_fatal_error);
+        on_fatal_error => \&_unexpected_fatal_error,
+        api_version => 'v1');
     my $test_claim_bar = Nessy::Keychain::Daemon::FakeClaim->new(
         resource_name => 'bar',
         keychain => $daemon,
-        on_fatal_error => \&_unexpected_fatal_error);
+        on_fatal_error => \&_unexpected_fatal_error,
+        api_version => 'v1');
 
 
     ok( $daemon->add_claim('foo', $test_claim_foo),
@@ -92,7 +101,8 @@ sub test_add_remove_claim {
             Nessy::Keychain::Daemon::FakeClaim->new(
                 resource_name => 'foo',
                 keychain => $daemon,
-                on_fatal_error => \&_unexpected_fatal_error));
+                on_fatal_error => \&_unexpected_fatal_error,
+                api_version => 'v1'));
     };
     like($@, qr(Attempted to add claim foo when it already exists), 'cannot double add the same claim');
 
@@ -207,7 +217,8 @@ sub _test_release_claim_success_and_failure {
     my $fatal_error = 0;
     my $claim = Nessy::Keychain::Daemon::FakeClaim->new(
                     keychain => $daemon,
-                    on_fatal_error => sub { $fatal_error++ });
+                    on_fatal_error => sub { $fatal_error++ },
+                    api_version => 'v1');
 
     ok($claim->state('active'), 'Set claim active');
     ok($daemon->add_claim($claim->resource_name, $claim), "Add claim to keychain for response code $response_code");
@@ -286,7 +297,8 @@ sub _event_loop {
         my $daemon = Nessy::Keychain::TestDaemon->new(
                             client_socket => $daemon_socket,
                             url => 'http://example.com',
-                            default_ttl => 1);
+                            default_ttl => 1,
+                            api_version => 'v1');
         return $daemon;
     }
 

@@ -3,7 +3,7 @@ package Nessy::Keychain;
 use strict;
 use warnings;
 
-use Nessy::Properties qw(pid socket socket_watcher serial_responder_registry);
+use Nessy::Properties qw(pid socket socket_watcher serial_responder_registry api_version);
 
 use Nessy::Claim;
 use Nessy::Keychain::Daemon;
@@ -25,6 +25,7 @@ sub new {
     my($class, %params) = @_;
 
     my $ttl = $params{default_ttl} || $class->_default_ttl;
+    my $api_version = $params{api_version} || $class->_default_api_version;
 
     my($socket1, $socket2) = IO::Socket->socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC);
 
@@ -33,6 +34,7 @@ sub new {
     my $pid = _fork();
     if ($pid) {
         my $self = bless {}, $class;
+        $self->api_version($api_version);
         $self->pid($pid);
         $self->serial_responder_registry({});
 
@@ -45,7 +47,11 @@ sub new {
         eval {
             $socket1->close();
             my $daemon_class = $class->_daemon_class_name;
-            my $daemon = $daemon_class->new(url => $params{url}, client_socket => $socket2, default_ttl => $ttl);
+            my $daemon = $daemon_class->new(
+                                url => $params{url},
+                                client_socket => $socket2,
+                                default_ttl => $ttl,
+                                api_version => $api_version);
             $daemon->start();
         };
         Carp::croak($@) if $@;
@@ -56,6 +62,7 @@ sub new {
 }
 
 sub _default_ttl { 60 } # seconds
+sub _default_api_version { 'v1' }
 
 sub _daemon_class_name { 'Nessy::Keychain::Daemon' }
 
