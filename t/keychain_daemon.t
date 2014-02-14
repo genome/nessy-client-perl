@@ -86,23 +86,28 @@ sub test_add_remove_claim {
         keychain => $daemon,
         on_fatal_error => \&_unexpected_fatal_error,
         api_version => 'v1');
+    my $missing_claim_baz = Nessy::Keychain::Daemon::FakeClaim->new(
+        resource_name => 'baz',
+        keychain => $daemon,
+        on_fatal_error => \&_unexpected_fatal_error,
+        api_version => 'v1');
 
-
-    ok( $daemon->add_claim('foo', $test_claim_foo),
+    ok( $daemon->add_claim($test_claim_foo),
         'add_claim() foo');
-    ok( $daemon->add_claim('bar', $test_claim_bar),
+    ok( $daemon->add_claim($test_claim_bar),
         'add_claim() bar');
 
-    ok(! $daemon->remove_claim('baz'),
+    ok(! $daemon->remove_claim($missing_claim_baz),
         'cannot remove unknown claim baz');
 
     eval {
-        $daemon->add_claim('foo',
+        $daemon->add_claim(
             Nessy::Keychain::Daemon::FakeClaim->new(
                 resource_name => 'foo',
                 keychain => $daemon,
                 on_fatal_error => \&_unexpected_fatal_error,
-                api_version => 'v1'));
+                api_version => 'v1')
+            );
     };
     like($@, qr(Attempted to add claim foo when it already exists), 'cannot double add the same claim');
 
@@ -110,8 +115,8 @@ sub test_add_remove_claim {
         { foo => $test_claim_foo, bar => $test_claim_bar },
         'claims() returns known claims');
 
-    is($daemon->remove_claim('foo'), $test_claim_foo, 'remove claim foo');
-    ok(! $daemon->remove_claim('foo'), 'cannot double remove the same claim');
+    is($daemon->remove_claim($test_claim_foo), $test_claim_foo, 'remove claim foo');
+    ok(! $daemon->remove_claim($test_claim_foo), 'cannot double remove the same claim');
 
     is_deeply( $daemon->claims(),
         { bar => $test_claim_bar },
@@ -221,7 +226,7 @@ sub _test_release_claim_success_and_failure {
                     api_version => 'v1');
 
     ok($claim->state('active'), 'Set claim active');
-    ok($daemon->add_claim($claim->resource_name, $claim), "Add claim to keychain for response code $response_code");
+    ok($daemon->add_claim($claim), "Add claim to keychain for response code $response_code");
 
     my $message = Nessy::Keychain::Message->new(
                         resource_name => $claim->resource_name,

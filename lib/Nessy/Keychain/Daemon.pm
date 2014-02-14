@@ -150,8 +150,8 @@ sub claim_failed {
     my($self, $claim, $message, $error_message) = @_;
 
     $message->error_message($error_message);
+    $self->remove_claim($claim);
     $message->fail;
-    $self->remove_claim($claim->resource_name);
     $self->_send_return_message($message);
 }
 
@@ -227,7 +227,7 @@ sub claim {
                     on_fatal_error => sub { $self_copy->fatal_error($_[1]) },
                 );
     if ($claim) {
-        $self->add_claim($resource_name, $claim);
+        $self->add_claim($claim);
         $claim->start(
             on_success => sub { $self->claim_succeeded($claim, $message) },
             on_fail => sub {
@@ -247,8 +247,9 @@ sub release {
     my($self, $message) = @_;
 
     my $resource_name = $message->{resource_name};
-    my $claim = $self->remove_claim($resource_name);
+    my $claim = $self->lookup_claim($resource_name);
     $claim || Carp::croak("No claim with resource $resource_name");
+    $self->remove_claim($claim);
 
     $claim->release(
             on_success => sub { $self->release_succeeded($claim, $message) },
@@ -260,8 +261,9 @@ sub release {
 }
 
 sub add_claim {
-    my($self, $resource_name, $claim) = @_;
+    my($self, $claim) = @_;
 
+    my $resource_name = $claim->resource_name;
     my $claims = $self->claims;
     if (exists $claims->{$resource_name}) {
         Carp::croak("Attempted to add claim $resource_name when it already exists");
@@ -270,7 +272,8 @@ sub add_claim {
 }
 
 sub remove_claim {
-    my($self, $resource_name) = @_;
+    my($self, $claim) = @_;
+    my $resource_name = $claim->resource_name;
     my $claims = $self->claims;
     return delete $claims->{$resource_name};
 }
