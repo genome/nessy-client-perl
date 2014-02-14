@@ -8,13 +8,18 @@ use Sub::Name;
 use Carp;
 
 our @CARP_NOT;
+our %properties_for_class;
 
 sub import {
     my $package = caller();
 
     push @CARP_NOT, $package;
 
-    foreach my $prop ( @_ ) {
+    shift; # remove this package
+    my @property_list = @_;
+    $properties_for_class{$package} = \@property_list;
+
+    foreach my $prop ( @property_list ) {
         my $sub = Sub::Name::subname $prop => _property_sub($prop);
         Sub::Install::install_sub({
             code => $sub,
@@ -28,6 +33,25 @@ sub import {
         into => $package,
         as => '_required_params',
     });
+
+    my $property_names_sub = sub {
+        my $class = shift;
+        my @parent_classes = do {
+                no strict 'refs';
+                my $isa = "${class}::ISA";
+                @$isa;
+            };
+        my @parent_props = map { $_->__property_names } @parent_classes;
+        my @this_props = @{$properties_for_class{$package}};
+        my %unduplicated_props = map { $_ => 1 } ( @parent_props, @this_props );
+        return keys %unduplicated_props;
+    };
+    Sub::Install::install_sub({
+        code => $property_names_sub,
+        into => $package,
+        as => '__property_names',
+    });
+
 }
 
 sub _property_sub {
@@ -43,12 +67,16 @@ sub _property_sub {
 }
 
 sub _required_params {
-    my($self, $params, @required) = @_;
+    my($class, $params, @required) = @_;
 
+    my %required = map { $_ => 1 } @required;
     my %verified_params;
-    foreach my $param_name ( @required ) {
-        Carp::croak("$param_name is a required param") unless exists ($params->{$param_name});
-        $self->$param_name( $params->{$param_name} ) if (ref $self);
+
+    my @all_properties_for_class = $class->__property_names;
+    foreach my $param_name ( @all_properties_for_class ) {
+        if ($required{$param_name} and ! exists($params->{$param_name})) {
+            Carp::croak("$param_name is a required param") unless exists ($params->{$param_name});
+        }
         $verified_params{$param_name} = $params->{$param_name};
     }
     return \%verified_params;

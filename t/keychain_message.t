@@ -6,7 +6,7 @@ use warnings;
 use Nessy::Keychain::Message;
 use JSON;
 
-use Test::More tests => 32;
+use Test::More tests => 33;
 
 test_constructor();
 test_constructor_and_properties();
@@ -48,11 +48,18 @@ sub test_failed_constructor {
     my $m = eval { Nessy::Keychain::Message->new() };
     ok($@, 'new() throws exception with no args');
 
-    $m = eval { Nessy::Keychain::Message->new(resource_name => 'foo') };
-    like($@, qr(command is a required param), 'constructor fails when missing command');
+    my %all_params = (
+            resource_name => 'foo',
+            command => 'bar',
+            serial => 123,
+        );
 
-    $m = eval { Nessy::Keychain::Message->new(command => 'bar') };
-    like($@, qr(resource_name is a required param), 'constructor fails when missing resource_name');
+    foreach my $omit ( keys %all_params ) {
+        my %params = %all_params;
+        delete $params{$omit};
+        my $m = eval { Nessy::Keychain::Message->new( %params ) };
+        like($@, qr($omit is a required param), "constructor fails when missing $omit");
+    }
 }
 
 sub test_encode {

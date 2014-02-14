@@ -3,9 +3,13 @@
 use strict;
 use warnings;
 
-use Test::More tests => 11;
+use Test::More tests => 12;
 
-print "starting\n";
+{
+    my @properties = sort Nessy::Test::Class->__property_names();
+    is_deeply(\@properties, [ qw(prop_a prop_b) ], '__property_names()');
+}
+
 {
     my $obj = eval { Nessy::Test::Class->new() };
     ok(! $obj, 'constructor fails with no params');
@@ -47,9 +51,7 @@ sub new {
     my $class = shift;
     my(%properties) = @_;
 
-    my $self = bless {}, $class;
-    $self->_required_params(\%properties, qw(prop_a));
-    $self->prop_b($properties{prop_b});
+    my $self = $class->_required_params(\%properties, qw(prop_a));
 
-    return $self;
+    return bless $self, $class;
 }

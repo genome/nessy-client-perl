@@ -8,7 +8,7 @@ use Nessy::Keychain::Daemon::Claim;
 use JSON;
 use Carp;
 use Data::Dumper;
-use Test::More tests => 126;
+use Test::More tests => 128;
 
 # defaults when creating a new claim object for testing
 our $url = 'http://example.org';
@@ -63,6 +63,8 @@ sub test_failed_constructor {
             url => 'http://test.org',
             resource_name => 'foo',
             ttl => 1,
+            on_fatal_error => sub {},
+            api_version => 'v1',
         );
     foreach my $missing_arg ( keys %all_params ) {
         my %args = %all_params;
