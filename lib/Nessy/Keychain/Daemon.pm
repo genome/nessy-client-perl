@@ -2,7 +2,7 @@ package Nessy::Keychain::Daemon;
 
 use strict;
 use warnings;
-use Nessy::Properties qw( url claims client_socket client_watcher server_watcher ppid event_loop_cv);
+use Nessy::Properties qw( url claims client_socket client_watcher server_watcher ppid event_loop_cv default_ttl);
 
 use Nessy::Keychain::Daemon::Claim;
 use Nessy::Keychain::Message;
@@ -51,7 +51,7 @@ sub new {
     my %params = @_;
 
     my $self = bless {}, $class;
-    $self->_required_params(\%params, qw(client_socket url));
+    $self->_required_params(\%params, qw(client_socket url default_ttl));
 
     $self->ppid(getppid);
 
@@ -222,6 +222,7 @@ sub claim {
     my $claim = $claim_class->new(
                     resource_name => $resource_name,
                     data => $data,
+                    ttl => $self->default_ttl,
                     on_fatal_error => sub { $self_copy->fatal_error($_[1]) },
                 );
     if ($claim) {

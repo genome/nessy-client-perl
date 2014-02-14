@@ -43,7 +43,7 @@ sub test_constructor_failures {
 
 sub test_constructor {
     my $fake_socket = IO::Handle->new();
-    my $daemon = Nessy::Keychain::Daemon->new(client_socket => $fake_socket, url => 1);
+    my $daemon = Nessy::Keychain::Daemon->new(client_socket => $fake_socket, url => 1, default_ttl => 1);
     ok($daemon, 'constructor');
 
     is_deeply($daemon->claims, {}, 'daemon claims() initialized to an empty hash');
@@ -51,7 +51,10 @@ sub test_constructor {
 
 sub test_start {
     my $test_handle = IO::Handle->new();
-    my $daemon = Nessy::Keychain::Daemon->new(client_socket => $test_handle, url => 'http://example.org');
+    my $daemon = Nessy::Keychain::Daemon->new(
+                        client_socket => $test_handle,
+                        url => 'http://example.org',
+                        default_ttl => 1);
 
     my $cv = AnyEvent->condvar;
     $cv->send(1);
@@ -280,7 +283,10 @@ sub _event_loop {
         ($socket, $daemon_socket) = IO::Socket->socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC);
         $select = IO::Select->new($socket);
 
-        my $daemon = Nessy::Keychain::TestDaemon->new(client_socket => $daemon_socket, url => 'http://example.com');
+        my $daemon = Nessy::Keychain::TestDaemon->new(
+                            client_socket => $daemon_socket,
+                            url => 'http://example.com',
+                            default_ttl => 1);
         return $daemon;
     }
 

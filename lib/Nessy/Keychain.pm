@@ -24,6 +24,8 @@ my $MESSAGE_SERIAL = 1;
 sub new {
     my($class, %params) = @_;
 
+    my $ttl = $params{default_ttl} || $class->_default_ttl;
+
     my($socket1, $socket2) = IO::Socket->socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC);
 
     $_->autoflush(1) foreach ($socket1, $socket2);
@@ -43,7 +45,7 @@ sub new {
         eval {
             $socket1->close();
             my $daemon_class = $class->_daemon_class_name;
-            my $daemon = $daemon_class->new(url => $params{url}, client_socket => $socket2);
+            my $daemon = $daemon_class->new(url => $params{url}, client_socket => $socket2, default_ttl => $ttl);
             $daemon->start();
         };
         Carp::croak($@) if $@;
@@ -52,6 +54,8 @@ sub new {
         Carp::croak("Can't fork: $!");
     }
 }
+
+sub _default_ttl { 60 } # seconds
 
 sub _daemon_class_name { 'Nessy::Keychain::Daemon' }
 
