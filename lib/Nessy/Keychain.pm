@@ -42,7 +42,8 @@ sub new {
     } elsif (defined $pid) {
         eval {
             $socket1->close();
-            my $daemon = Nessy::Keychain::Daemon->new(url => $params{url}, client_socket => $socket2);
+            my $daemon_class = $class->_daemon_class_name;
+            my $daemon = $daemon_class->new(url => $params{url}, client_socket => $socket2);
             $daemon->start();
         };
         Carp::croak($@) if $@;
@@ -51,6 +52,8 @@ sub new {
         Carp::croak("Can't fork: $!");
     }
 }
+
+sub _daemon_class_name { 'Nessy::Keychain::Daemon' }
 
 sub _fork { fork }
 
