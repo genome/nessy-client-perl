@@ -29,9 +29,9 @@ sub import {
     }
 
     Sub::Install::install_sub({
-        code => \&_required_params,
+        code => \&_verify_params,
         into => $package,
-        as => '_required_params',
+        as => '_verify_params',
     });
 
     my $property_names_sub = sub {
@@ -66,7 +66,7 @@ sub _property_sub {
     };
 }
 
-sub _required_params {
+sub _verify_params {
     my($class, $params, @required) = @_;
 
     my %required = map { $_ => 1 } @required;

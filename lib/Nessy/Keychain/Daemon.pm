@@ -50,7 +50,7 @@ sub new {
     my $class = shift;
     my %params = @_;
 
-    my $self = $class->_required_params(\%params, qw(client_socket url default_ttl api_version));
+    my $self = $class->_verify_params(\%params, qw(client_socket url default_ttl api_version));
     bless $self, $class;
 
     $self->ppid(getppid);

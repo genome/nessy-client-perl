@@ -51,7 +51,7 @@ sub new {
     my $class = shift;
     my(%properties) = @_;
 
-    my $self = $class->_required_params(\%properties, qw(prop_a));
+    my $self = $class->_verify_params(\%properties, qw(prop_a));
 
     return bless $self, $class;
 }
