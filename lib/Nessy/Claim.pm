@@ -8,11 +8,8 @@ use Nessy::Properties qw(resource_name keychain _is_released);
 sub new {
     my ($class, %params) = @_;
 
-    my $self = bless {}, $class;
-
-    $self->_required_params(\%params, qw(resource_name keychain));
-
-    return $self;
+    my $self = $class->_required_params(\%params, qw(resource_name keychain));
+    return bless $self, $class;
 }
 
 sub release {

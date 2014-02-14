@@ -42,9 +42,9 @@ my $json_parser = JSON->new();
 sub new {
     my($class, %params) = @_;
 
-    my $self = bless {}, $class;
 
-    $self->_required_params(\%params, qw(url resource_name ttl on_fatal_error api_version));
+    my $self = $class->_required_params(\%params, qw(url resource_name ttl on_fatal_error api_version));
+    bless $self, $class;
     $self->state(STATE_NEW);
     return $self;
 }

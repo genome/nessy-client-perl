@@ -44,13 +44,14 @@ sub _property_sub {
 
 sub _required_params {
     my($self, $params, @required) = @_;
-    Carp::croak('_requried params must be called on an instance') unless (ref $self);
 
+    my %verified_params;
     foreach my $param_name ( @required ) {
         Carp::croak("$param_name is a required param") unless exists ($params->{$param_name});
-        $self->$param_name( $params->{$param_name} );
+        $self->$param_name( $params->{$param_name} ) if (ref $self);
+        $verified_params{$param_name} = $params->{$param_name};
     }
-    return 1;
+    return \%verified_params;
 }
 
 1;

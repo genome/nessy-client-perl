@@ -16,13 +16,12 @@ sub new {
     my $class = shift;
     my %params = @_;
 
-    my $self = bless {}, $class;
-    $self->_required_params(\%params, qw(resource_name command serial ));
+    my $self = $class->_required_params(\%params, qw(resource_name command serial ));
 
     foreach my $accessor ( @property_list ) {
-        $self->$accessor($params{$accessor}) if (exists $params{$accessor});
+        $self->{$accessor} = $params{$accessor} if (exists $params{$accessor});
     }
-    return $self;
+    return bless $self, $class;
 }
 
 sub succeed {
