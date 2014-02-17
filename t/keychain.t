@@ -8,11 +8,12 @@ use Nessy::Keychain;
 use POSIX ":sys_wait_h";
 use AnyEvent;
 
-use Test::More tests => 6;
+use Test::More tests => 8;
 
 test_constructor();
 test_ping();
 test_daemon_exits_from_destructor();
+test_shutdown();
 
 sub test_constructor {
     my $fork_pid;
@@ -34,31 +35,42 @@ sub test_ping {
     ok($keychain->ping, 'Keychain responds to ping');
 }
 
+sub test_shutdown {
+    my $keychain = Nessy::Keychain->new(url => 'http://example.org');
+
+    my $pid = $keychain->pid;
+
+    my $do_the_shutdown = sub {
+        ok($keychain->shutdown, 'Keychain responds to shutdown');
+    };
+
+    my $killed = _wait_for_pid_to_exit_after($pid, 3, $do_the_shutdown);
+    ok($killed, 'daemon actually exited');
+}
+
 sub test_daemon_exits_from_destructor {
     my $keychain = Nessy::Keychain->new(url => 'http://example.org');
 
     my $pid = $keychain->pid;
 
-    $keychain->ping;
+    $keychain->ping;  # wait for it to actually get going
 
-    undef $keychain;
-
-    my $killed = _wait_for_pid_to_exit($pid, 3);
+    my $killed = _wait_for_pid_to_exit_after($pid, 3, sub { undef $keychain });
     ok($killed, 'daemon process exits when keychain goes away');
 }
 
-sub _wait_for_pid_to_exit {
-    my($pid, $timeout) = @_;
+sub _wait_for_pid_to_exit_after {
+    my($pid, $timeout, $action) = @_;
 
     my $killed;
     local $SIG{CHLD} = sub {
         my $child_pid = waitpid($pid, WNOHANG);
-        print "child $child_pid\n";
         $killed = 1 if $child_pid == $pid;
     };
     local $SIG{ALRM} = sub { $killed = 0; print "alarm\n"; };
 
     alarm($timeout);
+    $action->();
     while(! defined $killed) {
         select(undef,undef,undef,undef);
     }

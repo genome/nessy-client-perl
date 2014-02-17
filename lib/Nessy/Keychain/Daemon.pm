@@ -196,6 +196,7 @@ my %allowed_command = (
     claim   => \&claim,
     release => \&release,
     ping    => \&ping,
+    shutdown => sub { shift->shutdown_cmd(@_) },
 );
 
 sub dispatch_command {
@@ -215,6 +216,20 @@ print "Got a ping!\n";
     1;
 }
 
+sub shutdown_cmd {
+    my($self, $message) = @_;
+    $self->_release_all_claims_in_shutdown;
+
+    $message->succeed;
+    $self->_send_return_message($message);
+
+    $self->client_watcher->on_drain(sub {
+        $self->_exit_cleanly(0);
+    });
+    1;
+}
+
+
 sub claim {
     my($self, $message) = @_;
 
@@ -223,6 +238,7 @@ sub claim {
 
     my $self_copy = $self;
     Scalar::Util::weaken($self_copy);
+
     my $claim = $claim_class->new(
                     resource_name => $resource_name,
                     data => $data,

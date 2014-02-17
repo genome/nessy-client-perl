@@ -69,17 +69,28 @@ sub _daemon_class_name { 'Nessy::Keychain::Daemon' }
 sub _fork { fork }
 
 sub shutdown {
-    my $self = shift;
-    my $timeout = shift || 0;
+    my($self, $timeout, $cb) = @_;
 
-    my $pid = $self->pid;
-    kill('TERM', $pid);
+    $timeout ||= 0;
+    my $is_blocking = !$cb;
+    $cb ||= AnyEvent->condvar;
 
-    local $SIG{ALRM} = $self->_shutdown_timeout_sub;
+    my $report_response_succeeded = sub {
+        my $response = shift;
+        $cb->( $response->is_succeeded );
+    };
 
-    alarm($timeout);
-    waitpid($pid, 0);
-    alarm(0);
+    my $result = $self->_send_command_with_callback(
+        $report_response_succeeded,
+        command => 'shutdown',
+        resource_name => ''
+    );
+
+    if ($is_blocking) {
+        my $shutdown_sub = $self->_shutdown_timeout_sub;
+        return $cb->recv();
+    }
+    return;
 }
 
 sub _shutdown_timeout_sub {
