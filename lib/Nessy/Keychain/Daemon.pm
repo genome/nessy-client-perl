@@ -34,7 +34,11 @@ sub shutdown {
     }
 
     $self->client_socket( undef );
+    $self->_release_all_claims_in_shutdown;
+}
 
+sub _release_all_claims_in_shutdown {
+    my $self = shift;
     foreach my $claim ( $self->all_claims ) {
         $claim->release(
                 on_success => sub { 1 },
