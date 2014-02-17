@@ -68,6 +68,8 @@ sub _default_api_version { 'v1' }
 
 sub _daemon_class_name { 'Nessy::Keychain::Daemon' }
 
+sub _claim_class_name { 'Nessy::Claim' }
+
 sub _fork { fork }
 
 sub shutdown {
@@ -108,8 +110,8 @@ sub claim {
         data => $data,
     });
 
-    return unless $result->{result};
-    return Nessy::Claim->new(
+    my $claim_class = $self->_claim_class_name;
+    return $claim_class->new(
         resource_name => $resource_name,
         keychain  => $self,
     );
