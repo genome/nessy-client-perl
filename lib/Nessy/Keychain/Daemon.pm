@@ -139,6 +139,7 @@ sub client_read_event {
     };
 
     unless ($result) {
+        $message->fail;
         if ($@) {
             $message->error_message(sprintf('command %s exception: %s', $message->command, $@));
         } else {
@@ -183,8 +184,6 @@ sub release_succeeded {
 
 sub _send_return_message {
     my($self, $message) = @_;
-
-    $message->error_message($@) if ($@);
 
     my $watcher = $self->client_watcher;
     return unless $watcher;
