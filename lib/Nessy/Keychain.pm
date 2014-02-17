@@ -27,6 +27,8 @@ sub new {
     my $ttl = $params{default_ttl} || $class->_default_ttl;
     my $api_version = $params{api_version} || $class->_default_api_version;
 
+    my $url = $params{url} || Carp::croak('url is a required param');
+
     my($socket1, $socket2) = IO::Socket->socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC);
 
     $_->autoflush(1) foreach ($socket1, $socket2);
@@ -48,7 +50,7 @@ sub new {
             $socket1->close();
             my $daemon_class = $class->_daemon_class_name;
             my $daemon = $daemon_class->new(
-                                url => $params{url},
+                                url => $url,
                                 client_socket => $socket2,
                                 default_ttl => $ttl,
                                 api_version => $api_version);

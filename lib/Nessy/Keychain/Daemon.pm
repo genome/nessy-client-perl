@@ -242,6 +242,7 @@ sub claim {
     my $claim = $claim_class->new(
                     resource_name => $resource_name,
                     data => $data,
+                    url => $self->url,
                     ttl => $self->default_ttl,
                     api_version => $self->api_version,
                     on_fatal_error => sub { $self_copy->fatal_error($_[1]) },
