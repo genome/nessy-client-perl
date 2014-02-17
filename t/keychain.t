@@ -12,7 +12,7 @@ use Test::More tests => 6;
 
 test_constructor();
 test_ping();
-test_daemon_exits();
+test_daemon_exits_from_destructor();
 
 sub test_constructor {
     my $fork_pid;
@@ -34,7 +34,7 @@ sub test_ping {
     ok($keychain->ping, 'Keychain responds to ping');
 }
 
-sub test_daemon_exits {
+sub test_daemon_exits_from_destructor {
     my $keychain = Nessy::Keychain->new(url => 'http://example.org');
 
     my $pid = $keychain->pid;
