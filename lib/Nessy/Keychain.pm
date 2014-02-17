@@ -102,30 +102,59 @@ sub _shutdown_timeout_sub {
 }
 
 sub claim {
-    my($self, $resource_name, $data) = @_;
+    my($self, $resource_name, $data, $cb) = @_;
 
-    my $result = $self->_send_command_and_get_result({
+    my $is_blocking = !$cb;
+    $cb ||= AnyEvent->condvar;
+
+    my(undef, $filename, $line) = caller;
+    my $report_response = sub {
+        my $response = shift;
+        my $claim;
+        if ($response->is_succeeded) {
+            my $claim_class = $self->_claim_class_name;
+            $claim = $claim_class->new(
+                    resource_name => $resource_name,
+                    keychain => $self);
+        } else {
+            warn("claim $resource_name at $filename:$line failed: ".$response->error_message);
+        }
+        $cb->($claim);
+    };
+    my $result = $self->_send_command_with_callback(
+        $report_response,
         command => 'claim',
         resource_name => $resource_name,
         data => $data,
-    });
-
-    my $claim_class = $self->_claim_class_name;
-    return $claim_class->new(
-        resource_name => $resource_name,
-        keychain  => $self,
     );
+
+    if ($is_blocking) {
+        return $cb->recv;
+    }
+    return;
 }
 
 sub _release {
-    my $self = shift;
-    my ($resource_name) = @_;
+    my($self, $resource_name, $cb) = @_;
 
-    my $result = $self->_send_command_and_get_result({
+    my $is_blocking = !$cb;
+    $cb ||= AnyEvent->condvar;
+
+    my $report_response_succeeded = sub {
+        my $response = shift;
+        $cb->( $response->is_succeeded );
+    };
+
+    my $result = $self->_send_command_with_callback(
+        $report_response_succeeded,
         command => 'release',
         resource_name => $resource_name,
-    });
-    return $result->{result} eq 'success';
+    );
+
+    if ($is_blocking) {
+        return $cb->recv;
+    }
+    return;
 }
 
 sub ping {

@@ -192,10 +192,10 @@ sub _send_return_message {
 }
 
 my %allowed_command = (
-    claim   => \&claim,
-    release => \&release,
-    ping    => \&ping,
-    shutdown => sub { shift->shutdown_cmd(@_) },
+    claim   => 'claim',
+    release => 'release',
+    ping    => 'ping',
+    shutdown => 'shutdown_cmd',
 );
 
 sub dispatch_command {

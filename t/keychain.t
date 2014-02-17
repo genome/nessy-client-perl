@@ -8,12 +8,17 @@ use Nessy::Keychain;
 use POSIX ":sys_wait_h";
 use AnyEvent;
 
-use Test::More tests => 8;
+use Test::More tests => 13;
 
 test_constructor();
 test_ping();
 test_daemon_exits_from_destructor();
 test_shutdown();
+
+test_claim_success();
+test_claim_failure();
+
+test_claim_release();
 
 sub test_constructor {
     my $fork_pid;
@@ -77,3 +82,79 @@ sub _wait_for_pid_to_exit_after {
     alarm(0);
     return $killed;
 }
+
+sub test_claim_success {
+    local $Nessy::TestKeychain::Daemon::claim_should_fail = 0;
+    my $keychain = Nessy::TestKeychain->new(url => 'http://example.org');
+
+    my $resource_name = 'foo';
+    my $data = { some => 'data', structure => [ 'has', 'nested', 'data' ] };
+
+    my $claim = $keychain->claim($resource_name, $data);
+
+    isa_ok($claim, 'Nessy::Claim');
+    is($claim->resource_name, $resource_name, 'claim resource');
+}
+
+sub test_claim_failure {
+    local $Nessy::TestKeychain::Daemon::claim_should_fail = 1;
+    my $keychain = Nessy::TestKeychain->new(url => 'http://example.org');
+
+    my $resource_name = 'foo';
+    my $data = { some => 'data', structure => [ 'has', 'nested', 'data' ] };
+
+    my $claim = $keychain->claim($resource_name, $data);
+
+    is($claim, undef, 'failed claim');
+}
+
+sub test_claim_release {
+    my $keychain = Nessy::TestKeychain->new(url => 'http://example.org');
+
+    my $resource_name = 'foo';
+
+    my $claim = $keychain->claim($resource_name);
+
+    isa_ok($claim, 'Nessy::Claim');
+
+    ok($claim->release(), 'release claim');
+}
+
+
+
+
+
+package Nessy::TestKeychain;
+
+use base 'Nessy::Keychain';
+
+sub _daemon_class_name { 'Nessy::TestKeychain::Daemon' }
+
+package Nessy::TestKeychain::Daemon;
+
+use base 'Nessy::Keychain::Daemon';
+
+our($claim_should_fail, $release_should_fail);
+
+sub claim {
+    my($self, $message) = @_;
+    if ($claim_should_fail) {
+        $self->claim_failed(undef, $message, 'in-test failure');
+    } else {
+        $self->claim_succeeded(undef, $message);
+    }
+    1;
+}
+
+sub release {
+    my($self, $message) = @_;
+    if ($release_should_fail) {
+        $self->release_failed(undef, $message, 'in-test failure');
+    } else {
+        $self->release_succeeded(undef, $message);
+    }
+    1;
+}
+
+sub add_claim { }
+sub remove_claim { }
