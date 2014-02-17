@@ -108,6 +108,8 @@ sub claim {
     $cb ||= AnyEvent->condvar;
 
     my(undef, $filename, $line) = caller;
+    my $caller_location = "$filename:$line";
+
     my $report_response = sub {
         my $response = shift;
         my $claim;
@@ -117,7 +119,7 @@ sub claim {
                     resource_name => $resource_name,
                     keychain => $self);
         } else {
-            warn("claim $resource_name at $filename:$line failed: ".$response->error_message);
+            warn("claim $resource_name at $caller_location failed: ".$response->error_message);
         }
         $cb->($claim);
     };
