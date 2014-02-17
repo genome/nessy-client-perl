@@ -43,6 +43,13 @@ sub test_daemon_exits_from_destructor {
 
     undef $keychain;
 
+    my $killed = _wait_for_pid_to_exit($pid, 3);
+    ok($killed, 'daemon process exits when keychain goes away');
+}
+
+sub _wait_for_pid_to_exit {
+    my($pid, $timeout) = @_;
+
     my $killed;
     local $SIG{CHLD} = sub {
         my $child_pid = waitpid($pid, WNOHANG);
@@ -50,10 +57,11 @@ sub test_daemon_exits_from_destructor {
         $killed = 1 if $child_pid == $pid;
     };
     local $SIG{ALRM} = sub { $killed = 0; print "alarm\n"; };
-    alarm(3);
+
+    alarm($timeout);
     while(! defined $killed) {
         select(undef,undef,undef,undef);
     }
     alarm(0);
-    ok($killed, 'daemon process exits when keychain goes away');
+    return $killed;
 }
