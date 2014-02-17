@@ -3,23 +3,21 @@ package Nessy::Claim;
 use strict;
 use warnings;
 
-use Nessy::Properties qw(resource_name keychain _is_released);
+use Nessy::Properties qw(resource_name on_release _is_released);
 
 sub new {
     my ($class, %params) = @_;
 
-    my $self = $class->_verify_params(\%params, qw(resource_name keychain));
+    my $self = $class->_verify_params(\%params, qw(resource_name on_release));
     return bless $self, $class;
 }
 
 sub release {
     my $self = shift;
     return if $self->_is_released();
-    return unless $self->keychain;
-
-    my $rv =  $self->keychain->_release( $self->resource_name );
     $self->_is_released(1);
-    return $rv;
+
+    $self->on_release->(@_);
 }
 
 sub DESTROY {

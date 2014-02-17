@@ -115,9 +115,10 @@ sub claim {
         my $claim;
         if ($response->is_succeeded) {
             my $claim_class = $self->_claim_class_name;
+            my $on_release = $self->_make_on_release_closure($resource_name, $caller_location);
             $claim = $claim_class->new(
                     resource_name => $resource_name,
-                    keychain => $self);
+                    on_release => $on_release);
         } else {
             warn("claim $resource_name at $caller_location failed: ".$response->error_message);
         }
@@ -134,6 +135,19 @@ sub claim {
         return $cb->recv;
     }
     return;
+}
+
+sub _make_on_release_closure {
+    my($self, $resource_name, $caller_location) = @_;
+
+    return sub {
+        my $cb = shift;
+        my $rv = $self->_release($resource_name, $cb);
+        unless ($rv) {
+            Carp::carp "release $resource_name failed. Claim originated at $caller_location";
+        }
+        return $rv;
+    };
 }
 
 sub _release {
