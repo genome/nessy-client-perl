@@ -102,7 +102,7 @@ sub claim {
     );
 }
 
-sub release {
+sub _release {
     my $self = shift;
     my ($resource_name) = @_;
 

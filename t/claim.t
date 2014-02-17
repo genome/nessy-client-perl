@@ -74,7 +74,7 @@ sub release_count {
     return shift->{release_count} ||= 0;
 }
 
-sub release {
+sub _release {
     my($self, $resource_name) = @_;
     $self->{released} = $resource_name;
 

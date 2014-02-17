@@ -17,7 +17,7 @@ sub release {
     return if $self->_is_released();
     return unless $self->keychain;
 
-    my $rv =  $self->keychain->release( $self->resource_name );
+    my $rv =  $self->keychain->_release( $self->resource_name );
     $self->_is_released(1);
     return $rv;
 }
