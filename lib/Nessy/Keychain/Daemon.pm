@@ -210,7 +210,6 @@ sub dispatch_command {
 
 sub ping {
     my($self, $message) = @_;
-print "Got a ping!\n";
     $message->succeed;
     $self->_send_return_message($message);
     1;
