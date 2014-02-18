@@ -8,7 +8,7 @@ use Nessy::Keychain;
 use POSIX ":sys_wait_h";
 use AnyEvent;
 
-use Test::More tests => 16;
+use Test::More tests => 17;
 
 test_constructor();
 test_ping();
@@ -104,9 +104,13 @@ sub test_claim_failure {
     my $resource_name = 'foo';
     my $data = { some => 'data', structure => [ 'has', 'nested', 'data' ] };
 
+    my $got_warning = '';
+    local $SIG{__WARN__} = sub { $got_warning = shift };
     my $claim = $keychain->claim($resource_name, $data);
 
     is($claim, undef, 'failed claim');
+    my $this_file = __FILE__;
+    like($got_warning, qr(claim $resource_name at $this_file:\d+ failed: in-test failure), 'expected warning');
 }
 
 sub test_claim_release {
