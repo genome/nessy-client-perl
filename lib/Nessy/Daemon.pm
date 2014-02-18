@@ -1,11 +1,11 @@
-package Nessy::Keychain::Daemon;
+package Nessy::Daemon;
 
 use strict;
 use warnings;
 use Nessy::Properties qw( url claims client_socket client_watcher server_watcher ppid event_loop_cv default_ttl api_version);
 
-use Nessy::Keychain::Daemon::Claim;
-use Nessy::Keychain::Message;
+use Nessy::Daemon::Claim;
+use Nessy::Client::Message;
 
 use AnyEvent;
 use AnyEvent::Handle;
@@ -121,9 +121,9 @@ sub _exit {
 sub _construct_message {
     my $message = shift;
     if (ref($message) and ref($message) eq 'HASH') {
-        return Nessy::Keychain::Message->new(%$message);
+        return Nessy::Client::Message->new(%$message);
     } elsif (!ref($message)) {
-        return Nessy::Keychain::Message->from_json(shift);
+        return Nessy::Client::Message->from_json(shift);
     } else {
         Carp::croak("Don't know how to construct message from $message");
     }
@@ -259,7 +259,7 @@ sub claim {
 }
 
 sub _claim_class {
-    return 'Nessy::Keychain::Daemon::Claim';
+    return 'Nessy::Daemon::Claim';
 }
 
 sub release {

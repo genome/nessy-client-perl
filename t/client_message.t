@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use Nessy::Keychain::Message;
+use Nessy::Client::Message;
 use JSON;
 
 use Test::More tests => 33;
@@ -18,7 +18,7 @@ test_success_fail();
 
 
 sub test_constructor {
-    my $m = Nessy::Keychain::Message->new(resource_name => 'foo', command => 'bar', serial => 1);
+    my $m = Nessy::Client::Message->new(resource_name => 'foo', command => 'bar', serial => 1);
     ok($m, 'constructor');
     is($m->resource_name, 'foo', 'resource_name property');
     is($m->command, 'bar', 'command property');
@@ -33,7 +33,7 @@ sub test_constructor_and_properties {
         my %construction_params = @construction_params;
         my $params_count = scalar(keys %construction_params);
 
-        my $m = Nessy::Keychain::Message->new( @construction_params );
+        my $m = Nessy::Client::Message->new( @construction_params );
         ok($m, "new() with $params_count properties");
 
         my $is_ok = 1;
@@ -45,7 +45,7 @@ sub test_constructor_and_properties {
 }
 
 sub test_failed_constructor {
-    my $m = eval { Nessy::Keychain::Message->new() };
+    my $m = eval { Nessy::Client::Message->new() };
     ok($@, 'new() throws exception with no args');
 
     my %all_params = (
@@ -57,7 +57,7 @@ sub test_failed_constructor {
     foreach my $omit ( keys %all_params ) {
         my %params = %all_params;
         delete $params{$omit};
-        my $m = eval { Nessy::Keychain::Message->new( %params ) };
+        my $m = eval { Nessy::Client::Message->new( %params ) };
         like($@, qr($omit is a required param), "constructor fails when missing $omit");
     }
 }
@@ -75,14 +75,14 @@ sub test_encode {
         serial => 1,
         error_message => 'nothing');
 
-    my $m = Nessy::Keychain::Message->new(%params);
+    my $m = Nessy::Client::Message->new(%params);
 
     my $json = JSON->new->convert_blessed(1);
     my $string = $json->encode($m);
     ok($string, 'json encode');
     like($string, qr(resource_name), 'encoded json includes "resource_name"');
 
-    my $copy = Nessy::Keychain::Message->from_json( $string );
+    my $copy = Nessy::Client::Message->from_json( $string );
     ok($copy, 'from_json()');
 
     my $is_ok = 1;
@@ -93,7 +93,7 @@ sub test_encode {
 }
 
 sub test_success_fail {
-    my $m = Nessy::Keychain::Message->new( command => 'hi', resource_name => 'foo', serial => 1);
+    my $m = Nessy::Client::Message->new( command => 'hi', resource_name => 'foo', serial => 1);
     ok($m, 'new message');
     ok($m->succeed, 'Set message successful');
     ok($m->is_succeeded, 'Message was successful');
@@ -106,7 +106,7 @@ sub test_success_fail {
     like($@, qr(Cannot set Message to failed), 'exception');
 
 
-    $m = Nessy::Keychain::Message->new( command => 'hi', resource_name => 'foo', serial => 1);
+    $m = Nessy::Client::Message->new( command => 'hi', resource_name => 'foo', serial => 1);
     ok($m, 'new message');
     ok($m->fail, 'Set message failed');
     ok(! $m->is_succeeded, 'Message was not successful');

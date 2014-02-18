@@ -1,4 +1,4 @@
-package Nessy::Keychain::Message;
+package Nessy::Client::Message;
 
 use strict;
 use warnings;

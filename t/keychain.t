@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use Nessy::Keychain;
+use Nessy::Client;
 
 use POSIX ":sys_wait_h";
 use AnyEvent;
@@ -24,30 +24,30 @@ test_claim_release_with_callback();
 sub test_constructor {
     my $fork_pid;
     no warnings 'redefine';
-    local *Nessy::Keychain::_fork = sub {
+    local *Nessy::Client::_fork = sub {
         $fork_pid = CORE::fork();
         return $fork_pid;
     };
     
-    my $keychain = Nessy::Keychain->new(url => 'http://example.org');
-    ok($keychain, 'created keychain');
-    ok($fork_pid, 'keychain forked');
-    is($keychain->pid, $fork_pid, 'pid()');
+    my $client = Nessy::Client->new(url => 'http://example.org');
+    ok($client, 'created client');
+    ok($fork_pid, 'client forked');
+    is($client->pid, $fork_pid, 'pid()');
     ok(kill(0, $fork_pid), 'daemon process exists');
 }
 
 sub test_ping {
-    my $keychain = Nessy::Keychain->new(url => 'http://example.org');
-    ok($keychain->ping, 'Keychain responds to ping');
+    my $client = Nessy::Client->new(url => 'http://example.org');
+    ok($client->ping, 'Client responds to ping');
 }
 
 sub test_shutdown {
-    my $keychain = Nessy::Keychain->new(url => 'http://example.org');
+    my $client = Nessy::Client->new(url => 'http://example.org');
 
-    my $pid = $keychain->pid;
+    my $pid = $client->pid;
 
     my $do_the_shutdown = sub {
-        ok($keychain->shutdown, 'Keychain responds to shutdown');
+        ok($client->shutdown, 'Client responds to shutdown');
     };
 
     my $killed = _wait_for_pid_to_exit_after($pid, 3, $do_the_shutdown);
@@ -55,14 +55,14 @@ sub test_shutdown {
 }
 
 sub test_daemon_exits_from_destructor {
-    my $keychain = Nessy::Keychain->new(url => 'http://example.org');
+    my $client = Nessy::Client->new(url => 'http://example.org');
 
-    my $pid = $keychain->pid;
+    my $pid = $client->pid;
 
-    $keychain->ping;  # wait for it to actually get going
+    $client->ping;  # wait for it to actually get going
 
-    my $killed = _wait_for_pid_to_exit_after($pid, 3, sub { undef $keychain });
-    ok($killed, 'daemon process exits when keychain goes away');
+    my $killed = _wait_for_pid_to_exit_after($pid, 3, sub { undef $client });
+    ok($killed, 'daemon process exits when client goes away');
 }
 
 sub _wait_for_pid_to_exit_after {
@@ -85,28 +85,28 @@ sub _wait_for_pid_to_exit_after {
 }
 
 sub test_claim_success {
-    local $Nessy::TestKeychain::Daemon::claim_should_fail = 0;
-    my $keychain = Nessy::TestKeychain->new(url => 'http://example.org');
+    local $Nessy::TestClient::Daemon::claim_should_fail = 0;
+    my $client = Nessy::TestClient->new(url => 'http://example.org');
 
     my $resource_name = 'foo';
     my $data = { some => 'data', structure => [ 'has', 'nested', 'data' ] };
 
-    my $claim = $keychain->claim($resource_name, $data);
+    my $claim = $client->claim($resource_name, $data);
 
     isa_ok($claim, 'Nessy::Claim');
     is($claim->resource_name, $resource_name, 'claim resource');
 }
 
 sub test_claim_failure {
-    local $Nessy::TestKeychain::Daemon::claim_should_fail = 1;
-    my $keychain = Nessy::TestKeychain->new(url => 'http://example.org');
+    local $Nessy::TestClient::Daemon::claim_should_fail = 1;
+    my $client = Nessy::TestClient->new(url => 'http://example.org');
 
     my $resource_name = 'foo';
     my $data = { some => 'data', structure => [ 'has', 'nested', 'data' ] };
 
     my $got_warning = '';
     local $SIG{__WARN__} = sub { $got_warning = shift };
-    my $claim = $keychain->claim($resource_name, $data);
+    my $claim = $client->claim($resource_name, $data);
 
     is($claim, undef, 'failed claim');
     my $this_file = __FILE__;
@@ -114,11 +114,11 @@ sub test_claim_failure {
 }
 
 sub test_claim_release {
-    my $keychain = Nessy::TestKeychain->new(url => 'http://example.org');
+    my $client = Nessy::TestClient->new(url => 'http://example.org');
 
     my $resource_name = 'foo';
 
-    my $claim = $keychain->claim($resource_name);
+    my $claim = $client->claim($resource_name);
 
     isa_ok($claim, 'Nessy::Claim');
 
@@ -126,11 +126,11 @@ sub test_claim_release {
 }
 
 sub test_claim_release_with_callback {
-    my $keychain = Nessy::TestKeychain->new(url => 'http://example.org');
+    my $client = Nessy::TestClient->new(url => 'http://example.org');
 
     my $resource_name = 'foo';
 
-    my $claim = $keychain->claim($resource_name);
+    my $claim = $client->claim($resource_name);
 
     isa_ok($claim, 'Nessy::Claim');
 
@@ -144,15 +144,15 @@ sub test_claim_release_with_callback {
 
 
 
-package Nessy::TestKeychain;
+package Nessy::TestClient;
 
-use base 'Nessy::Keychain';
+use base 'Nessy::Client';
 
-sub _daemon_class_name { 'Nessy::TestKeychain::Daemon' }
+sub _daemon_class_name { 'Nessy::TestClient::Daemon' }
 
-package Nessy::TestKeychain::Daemon;
+package Nessy::TestClient::Daemon;
 
-use base 'Nessy::Keychain::Daemon';
+use base 'Nessy::Daemon';
 
 our($claim_should_fail, $release_should_fail);
 

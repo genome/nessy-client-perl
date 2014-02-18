@@ -1,4 +1,4 @@
-package Nessy::Keychain;
+package Nessy::Client;
 
 use strict;
 use warnings;
@@ -6,7 +6,7 @@ use warnings;
 use Nessy::Properties qw(pid socket socket_watcher serial_responder_registry api_version);
 
 use Nessy::Claim;
-use Nessy::Keychain::Daemon;
+use Nessy::Daemon;
 
 use Carp;
 use Socket;
@@ -18,7 +18,7 @@ use Scalar::Util;
 
 my $MESSAGE_SERIAL = 1;
 
-# The keychain process that acts as an intermediary between the client code
+# The client process that acts as an intermediary between the client code
 # and the lock server 
 
 sub new {
@@ -66,7 +66,7 @@ sub new {
 sub _default_ttl { 60 } # seconds
 sub _default_api_version { 'v1' }
 
-sub _daemon_class_name { 'Nessy::Keychain::Daemon' }
+sub _daemon_class_name { 'Nessy::Daemon' }
 
 sub _claim_class_name { 'Nessy::Claim' }
 
@@ -215,7 +215,7 @@ sub ping {
 sub _send_command_with_callback {
     my($self, $cb, %message_args) = @_;
 
-    my $message = Nessy::Keychain::Message->new(serial => $MESSAGE_SERIAL++, %message_args);
+    my $message = Nessy::Client::Message->new(serial => $MESSAGE_SERIAL++, %message_args);
 
     $self->_register_responder_for_message($cb, $message);
     $self->socket_watcher->push_write(json => $message);
@@ -258,14 +258,14 @@ sub _create_socket_watcher {
             $self_copy->bailout($message);
         },
         on_read => $on_read,
-        on_eof => sub { $self_copy->bailout('End of file while reading from keychain.') },
+        on_eof => sub { $self_copy->bailout('End of file while reading from client.') },
         json => $json_parser,
     );
 }
 
 sub _on_read_event {
     my($self, $w, $message) = @_;
-    $message = Nessy::Keychain::Message->new(%$message);
+    $message = Nessy::Client::Message->new(%$message);
     $self->_daemon_response_handler($w, $message);
 }
 

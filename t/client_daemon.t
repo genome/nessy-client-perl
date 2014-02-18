@@ -3,8 +3,8 @@
 use strict;
 use warnings;
 
-use Nessy::Keychain::Daemon;
-use Nessy::Keychain::Message;
+use Nessy::Daemon;
+use Nessy::Client::Message;
 
 use Test::More tests => 72;
 use Carp;
@@ -31,21 +31,21 @@ test_daemon_exits_when_socket_closes();
 sub test_constructor_failures {
     my $daemon;
 
-    $daemon = eval { Nessy::Keychain::Daemon->new() };
+    $daemon = eval { Nessy::Daemon->new() };
     ok($@, 'Calling constructor with no args generates an exception');
 
     my %all_params = ( client_socket => 1, url => 1, default_ttl => 1, api_version => 1 );
     foreach my $omit ( keys %all_params ) {
         my %params = %all_params;
         delete $params{$omit};
-        $daemon = eval { Nessy::Keychain::Daemon->new(%params) };
+        $daemon = eval { Nessy::Daemon->new(%params) };
         like($@, qr($omit is a required param), "constructor throws exception when missing $omit param");
     }
 }
 
 sub test_constructor {
     my $fake_socket = IO::Handle->new();
-    my $daemon = Nessy::Keychain::Daemon->new(
+    my $daemon = Nessy::Daemon->new(
                     client_socket => $fake_socket,
                     url => 1,
                     default_ttl => 1,
@@ -57,7 +57,7 @@ sub test_constructor {
 
 sub test_start {
     my $test_handle = IO::Handle->new();
-    my $daemon = Nessy::Keychain::Daemon->new(
+    my $daemon = Nessy::Daemon->new(
                         client_socket => $test_handle,
                         url => 'http://example.org',
                         default_ttl => 1,
@@ -76,19 +76,19 @@ sub _unexpected_fatal_error { my($obj, $message) = @_; Carp::croak("unexpected f
 sub test_add_remove_claim {
     my $daemon = _new_test_daemon();
 
-    my $test_claim_foo = Nessy::Keychain::Daemon::FakeClaim->new(
+    my $test_claim_foo = Nessy::Daemon::FakeClaim->new(
         resource_name => 'foo',
-        keychain => $daemon,
+        client => $daemon,
         on_fatal_error => \&_unexpected_fatal_error,
         api_version => 'v1');
-    my $test_claim_bar = Nessy::Keychain::Daemon::FakeClaim->new(
+    my $test_claim_bar = Nessy::Daemon::FakeClaim->new(
         resource_name => 'bar',
-        keychain => $daemon,
+        client => $daemon,
         on_fatal_error => \&_unexpected_fatal_error,
         api_version => 'v1');
-    my $missing_claim_baz = Nessy::Keychain::Daemon::FakeClaim->new(
+    my $missing_claim_baz = Nessy::Daemon::FakeClaim->new(
         resource_name => 'baz',
-        keychain => $daemon,
+        client => $daemon,
         on_fatal_error => \&_unexpected_fatal_error,
         api_version => 'v1');
 
@@ -102,9 +102,9 @@ sub test_add_remove_claim {
 
     eval {
         $daemon->add_claim(
-            Nessy::Keychain::Daemon::FakeClaim->new(
+            Nessy::Daemon::FakeClaim->new(
                 resource_name => 'foo',
-                keychain => $daemon,
+                client => $daemon,
                 on_fatal_error => \&_unexpected_fatal_error,
                 api_version => 'v1')
             );
@@ -129,7 +129,7 @@ sub test_add_remove_claim {
 sub test_make_claim {
     my $daemon = _new_test_daemon();
 
-    my $message = Nessy::Keychain::Message->new(
+    my $message = Nessy::Client::Message->new(
                         resource_name => 'foo',
                         command => 'claim',
                         serial => 1,
@@ -137,9 +137,9 @@ sub test_make_claim {
     _send_to_socket($message);
 
     my $cv = AnyEvent->condvar();
-    local $Nessy::Keychain::Daemon::FakeClaim::on_start_cb = sub { $cv->send; 1; };
+    local $Nessy::Daemon::FakeClaim::on_start_cb = sub { $cv->send; 1; };
     my $expected_claim_location_url = 'something';
-    @Nessy::Keychain::Daemon::FakeClaim::next_http_response = ([
+    @Nessy::Daemon::FakeClaim::next_http_response = ([
             '',
             {   Status => 201,
                 Location => $expected_claim_location_url,
@@ -163,9 +163,9 @@ sub test_make_claim {
     eval { _read_from_socket() };
     like($@, qr(No data read from socket), 'Daemon has no more messages for us');
 
-    $Nessy::Keychain::TestDaemon::destroy_called = 0;
+    $Nessy::TestDaemon::destroy_called = 0;
     undef $daemon;
-    ok($Nessy::Keychain::TestDaemon::destroy_called, 'Daemon destroyed');
+    ok($Nessy::TestDaemon::destroy_called, 'Daemon destroyed');
 
     eval { _read_from_socket() };
     like($@, qr(No data read from socket), 'After destruction, daemon has no more messages for us');
@@ -174,7 +174,7 @@ sub test_make_claim {
 sub test_make_claim_failure {
     my $daemon = _new_test_daemon();
 
-    my $message = Nessy::Keychain::Message->new(
+    my $message = Nessy::Client::Message->new(
                         resource_name => 'foo',
                         command => 'claim',
                         serial => 1,
@@ -182,8 +182,8 @@ sub test_make_claim_failure {
     _send_to_socket($message);
 
     my $cv = AnyEvent->condvar();
-    local $Nessy::Keychain::Daemon::FakeClaim::on_start_cb = sub { $cv->send; 0; };
-    @Nessy::Keychain::Daemon::FakeClaim::next_http_response = ([
+    local $Nessy::Daemon::FakeClaim::on_start_cb = sub { $cv->send; 0; };
+    @Nessy::Daemon::FakeClaim::next_http_response = ([
         '',
         { Status => 400 },
     ]);
@@ -203,9 +203,9 @@ sub test_make_claim_failure {
     eval { _read_from_socket() };
     like($@, qr(No data read from socket), 'Daemon has no more messages for us');
 
-    $Nessy::Keychain::TestDaemon::destroy_called = 0;
+    $Nessy::TestDaemon::destroy_called = 0;
     undef $daemon;
-    ok($Nessy::Keychain::TestDaemon::destroy_called, 'Daemon destroyed');
+    ok($Nessy::TestDaemon::destroy_called, 'Daemon destroyed');
 
     eval { _read_from_socket() };
     like($@, qr(No data read from socket), 'After destruction, daemon has no more messages for us');
@@ -220,15 +220,15 @@ sub _test_release_claim_success_and_failure {
 
     my $daemon = _new_test_daemon();
     my $fatal_error = 0;
-    my $claim = Nessy::Keychain::Daemon::FakeClaim->new(
-                    keychain => $daemon,
+    my $claim = Nessy::Daemon::FakeClaim->new(
+                    client => $daemon,
                     on_fatal_error => sub { $fatal_error++ },
                     api_version => 'v1');
 
     ok($claim->state('active'), 'Set claim active');
-    ok($daemon->add_claim($claim), "Add claim to keychain for response code $response_code");
+    ok($daemon->add_claim($claim), "Add claim to client for response code $response_code");
 
-    my $message = Nessy::Keychain::Message->new(
+    my $message = Nessy::Client::Message->new(
                         resource_name => $claim->resource_name,
                         command => 'release',
                         serial => 1,
@@ -236,9 +236,9 @@ sub _test_release_claim_success_and_failure {
     _send_to_socket($message);
 
     my $cv = AnyEvent->condvar();
-    local $Nessy::Keychain::Daemon::FakeClaim::on_release_cb = sub { $cv->send; 1; };
+    local $Nessy::Daemon::FakeClaim::on_release_cb = sub { $cv->send; 1; };
 
-    @Nessy::Keychain::Daemon::FakeClaim::next_http_response = ([
+    @Nessy::Daemon::FakeClaim::next_http_response = ([
         '',
         { Status => $response_code },
     ]);
@@ -299,7 +299,7 @@ sub _event_loop {
         ($socket, $daemon_socket) = IO::Socket->socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC);
         $select = IO::Select->new($socket);
 
-        my $daemon = Nessy::Keychain::TestDaemon->new(
+        my $daemon = Nessy::TestDaemon->new(
                             client_socket => $daemon_socket,
                             url => 'http://example.com',
                             default_ttl => 1,
@@ -336,15 +336,15 @@ sub _event_loop {
             last unless $count;
         }
         Carp::croak("No data read from socket") unless length($buf);
-        return Nessy::Keychain::Message->from_json($buf);
+        return Nessy::Client::Message->from_json($buf);
     }
 }
 
-package Nessy::Keychain::TestDaemon;
+package Nessy::TestDaemon;
 
-use base 'Nessy::Keychain::Daemon';
+use base 'Nessy::Daemon';
 
-sub _claim_class { return 'Nessy::Keychain::Daemon::FakeClaim' }
+sub _claim_class { return 'Nessy::Daemon::FakeClaim' }
 
 sub new {
     our $destroy_called = 0;
@@ -366,9 +366,9 @@ sub exit_cleanly_was_called {
 }
 sub _exit {} # don't exit
 
-package Nessy::Keychain::Daemon::FakeClaim;
+package Nessy::Daemon::FakeClaim;
 
-use base 'Nessy::Keychain::Daemon::Claim';
+use base 'Nessy::Daemon::Claim';
 
 our($on_start_cb, $on_release_cb);
 
@@ -396,7 +396,7 @@ sub _send_http_request {
     my($self, $http_method, $url, %params) = @_;
 
     my @args;
-    if ($Nessy::Keychain::TestDaemon::destroy_called) {
+    if ($Nessy::TestDaemon::destroy_called) {
         @args = ('in shutdown', { Status => 204 });
 
     } elsif (@next_http_response) {

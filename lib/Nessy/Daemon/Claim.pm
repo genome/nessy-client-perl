@@ -1,4 +1,4 @@
-package Nessy::Keychain::Daemon::Claim;
+package Nessy::Daemon::Claim;
 
 use strict;
 use warnings;

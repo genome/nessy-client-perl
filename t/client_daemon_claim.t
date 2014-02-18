@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use Nessy::Keychain::Daemon::Claim;
+use Nessy::Daemon::Claim;
 
 use JSON;
 use Carp;
@@ -42,7 +42,7 @@ test_release_response_409();
 test_release_failure();
 
 sub _new_claim {
-    my $claim = Nessy::Keychain::Daemon::TestClaim->new(
+    my $claim = Nessy::Daemon::TestClaim->new(
                 url => $url,
                 resource_name => $resource_name,
                 ttl => $ttl,
@@ -56,7 +56,7 @@ sub test_failed_constructor {
 
     my $claim;
 
-    $claim = eval { Nessy::Keychain::Daemon::Claim->new() };
+    $claim = eval { Nessy::Daemon::Claim->new() };
     ok($@, 'Calling new() without args throws an exception');
 
     my %all_params = (
@@ -70,7 +70,7 @@ sub test_failed_constructor {
         my %args = %all_params;
         delete $args{$missing_arg};
 
-        $claim = eval { Nessy::Keychain::Daemon::Claim->new( %args ) };
+        $claim = eval { Nessy::Daemon::Claim->new( %args ) };
         like($@,
             qr($missing_arg is a required param),
             "missing arg $missing_arg throws an exception");
@@ -79,7 +79,7 @@ sub test_failed_constructor {
 
 sub test_constructor {
     my $claim;
-    $claim = Nessy::Keychain::Daemon::TestClaim->new(
+    $claim = Nessy::Daemon::TestClaim->new(
                 url => $url,
                 resource_name => $resource_name,
                 ttl => $ttl,
@@ -533,9 +533,9 @@ sub test_release_response_409 {
     is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
 }
 
-package Nessy::Keychain::Daemon::TestClaim;
+package Nessy::Daemon::TestClaim;
 BEGIN {
-    our @ISA = qw( Nessy::Keychain::Daemon::Claim );
+    our @ISA = qw( Nessy::Daemon::Claim );
 }
 
 sub new {
