@@ -141,12 +141,27 @@ sub _make_on_release_closure {
     my($self, $resource_name, $caller_location) = @_;
 
     return sub {
-        my $cb = shift;
-        my $rv = $self->_release($resource_name, $cb);
-        unless ($rv) {
-            Carp::carp "release $resource_name failed. Claim originated at $caller_location";
+        my $provided_cb = shift;
+
+        if ($provided_cb) {
+            # non-blocking.  Wrap the provided callback so we can give a useful
+            # warning when it ultimately completes
+            my $cb = sub {
+                my $result = shift;
+                $provided_cb->($result);
+                unless ($result) {
+                    Carp::carp "release $resource_name failed. Claim originated at $caller_location";
+                }
+            };
+            $self->_release($resource_name, $cb);
+
+        } else {
+            my $rv = $self->_release($resource_name);
+            unless ($rv) {
+                Carp::carp "release $resource_name failed. Claim originated at $caller_location";
+            }
+            return $rv;
         }
-        return $rv;
     };
 }
 

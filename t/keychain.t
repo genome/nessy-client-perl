@@ -8,7 +8,7 @@ use Nessy::Keychain;
 use POSIX ":sys_wait_h";
 use AnyEvent;
 
-use Test::More tests => 13;
+use Test::More tests => 16;
 
 test_constructor();
 test_ping();
@@ -19,6 +19,7 @@ test_claim_success();
 test_claim_failure();
 
 test_claim_release();
+test_claim_release_with_callback();
 
 sub test_constructor {
     my $fork_pid;
@@ -118,6 +119,21 @@ sub test_claim_release {
     isa_ok($claim, 'Nessy::Claim');
 
     ok($claim->release(), 'release claim');
+}
+
+sub test_claim_release_with_callback {
+    my $keychain = Nessy::TestKeychain->new(url => 'http://example.org');
+
+    my $resource_name = 'foo';
+
+    my $claim = $keychain->claim($resource_name);
+
+    isa_ok($claim, 'Nessy::Claim');
+
+    my $cv = AnyEvent->condvar;
+    is($claim->release($cv), undef, 'release claim with callback returns undef');
+
+    is($cv->recv, 1, 'release-supplied callback was called');
 }
 
 
