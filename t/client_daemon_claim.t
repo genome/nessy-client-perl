@@ -8,12 +8,13 @@ use Nessy::Daemon::Claim;
 use JSON;
 use Carp;
 use Data::Dumper;
-use Test::More tests => 128;
+use Test::More tests => 129;
 
 # defaults when creating a new claim object for testing
 our $url = 'http://example.org';
 our $resource_name = 'foo';
 our $ttl = 1;
+our $user_data = { some => 'hash' };
 
 test_failed_constructor();
 test_constructor();
@@ -46,6 +47,7 @@ sub _new_claim {
                 url => $url,
                 resource_name => $resource_name,
                 ttl => $ttl,
+                user_data => $user_data,
                 on_fatal_error => sub { Carp::croak("unexpected fatal error: $_[1]") },
                 api_version => 'v1',
             );
@@ -87,6 +89,16 @@ sub test_constructor {
                 api_version => 'v1',
             );
     ok($claim, 'Create Claim');
+
+    $claim = Nessy::Daemon::TestClaim->new(
+                url => $url,
+                resource_name => $resource_name,
+                ttl => $ttl,
+                on_fatal_error => sub { Carp::croak('unexpected fatal error') },
+                user_data => $user_data,
+                api_version => 'v1',
+            );
+    ok($claim, 'Create Claim with user data');
 }
 
 sub _verify_http_params {
@@ -123,7 +135,7 @@ sub test_start_state_machine {
     _verify_http_params($params,
         [ 'POST' => "${url}/v1/claims/",
           headers => {'Content-Type' => 'application/json'},
-          body => $json->encode({ resource => $resource_name }),
+          body => $json->encode({ resource => $resource_name, ttl => $ttl, user_data => $user_data }),
         ]);
 
     is($callback_called, 0, 'neither success nor fail callbacks were called');
