@@ -7,10 +7,7 @@ use JSON qw();
 
 # used for messages sent between the user/daemon socket
 
-my @property_list;
-BEGIN { @property_list = qw( resource_name data result error_message command serial ) }
-
-use Nessy::Properties @property_list;
+use Nessy::Properties qw( resource_name data result error_message command serial );
 
 sub new {
     my $class = shift;
@@ -18,9 +15,6 @@ sub new {
 
     my $self = $class->_verify_params(\%params, qw(resource_name command serial ));
 
-    foreach my $accessor ( @property_list ) {
-        $self->{$accessor} = $params{$accessor} if (exists $params{$accessor});
-    }
     return bless $self, $class;
 }
 
