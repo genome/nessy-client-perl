@@ -3,13 +3,26 @@ package Nessy::Claim;
 use strict;
 use warnings;
 
-use Nessy::Properties qw(resource_name on_release _is_released);
+use Nessy::Properties qw(resource_name on_release _is_released _pid _tid);
+
+my $can_use_threads = eval 'use threads; 1';
 
 sub new {
     my ($class, %params) = @_;
-
     my $self = $class->_verify_params(\%params, qw(resource_name on_release));
-    return bless $self, $class;
+
+    bless $self, $class;
+
+    $self->_pid($$);
+    $self->_tid($self->_get_tid);
+
+    return $self;
+}
+
+sub _get_tid {
+    return $can_use_threads
+        ? threads->tid
+        : 0;
 }
 
 sub release {
@@ -22,7 +35,9 @@ sub release {
 
 sub DESTROY {
     my $self = shift;
-    $self->release;
+    if (($self->_pid == $$) and ($self->_tid == $self->_get_tid)) {
+        $self->release;
+    }
 }
 
 1;
