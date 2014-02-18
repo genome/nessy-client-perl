@@ -122,7 +122,7 @@ sub send_register {
         if defined $self->user_data;
 
     $self->_send_http_request(
-        POST => $self->url . '/' . $self->api_version . '/claims',
+        POST => $self->url . '/' . $self->api_version . '/claims/',
         headers => {'Content-Type' => 'application/json'},
         body => $json_parser->encode($request_body),
         $responder,
@@ -181,8 +181,7 @@ sub _install_sub {
 
 sub recv_register_response_201 {
     my($self, $body, $headers) = @_;
-
-    $self->claim_location_url( $headers->{Location} );
+    $self->claim_location_url( $headers->{location} );
     $self->_successfully_activated();
 }
 
@@ -211,7 +210,7 @@ sub recv_register_response_202 {
 
     $self->transition(STATE_WAITING);
 
-    $self->claim_location_url( $headers->{Location} );
+    $self->claim_location_url( $headers->{location} );
     my $ttl = $self->_ttl_timer_value;
     my $w = $self->_create_timer_event(
                 after => $ttl,

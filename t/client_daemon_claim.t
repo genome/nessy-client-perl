@@ -121,7 +121,7 @@ sub test_start_state_machine {
     my $params = $claim->_http_method_params();
     my $json = JSON->new();
     _verify_http_params($params,
-        [ 'POST' => "${url}/v1/claims",
+        [ 'POST' => "${url}/v1/claims/",
           headers => {'Content-Type' => 'application/json'},
           body => $json->encode({ resource => $resource_name }),
         ]);
@@ -182,7 +182,7 @@ sub test_registration_response_201 {
     my $claim_location_url = "${url}/claim/123";
 
     my $response_handler = $claim->_make_response_generator('claim', 'recv_register_response');
-    ok( $response_handler->('', { Status => 201, Location => $claim_location_url}),
+    ok( $response_handler->('', { Status => 201, location => $claim_location_url}),
         'send 201 response to registration');
     is($claim->state(), 'active', 'Claim state is active');
     ok($claim->timer_watcher, 'Claim created a timer');
@@ -203,7 +203,7 @@ sub test_registration_response_202 {
     $claim->on_fail_cb(sub { $callback_fired++ });
 
     my $response_handler = $claim->_make_response_generator('claim', 'recv_register_response');
-    ok( $response_handler->('', { Status => 202, Location => $claim_location_url}),
+    ok( $response_handler->('', { Status => 202, location => $claim_location_url}),
         'send 202 response to registrtation');
     is($claim->state(), 'waiting', 'Claim state is waiting');
     ok($claim->timer_watcher, 'Claim created a timer');

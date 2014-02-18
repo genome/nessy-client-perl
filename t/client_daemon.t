@@ -142,7 +142,7 @@ sub test_make_claim {
     @Nessy::Daemon::FakeClaim::next_http_response = ([
             '',
             {   Status => 201,
-                Location => $expected_claim_location_url,
+                location => $expected_claim_location_url,
             }]);
 
     _event_loop($daemon, $cv);

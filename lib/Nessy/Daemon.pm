@@ -274,9 +274,10 @@ sub release {
             on_success => sub { $self->release_succeeded($claim, $message) },
             on_fail => sub {
                             my(undef, $error_message) = @_;
-                            $self->claim_failed($claim, $message, $error_message);
+                            $self->release_failed($claim, $message, $error_message);
                         },
         );
+    1;
 }
 
 sub add_claim {
