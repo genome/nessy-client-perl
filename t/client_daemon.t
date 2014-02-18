@@ -56,7 +56,8 @@ sub test_constructor {
 }
 
 sub test_start {
-    my $test_handle = IO::Handle->new();
+    my ($test_handle,$not_needed) = IO::Socket->socketpair(
+        AF_UNIX, SOCK_STREAM, PF_UNSPEC);
     my $daemon = Nessy::Daemon->new(
                         client_socket => $test_handle,
                         url => 'http://example.org',
