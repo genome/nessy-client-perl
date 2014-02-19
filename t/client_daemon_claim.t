@@ -385,7 +385,7 @@ sub test_send_renewal {
     _verify_http_params($params,
         [ 'PATCH' => $claim_location_url,
           headers => {'Content-Type' => 'application/json'},
-          body => $json->encode({ ttl => $ttl/4}),
+          body => $json->encode({ ttl => $ttl}),
         ]);
 
     is($claim->state, 'renewing', 'state is renewing');

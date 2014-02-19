@@ -260,7 +260,7 @@ sub send_renewal {
     my $responder = $self->_make_response_generator(
                         'renew',
                         'recv_renewal_response');
-    my $ttl = $self->_ttl_timer_value;
+    my $ttl = $self->ttl;
     $self->_send_http_request(
         PATCH => $self->claim_location_url,
         headers => {'Content-Type' => 'application/json'},

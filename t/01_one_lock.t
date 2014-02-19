@@ -7,7 +7,7 @@ use Test::More;
 BEGIN {
     my $can_use_threads = eval 'use threads; 1';
     if ($can_use_threads) {
-        plan tests => 13;
+        plan tests => 17;
     }
     else {
         plan skip_all => 'Needs threaded perl';
@@ -47,6 +47,7 @@ my $user_data = { bar => 'stuff goes here' };
 
 test_get_release();
 test_get_undef();
+test_renewal();
 
 sub make_server_thread {
     my ($server, $response) = @_;
@@ -141,6 +142,34 @@ sub test_get_undef {
     is_deeply($release_json, {
         status      => 'released'
     }, 'The request body should be well formed');
+}
+
+sub test_renewal {
+    my $server_thread_register = make_server_thread($server, [
+        201, ['Location' => "$url/v1/claims/abc"], [], ]);
+
+    my $lock = $client->claim($resource_name, ttl => 1);
+
+    $server_thread_register->join();
+
+
+    my $server_thread_renewal = make_server_thread($server, [
+        200, [], [], ]);
+
+    my $env_renewal = $server_thread_renewal->join;
+
+    is($env_renewal->{REQUEST_METHOD}, 'PATCH', 'Claim renewal uses PATCH method');
+    is($env_renewal->{PATH_INFO}, '/v1/claims/abc', 'Claim renewal path');
+    is_deeply($env_renewal->{__BODY__},
+        { ttl => 1 },
+        'Claim renewal body');
+
+    my $server_thread_release = make_server_thread($server, [
+        204, [], [], ]);
+
+    ok($lock->release, 'Release lock');
+
+    my $env_release = $server_thread_release->join;
 }
 
 
