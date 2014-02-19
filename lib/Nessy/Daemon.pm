@@ -2,7 +2,7 @@ package Nessy::Daemon;
 
 use strict;
 use warnings;
-use Nessy::Properties qw( url claims client_socket client_watcher server_watcher ppid event_loop_cv default_ttl api_version);
+use Nessy::Properties qw( url claims client_socket client_watcher server_watcher ppid event_loop_cv api_version);
 
 use Nessy::Daemon::Claim;
 use Nessy::Client::Message;
@@ -54,7 +54,7 @@ sub new {
     my $class = shift;
     my %params = @_;
 
-    my $self = $class->_verify_params(\%params, qw(client_socket url default_ttl api_version));
+    my $self = $class->_verify_params(\%params, qw(client_socket url api_version));
     bless $self, $class;
 
     $self->ppid(getppid);
@@ -241,7 +241,7 @@ sub claim {
                     resource_name => $resource_name,
                     user_data => $args->{user_data},
                     url => $self->url,
-                    ttl => $self->default_ttl,
+                    ttl => $args->{ttl},
                     api_version => $self->api_version,
                     on_fatal_error => sub { $self_copy->fatal_error($_[1]) },
                 );

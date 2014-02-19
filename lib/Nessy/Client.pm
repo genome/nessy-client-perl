@@ -3,7 +3,7 @@ package Nessy::Client;
 use strict;
 use warnings;
 
-use Nessy::Properties qw(pid socket socket_watcher serial_responder_registry api_version);
+use Nessy::Properties qw(pid socket socket_watcher serial_responder_registry api_version default_ttl);
 
 use Nessy::Claim;
 use Nessy::Daemon;
@@ -38,6 +38,7 @@ sub new {
         my $self = bless {}, $class;
         $self->api_version($api_version);
         $self->pid($pid);
+        $self->default_ttl( $ttl );
         $self->serial_responder_registry({});
 
         my $watcher = $self->_create_socket_watcher($socket1);
@@ -106,7 +107,7 @@ sub claim {
 
     $resource_name || Carp::croak('resource_name is a required param');
 
-    my($user_data, $cb) = @params{'user_data','cb'};
+    my($user_data, $cb, $ttl) = @params{'user_data','cb','ttl'};
 
     my $is_blocking = !$cb;
     $cb ||= AnyEvent->condvar;
@@ -128,11 +129,13 @@ sub claim {
         }
         $cb->($claim);
     };
+
+    $ttl ||= $self->default_ttl;
     my $result = $self->_send_command_with_callback(
         $report_response,
         command => 'claim',
         resource_name => $resource_name,
-        args => { user_data => $user_data },
+        args => { user_data => $user_data, ttl => $ttl },
     );
 
     if ($is_blocking) {

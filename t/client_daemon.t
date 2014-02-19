@@ -6,7 +6,7 @@ use warnings;
 use Nessy::Daemon;
 use Nessy::Client::Message;
 
-use Test::More tests => 72;
+use Test::More tests => 73;
 use Carp;
 use JSON;
 use Socket;
@@ -34,7 +34,7 @@ sub test_constructor_failures {
     $daemon = eval { Nessy::Daemon->new() };
     ok($@, 'Calling constructor with no args generates an exception');
 
-    my %all_params = ( client_socket => 1, url => 1, default_ttl => 1, api_version => 1 );
+    my %all_params = ( client_socket => 1, url => 1, api_version => 1 );
     foreach my $omit ( keys %all_params ) {
         my %params = %all_params;
         delete $params{$omit};
@@ -48,7 +48,6 @@ sub test_constructor {
     my $daemon = Nessy::Daemon->new(
                     client_socket => $fake_socket,
                     url => 1,
-                    default_ttl => 1,
                     api_version => 'v1');
     ok($daemon, 'constructor');
 
@@ -61,7 +60,6 @@ sub test_start {
     my $daemon = Nessy::Daemon->new(
                         client_socket => $test_handle,
                         url => 'http://example.org',
-                        default_ttl => 1,
                         api_version => 'v1');
 
     my $cv = AnyEvent->condvar;
@@ -130,11 +128,13 @@ sub test_add_remove_claim {
 sub test_make_claim {
     my $daemon = _new_test_daemon();
 
+    my $user_data = 123;
+    my $ttl = 456;
     my $message = Nessy::Client::Message->new(
                         resource_name => 'foo',
                         command => 'claim',
                         serial => 1,
-                        args => { user_data => 123 },
+                        args => { user_data => $user_data, ttl => $ttl },
                     );
     _send_to_socket($message);
 
@@ -161,6 +161,8 @@ sub test_make_claim {
     ok($claim, 'daemon created claim for resource_name foo');
     ok($claim->_start_called, 'state machine was started for claim');
     is($claim->claim_location_url, $expected_claim_location_url, 'claim location url');
+    is($claim->user_data, $user_data, 'claim user_data');
+    is($claim->ttl, $ttl, 'claim ttl');
 
     eval { _read_from_socket() };
     like($@, qr(No data read from socket), 'Daemon has no more messages for us');
@@ -304,7 +306,6 @@ sub _event_loop {
         my $daemon = Nessy::TestDaemon->new(
                             client_socket => $daemon_socket,
                             url => 'http://example.com',
-                            default_ttl => 1,
                             api_version => 'v1');
         return $daemon;
     }
