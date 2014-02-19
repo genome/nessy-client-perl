@@ -154,6 +154,8 @@ package Nessy::TestClient::Daemon;
 
 use base 'Nessy::Daemon';
 
+sub _claim_class { 'Nessy::TestDaemon::Claim' }
+
 our($claim_should_fail, $release_should_fail);
 
 sub claim {
@@ -161,6 +163,7 @@ sub claim {
     if ($claim_should_fail) {
         $self->claim_failed(undef, $message, 'in-test failure');
     } else {
+        $self->SUPER::claim($message);
         $self->claim_succeeded(undef, $message);
     }
     1;
@@ -178,3 +181,10 @@ sub release {
 
 sub add_claim { }
 sub remove_claim { }
+
+package Nessy::TestDaemon::Claim;
+
+use base 'Nessy::Daemon::Claim';
+
+sub start {}
+sub release {}

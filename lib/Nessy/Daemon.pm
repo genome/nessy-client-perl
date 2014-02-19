@@ -231,7 +231,7 @@ sub shutdown_cmd {
 sub claim {
     my($self, $message) = @_;
 
-    my($resource_name, $data) = map { $message->$_ } qw(resource_name args);
+    my($resource_name, $args) = map { $message->$_ } qw(resource_name args);
     my $claim_class = $self->_claim_class;
 
     my $self_copy = $self;
@@ -239,7 +239,7 @@ sub claim {
 
     my $claim = $claim_class->new(
                     resource_name => $resource_name,
-                    user_data => $data,
+                    user_data => $args->{user_data},
                     url => $self->url,
                     ttl => $self->default_ttl,
                     api_version => $self->api_version,

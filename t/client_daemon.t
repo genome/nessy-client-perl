@@ -134,6 +134,7 @@ sub test_make_claim {
                         resource_name => 'foo',
                         command => 'claim',
                         serial => 1,
+                        args => { user_data => 123 },
                     );
     _send_to_socket($message);
 
