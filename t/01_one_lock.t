@@ -21,6 +21,23 @@ use HTTP::Server::PSGI;
 use IO::Socket::INET;
 use JSON;
 
+sub _does_http_server_psgi_support_harakiri {
+    require Plack;
+    if ($Plack::VERSION >= 1.0004) {
+        return 1;
+    } else {
+        return;
+    }
+}
+
+BEGIN {
+    if (! _does_http_server_psgi_support_harakiri()) {
+        push @INC, 't/lib';
+        require Nessy::Client::HTTPServerPSGI;
+    }
+}
+
+
 my ($server, $host, $port) =  _new_http_server();
 my $url = "http://$host:$port";
 my $ttl = 7;
