@@ -42,6 +42,8 @@ my ($server, $host, $port) =  _new_http_server();
 my $url = "http://$host:$port";
 my $ttl = 7;
 my $client = Nessy::Client->new( url => $url, default_ttl => $ttl);
+my $resource_name = 'foo';
+my $user_data = { bar => 'stuff goes here' };
 
 test_get_release();
 #test_get_undef();
@@ -63,8 +65,6 @@ sub make_server_thread {
 }
 
 sub test_get_release {
-    my $resource_name = 'foo';
-    my $user_data = { bar => 'stuff goes here' };
 
     my $server_thread_register = make_server_thread($server, [
         201, ['Location' => "$url/v1/claims/abc"], [], ]);
@@ -86,7 +86,7 @@ sub test_get_release {
         ttl         => $ttl,
     }, 'The request body should be well formed');
 
-    ok($lock, 'Got lock foo');
+    ok($lock, "Get claim for $resource_name");
     ok(not($lock->_is_released), 'Lock should be active');
 
 
