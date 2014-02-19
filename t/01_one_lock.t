@@ -69,7 +69,7 @@ sub test_get_release {
     my $server_thread_register = make_server_thread($server, [
         201, ['Location' => "$url/v1/claims/abc"], [], ]);
 
-    my $lock = $client->claim($resource_name, $user_data);
+    my $lock = $client->claim($resource_name, user_data => $user_data);
 
     my $env_register = $server_thread_register->join;
 

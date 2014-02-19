@@ -91,7 +91,7 @@ sub test_claim_success {
     my $resource_name = 'foo';
     my $data = { some => 'data', structure => [ 'has', 'nested', 'data' ] };
 
-    my $claim = $client->claim($resource_name, $data);
+    my $claim = $client->claim($resource_name, user_data => $data);
 
     isa_ok($claim, 'Nessy::Claim');
     is($claim->resource_name, $resource_name, 'claim resource');
@@ -106,7 +106,7 @@ sub test_claim_failure {
 
     my $got_warning = '';
     local $SIG{__WARN__} = sub { $got_warning = shift };
-    my $claim = $client->claim($resource_name, $data);
+    my $claim = $client->claim($resource_name, user_data => $data);
 
     is($claim, undef, 'failed claim');
     my $this_file = __FILE__;

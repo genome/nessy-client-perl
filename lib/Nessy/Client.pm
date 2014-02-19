@@ -102,7 +102,11 @@ sub _shutdown_timeout_sub {
 }
 
 sub claim {
-    my($self, $resource_name, $data, $cb) = @_;
+    my($self, $resource_name, %params) = @_;
+
+    $resource_name || Carp::croak('resource_name is a required param');
+
+    my($user_data, $cb) = @params{'user_data','cb'};
 
     my $is_blocking = !$cb;
     $cb ||= AnyEvent->condvar;
@@ -128,7 +132,7 @@ sub claim {
         $report_response,
         command => 'claim',
         resource_name => $resource_name,
-        args => { user_data => $data },
+        args => { user_data => $user_data },
     );
 
     if ($is_blocking) {
