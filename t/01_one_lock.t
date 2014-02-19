@@ -55,6 +55,7 @@ sub make_server_thread {
         my $env;
         $server->run( sub {
             $env = shift;
+            $env->{__BODY__} = _get_request_body( $env->{'psgi.input'} );
             $env->{'psgix.harakiri.commit'} = 1;
             return $response;
         });
@@ -79,8 +80,8 @@ sub test_get_release {
     is($env_register->{PATH_INFO}, '/v1/claims/',
         'Claim request should access /v1/claims/');
 
-    my $json_ref = _get_request_body( $env_register->{'psgi.input'} );
-    is_deeply($json_ref, {
+    my $body_json = $env_register->{__BODY__};
+    is_deeply($body_json, {
         resource    => $resource_name,
         user_data   => $user_data,
         ttl         => $ttl,
@@ -104,8 +105,8 @@ sub test_get_release {
     is($env_release->{PATH_INFO}, '/v1/claims/abc',
         'Claim releas should access /v1/claims/abc');
 
-    my $json_ref_release = _get_request_body( $env_release->{'psgi.input'} );
-    is_deeply($json_ref_release, {
+    my $release_json = $env_release->{__BODY__};
+    is_deeply($release_json, {
         status      => 'released'
     }, 'The request body should be well formed');
 
@@ -136,8 +137,8 @@ sub test_get_undef {
     is($env_release->{PATH_INFO}, '/v1/claims/abc',
         'Claim releas should access /v1/claims/abc');
 
-    my $json_ref_release = _get_request_body( $env_release->{'psgi.input'} );
-    is_deeply($json_ref_release, {
+    my $release_json = $env_release->{__BODY__};
+    is_deeply($release_json, {
         status      => 'released'
     }, 'The request body should be well formed');
 }
