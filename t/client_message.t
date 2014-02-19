@@ -27,7 +27,7 @@ sub test_constructor {
 sub test_constructor_and_properties {
 
     my @construction_params = (resource_name => 'foo', command => 'bar', serial => 1);
-    my @remaining_params = (data => 123, result => 'abc', error_message => 'hi');
+    my @remaining_params = (args => 123, result => 'abc', error_message => 'hi');
     while (@remaining_params) {
         push(@construction_params, splice(@remaining_params, 0, 2));
         my %construction_params = @construction_params;
@@ -66,7 +66,7 @@ sub test_encode {
     my %params = (
         resource_name => 'foo',
         command => 'bar',
-        data => {
+        args => {
             key1 => 'bob',
             key2 => 2,
             other => [ 1, 2, { foo => 'bar' } ],

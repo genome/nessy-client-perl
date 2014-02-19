@@ -128,7 +128,7 @@ sub claim {
         $report_response,
         command => 'claim',
         resource_name => $resource_name,
-        data => $data,
+        args => $data,
     );
 
     if ($is_blocking) {

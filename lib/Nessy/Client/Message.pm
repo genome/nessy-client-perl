@@ -7,7 +7,7 @@ use JSON qw();
 
 # used for messages sent between the user/daemon socket
 
-use Nessy::Properties qw( resource_name data result error_message command serial );
+use Nessy::Properties qw( resource_name args result error_message command serial );
 
 sub new {
     my $class = shift;
