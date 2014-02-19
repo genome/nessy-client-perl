@@ -7,7 +7,7 @@ use Test::More;
 BEGIN {
     my $can_use_threads = eval 'use threads; 1';
     if ($can_use_threads) {
-        plan tests => 10;
+        plan tests => 13;
     }
     else {
         plan skip_all => 'Needs threaded perl';
@@ -46,7 +46,7 @@ my $resource_name = 'foo';
 my $user_data = { bar => 'stuff goes here' };
 
 test_get_release();
-#test_get_undef();
+test_get_undef();
 
 sub make_server_thread {
     my ($server, $response) = @_;
@@ -113,14 +113,33 @@ sub test_get_release {
 }
 
 sub test_get_undef {
-    is_deeply($client->claim_names(), [], 'All locks released');
-    my $lock = $client->claim('foo');
 
-    ok($lock, 'Get lock foo');
-    is($lock->state, 'active', 'lock is active');
+    my $server_thread_register = make_server_thread($server, [
+        201, ['Location' => "$url/v1/claims/abc"], [], ]);
+
+    my $lock = $client->claim($resource_name);
+
+    $server_thread_register->join();
+
+
+    my $server_thread_release = make_server_thread($server, [
+        204, [], [], ]);
+
+    note('release claim by letting it go out of scope');
     undef($lock);
-    
-    is_deeply($client->claim_names(), [], 'All locks released');
+
+    my $env_release = $server_thread_release->join;
+
+    is($env_release->{REQUEST_METHOD}, 'PATCH',
+        'Claim release should use PATCH method');
+
+    is($env_release->{PATH_INFO}, '/v1/claims/abc',
+        'Claim releas should access /v1/claims/abc');
+
+    my $json_ref_release = _get_request_body( $env_release->{'psgi.input'} );
+    is_deeply($json_ref_release, {
+        status      => 'released'
+    }, 'The request body should be well formed');
 }
 
 
