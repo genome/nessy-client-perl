@@ -3,7 +3,7 @@
 use strict;
 use warnings FATAL => qw(all);
 
-use Test::More tests => 57;
+use Test::More tests => 58;
 
 use Nessy::Client;
 use AnyEvent;
@@ -197,8 +197,15 @@ sub test_revoked_while_activating {
         [ 400, [], [] ],
     );
 
+    my $warning_message = '';
+    local $SIG{__WARN__} = sub { $warning_message = shift };
+    my $expected_file = __FILE__;
+    my $expected_line = __LINE__ + 1;
     my $lock = $client->claim($resource_name, ttl => 1);
     ok(! $lock, 'lock was rejected');
+    like($warning_message,
+        qr(claim $resource_name at $expected_file:$expected_line failed: activating: bad request),
+        'Got expected warning');
 
     my(@envs) = $server_thread_register->join();
     is(scalar(@envs), 2, 'Server got 2 requests');
