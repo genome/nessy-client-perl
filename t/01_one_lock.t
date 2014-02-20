@@ -4,7 +4,7 @@ use strict;
 use warnings FATAL => qw(all);
 
 use forks;
-use Test::More tests => 31;
+use Test::More tests => 39;
 
 use Nessy::Client;
 use AnyEvent;
@@ -40,6 +40,8 @@ test_get_release();
 test_get_undef();
 test_renewal();
 test_waiting_to_activate();
+
+test_revoked_while_activating();
 
 sub make_server_thread {
     my ($server, @responses) = @_;
@@ -203,19 +205,55 @@ sub test_waiting_to_activate {
         },
     );
 
-    for (my $i = 0; $i < @expected; $i++) {
-        my $expected = $expected[$i];
-        my $got_env = $envs[$i];
-        foreach my $key ( keys %$expected ) {
-            is_deeply($got_env->{$key}, $expected->{$key}, "request $i env $key matches");
-        }
-    }
+    _envs_are_as_expected(\@envs, \@expected);
 
     my $server_thread_release = make_server_thread($server, [
         204, [], [], ]);
     ok($lock->release, 'Release lock');
     $server_thread_release->join;
 }
+
+sub _envs_are_as_expected {
+    my($got, $expected) = @_;
+
+    for (my $i = 0; $i < @$expected; $i++) {
+        my $expected_env = $expected->[$i];
+        my $got_env = $got->[$i];
+        foreach my $key ( keys %$expected_env ) {
+            is_deeply($got_env->{$key}, $expected_env->{$key}, "request $i env $key matches");
+        }
+    }
+}
+
+
+
+sub test_revoked_while_activating {
+    my $server_thread_register = make_server_thread($server,
+        [ 202, [ Location => "$url/v1/claims/abc" ], [] ],
+        [ 400, [], [] ],
+    );
+
+    my $lock = $client->claim($resource_name, ttl => 1);
+    ok(! $lock, 'lock was rejected');
+
+    my(@envs) = $server_thread_register->join();
+    is(scalar(@envs), 2, 'Server got 2 requests');
+
+    my @expected = (
+        {   REQUEST_METHOD => 'POST',
+            PATH_INFO => '/v1/claims/',
+            __BODY__ => { resource => $resource_name, ttl => 1 }
+        },
+        {   REQUEST_METHOD => 'PATCH',
+            PATH_INFO => '/v1/claims/abc',
+            __BODY__ => { status => 'active' },
+        },
+    );
+
+    _envs_are_as_expected(\@envs, \@expected);
+}
+
+
 
 sub _new_http_server {
     my $socket = IO::Socket::INET->new(
