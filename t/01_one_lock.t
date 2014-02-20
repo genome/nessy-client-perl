@@ -3,7 +3,7 @@
 use strict;
 use warnings FATAL => qw(all);
 
-use Test::More tests => 58;
+use Test::More tests => 60;
 
 use Nessy::Client;
 use AnyEvent;
@@ -27,6 +27,7 @@ test_renewal();
 test_waiting_to_activate();
 
 test_revoked_while_activating();
+test_revoked_while_active();
 test_server_error_while_activating();
 test_server_error_while_renewing();
 
@@ -222,6 +223,37 @@ sub test_revoked_while_activating {
     );
 
     _envs_are_as_expected(\@envs, \@expected);
+}
+
+sub test_revoked_while_active {
+    # Start a new daemon so it will see the env var below and not kill us
+    local $ENV{'NESSY_TEST'} = 1;
+    my $client = Nessy::Client->new( url => $url, default_ttl => $ttl);
+
+    my $got_sigterm = 0;
+    local $SIG{TERM} = sub { $got_sigterm++ };
+    local $SIG{ALRM} = sub { ok(0, 'Daemon did not exit in time') };
+
+    my $server_thread = Nessy::Client::TestWebServer->new(
+        [ 201, ['Location' => "$url/v1/claims/abc"], [] ], # register
+        [ 200, [], [], ],       # renew
+        [ 400, [], [], ],       # fail on second renewal
+    );
+
+    my $lock = $client->claim($resource_name, ttl => 1);
+
+    my @envs = $server_thread->join();
+
+    alarm(5);
+    waitpid($client->pid, 0);
+    alarm(0);
+
+    is($got_sigterm, 2, 'Got 2 TERM signals while trying to renew');
+
+    my $got_sigpipe = 0;
+    local $SIG{PIPE} = sub { $got_sigpipe++ };
+    undef $lock;
+    is($got_sigpipe, 1, 'Expected SIGPIPE during destruction of defunct lock');
 }
 
 sub test_server_error_while_activating {

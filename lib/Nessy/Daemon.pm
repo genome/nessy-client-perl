@@ -329,11 +329,11 @@ sub fatal_error {
     $self->_try_kill_parent('TERM');
     sleep($self->fatal_error_delay_time);
     $self->_exit_if_parent_dead(1);
-    $self->_try_kill_parent('KILL');
+    $self->_try_kill_parent($ENV{NESSY_TEST} ? 'TERM' : 'KILL');
     exit(1);
 }
 
-sub fatal_error_delay_time { 10 } # seconds
+sub fatal_error_delay_time { $ENV{NESSY_TEST} ? 1 : 10 } # seconds
 
 sub _try_kill_parent {
     my($self, $signal) = @_;
@@ -343,7 +343,7 @@ sub _try_kill_parent {
 
 sub _exit_if_parent_dead {
     my($self, $exit_code) = @_;
-    exit($exit_code) if (kill(0, $self->ppid));
+    exit($exit_code) unless (kill(0, $self->ppid));
 }
 
 sub _log_error {
