@@ -243,7 +243,7 @@ sub claim {
                     url => $self->url,
                     ttl => $args->{ttl},
                     api_version => $self->api_version,
-                    on_fatal_error => sub { $self_copy->fatal_error($_[1]) },
+                    on_fatal_error => sub { $self_copy->_on_fatal_error(@_) },
                 );
     if ($claim) {
         $self->add_claim($claim);
@@ -256,6 +256,13 @@ sub claim {
         );
     }
     return $claim;
+}
+
+sub _on_fatal_error {
+    my($self, $fatal_claim, $message) = @_;
+
+    $self->remove_claim($fatal_claim);
+    $self->fatal_error($message);
 }
 
 sub _claim_class {
