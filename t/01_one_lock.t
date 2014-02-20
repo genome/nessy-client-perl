@@ -4,7 +4,7 @@ use strict;
 use warnings FATAL => qw(all);
 
 use forks;
-use Test::More tests => 17;
+use Test::More tests => 31;
 
 use Nessy::Client;
 use AnyEvent;
@@ -39,6 +39,7 @@ my $user_data = { bar => 'stuff goes here' };
 test_get_release();
 test_get_undef();
 test_renewal();
+test_waiting_to_activate();
 
 sub make_server_thread {
     my ($server, @responses) = @_;
@@ -170,6 +171,51 @@ sub test_renewal {
     my($env_release) = $server_thread_release->join;
 }
 
+sub test_waiting_to_activate {
+    my $server_thread_register = make_server_thread($server,
+        [ 202, [ Location => "$url/v1/claims/abc" ], [] ],
+        [ 409, [], [] ],
+        [ 409, [], [] ],
+        [ 200, [], [] ],
+    );
+
+    my $lock = $client->claim($resource_name, ttl => 1);
+
+    my(@envs) = $server_thread_register->join();
+    is(scalar(@envs), 4, 'Server got 4 requests');
+
+    my @expected = (
+        {   REQUEST_METHOD => 'POST',
+            PATH_INFO => '/v1/claims/',
+            __BODY__ => { resource => $resource_name, ttl => 1 }
+        },
+        {   REQUEST_METHOD => 'PATCH',
+            PATH_INFO => '/v1/claims/abc',
+            __BODY__ => { status => 'active' },
+        },
+        {   REQUEST_METHOD => 'PATCH',
+            PATH_INFO => '/v1/claims/abc',
+            __BODY__ => { status => 'active' },
+        },
+        {   REQUEST_METHOD => 'PATCH',
+            PATH_INFO => '/v1/claims/abc',
+            __BODY__ => { status => 'active' },
+        },
+    );
+
+    for (my $i = 0; $i < @expected; $i++) {
+        my $expected = $expected[$i];
+        my $got_env = $envs[$i];
+        foreach my $key ( keys %$expected ) {
+            is_deeply($got_env->{$key}, $expected->{$key}, "request $i env $key matches");
+        }
+    }
+
+    my $server_thread_release = make_server_thread($server, [
+        204, [], [], ]);
+    ok($lock->release, 'Release lock');
+    $server_thread_release->join;
+}
 
 sub _new_http_server {
     my $socket = IO::Socket::INET->new(
