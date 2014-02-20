@@ -41,9 +41,10 @@ test_get_undef();
 test_renewal();
 
 sub make_server_thread {
-    my ($server, $response) = @_;
+    my ($server, @responses) = @_;
 
-    my $server_thread = threads->create( sub {
+    my @envs;
+    my($server_thread) = threads->create( sub {
         my $env;
         $server->run( sub {
             $env = shift;
@@ -51,10 +52,13 @@ sub make_server_thread {
             delete $env->{'psgi.input'};
             delete $env->{'psgi.errors'};
             delete $env->{'psgix.io'};
-            $env->{'psgix.harakiri.commit'} = 1;
+
+            my $response = shift @responses;
+            push @envs, $env;
+            $env->{'psgix.harakiri.commit'} = 1 unless(@responses);
             return $response;
         });
-        return $env;
+        return @envs;
     });
 
     return ($server_thread);
@@ -67,7 +71,7 @@ sub test_get_release {
 
     my $lock = $client->claim($resource_name, user_data => $user_data);
 
-    my $env_register = $server_thread_register->join;
+    my($env_register) = $server_thread_register->join;
 
     is($env_register->{REQUEST_METHOD}, 'POST',
         'Claim request should use POST method');
@@ -92,7 +96,7 @@ sub test_get_release {
 
     ok($lock->release, 'Release lock');
 
-    my $env_release = $server_thread_release->join;
+    my($env_release) = $server_thread_release->join;
 
     is($env_release->{REQUEST_METHOD}, 'PATCH',
         'Claim release should use PATCH method');
@@ -124,7 +128,7 @@ sub test_get_undef {
     note('release claim by letting it go out of scope');
     undef($lock);
 
-    my $env_release = $server_thread_release->join;
+    my($env_release) = $server_thread_release->join;
 
     is($env_release->{REQUEST_METHOD}, 'PATCH',
         'Claim release should use PATCH method');
@@ -150,7 +154,7 @@ sub test_renewal {
     my $server_thread_renewal = make_server_thread($server, [
         200, [], [], ]);
 
-    my $env_renewal = $server_thread_renewal->join;
+    my($env_renewal) = $server_thread_renewal->join;
 
     is($env_renewal->{REQUEST_METHOD}, 'PATCH', 'Claim renewal uses PATCH method');
     is($env_renewal->{PATH_INFO}, '/v1/claims/abc', 'Claim renewal path');
@@ -163,7 +167,7 @@ sub test_renewal {
 
     ok($lock->release, 'Release lock');
 
-    my $env_release = $server_thread_release->join;
+    my($env_release) = $server_thread_release->join;
 }
 
 
