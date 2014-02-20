@@ -4,7 +4,7 @@ use strict;
 use warnings FATAL => qw(all);
 
 use forks;
-use Test::More tests => 39;
+use Test::More tests => 50;
 
 use Nessy::Client;
 use AnyEvent;
@@ -42,6 +42,7 @@ test_renewal();
 test_waiting_to_activate();
 
 test_revoked_while_activating();
+test_server_error_while_activating();
 
 sub make_server_thread {
     my ($server, @responses) = @_;
@@ -251,6 +252,41 @@ sub test_revoked_while_activating {
     );
 
     _envs_are_as_expected(\@envs, \@expected);
+}
+
+sub test_server_error_while_activating {
+    my $server_thread_register = make_server_thread($server,
+        [ 202, [ Location => "$url/v1/claims/abc" ], [] ],
+        [ 500, [], [] ],
+        [ 200, [], [] ],
+    );
+
+    my $lock = $client->claim($resource_name, ttl => 1);
+
+    my(@envs) = $server_thread_register->join();
+    is(scalar(@envs), 3, 'Server got 3 requests');
+
+    my @expected = (
+        {   REQUEST_METHOD => 'POST',
+            PATH_INFO => '/v1/claims/',
+            __BODY__ => { resource => $resource_name, ttl => 1 }
+        },
+        {   REQUEST_METHOD => 'PATCH',
+            PATH_INFO => '/v1/claims/abc',
+            __BODY__ => { status => 'active' },
+        },
+        {   REQUEST_METHOD => 'PATCH',
+            PATH_INFO => '/v1/claims/abc',
+            __BODY__ => { status => 'active' },
+        },
+    );
+
+    _envs_are_as_expected(\@envs, \@expected);
+
+    my $server_thread_release = make_server_thread($server, [
+        204, [], [], ]);
+    ok($lock->release, 'Release lock');
+    $server_thread_release->join;
 }
 
 

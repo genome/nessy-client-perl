@@ -8,7 +8,7 @@ use Nessy::Daemon::Claim;
 use JSON;
 use Carp;
 use Data::Dumper;
-use Test::More tests => 129;
+use Test::More tests => 134;
 
 # defaults when creating a new claim object for testing
 our $url = 'http://example.org';
@@ -30,6 +30,7 @@ test_send_activating();
 test_activating_response_409();
 test_activating_response_200();
 test_activating_response_400();
+test_activating_response_500();
 
 test_send_renewal();
 test_renewal_response_200();
@@ -282,6 +283,16 @@ sub test_send_activating {
 }
 
 sub test_activating_response_409 {
+    _test_activating_response_409_500(409);
+}
+
+sub test_activating_response_500 {
+    _test_activating_response_409_500(409);
+}
+
+sub _test_activating_response_409_500 {
+    my $response_code = shift;
+
     my $claim = _new_claim();
 
     my $callback_fired = 0;
@@ -294,8 +305,8 @@ sub test_activating_response_409 {
     my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
 
     my $response_handler = $claim->_make_response_generator('claim', 'recv_activating_response');
-    ok($response_handler->('', { Status => 409 }),
-        'send 409 response to activation');
+    ok($response_handler->('', { Status => $response_code }),
+        "send $response_code response to activation");
 
     is($claim->state, 'waiting', 'Claim state is waiting');
     is($claim->timer_watcher, $fake_timer_watcher, 'ttl timer was not changed');

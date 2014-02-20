@@ -250,6 +250,12 @@ sub recv_activating_response_200 {
     $self->_successfully_activated();
 }
 
+sub recv_activating_response_5XX {
+    my($self, $body, $headers) = @_;
+    $self->transition(STATE_WAITING);
+    return 1;
+}
+
 _install_sub('recv_activating_response_400', __PACKAGE__->_claim_failure_generator('activating: bad request'));
 _install_sub('recv_activating_response_404', __PACKAGE__->_claim_failure_generator('activating: non-existent claim'));
 
