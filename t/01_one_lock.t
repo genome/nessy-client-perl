@@ -4,7 +4,7 @@ use strict;
 use warnings FATAL => qw(all);
 
 use forks;
-use Test::More tests => 50;
+use Test::More tests => 57;
 
 use Nessy::Client;
 use AnyEvent;
@@ -43,6 +43,7 @@ test_waiting_to_activate();
 
 test_revoked_while_activating();
 test_server_error_while_activating();
+test_server_error_while_renewing();
 
 sub make_server_thread {
     my ($server, @responses) = @_;
@@ -287,6 +288,43 @@ sub test_server_error_while_activating {
         204, [], [], ]);
     ok($lock->release, 'Release lock');
     $server_thread_release->join;
+}
+
+sub test_server_error_while_renewing {
+    my $server_thread_register = make_server_thread($server,
+        [ 201, ['Location' => "$url/v1/claims/abc"], [], ],
+    );
+
+    my $lock = $client->claim($resource_name, ttl => 1);
+
+    $server_thread_register->join();
+
+    my $server_thread_renewal = make_server_thread($server,
+        [ 500, [], [] ],
+        [ 200, [], [],]
+    );
+
+    my(@env_renewal) = $server_thread_renewal->join;
+
+    my @expected = (
+        {   REQUEST_METHOD => 'PATCH',
+            PATH_INFO => '/v1/claims/abc',
+            __BODY__ => { ttl => 1 },
+        },
+        {   REQUEST_METHOD => 'PATCH',
+            PATH_INFO => '/v1/claims/abc',
+            __BODY__ => { ttl => 1 },
+        },
+    );
+
+    _envs_are_as_expected(\@env_renewal, \@expected);
+
+    my $server_thread_release = make_server_thread($server, [
+        204, [], [], ]);
+
+    ok($lock->release, 'Release lock');
+
+    my($env_release) = $server_thread_release->join;
 }
 
 
