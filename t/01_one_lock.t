@@ -3,36 +3,21 @@
 use strict;
 use warnings FATAL => qw(all);
 
-use forks;
 use Test::More tests => 57;
 
 use Nessy::Client;
 use AnyEvent;
-use HTTP::Server::PSGI;
 use IO::Socket::INET;
 use JSON;
 
-sub _does_http_server_psgi_support_harakiri {
-    require Plack;
-    if ($Plack::VERSION >= 1.0004) {
-        return 1;
-    } else {
-        return;
-    }
-}
+use lib 't/lib';
+use Nessy::Client::TestWebServer;
 
-BEGIN {
-    if (! _does_http_server_psgi_support_harakiri()) {
-        push @INC, 't/lib';
-        require Nessy::Client::HTTPServerPSGI;
-    }
-}
-
-
-my ($server, $host, $port) =  _new_http_server();
+my ($host, $port) =  Nessy::Client::TestWebServer->get_connection_details;
 my $url = "http://$host:$port";
 my $ttl = 7;
 my $client = Nessy::Client->new( url => $url, default_ttl => $ttl);
+
 my $resource_name = 'foo';
 my $user_data = { bar => 'stuff goes here' };
 
@@ -45,34 +30,11 @@ test_revoked_while_activating();
 test_server_error_while_activating();
 test_server_error_while_renewing();
 
-sub make_server_thread {
-    my ($server, @responses) = @_;
-
-    my @envs;
-    my($server_thread) = threads->create( sub {
-        my $env;
-        $server->run( sub {
-            $env = shift;
-            $env->{__BODY__} = _get_request_body( $env->{'psgi.input'} );
-            delete $env->{'psgi.input'};
-            delete $env->{'psgi.errors'};
-            delete $env->{'psgix.io'};
-
-            my $response = shift @responses;
-            push @envs, $env;
-            $env->{'psgix.harakiri.commit'} = 1 unless(@responses);
-            return $response;
-        });
-        return @envs;
-    });
-
-    return ($server_thread);
-}
-
 sub test_get_release {
 
-    my $server_thread_register = make_server_thread($server, [
-        201, ['Location' => "$url/v1/claims/abc"], [], ]);
+    my $server_thread_register = Nessy::Client::TestWebServer->new(
+        [ 201, ['Location' => "$url/v1/claims/abc"], [], ],
+    );
 
     my $lock = $client->claim($resource_name, user_data => $user_data);
 
@@ -96,8 +58,8 @@ sub test_get_release {
 
 
 
-    my $server_thread_release = make_server_thread($server, [
-        204, [], [], ]);
+    my $server_thread_release = Nessy::Client::TestWebServer->new(
+        [204, [], [], ]);
 
     ok($lock->release, 'Release lock');
 
@@ -119,16 +81,16 @@ sub test_get_release {
 
 sub test_get_undef {
 
-    my $server_thread_register = make_server_thread($server, [
-        201, ['Location' => "$url/v1/claims/abc"], [], ]);
+    my $server_thread_register = Nessy::Client::TestWebServer->new(
+        [201, ['Location' => "$url/v1/claims/abc"], [], ]);
 
     my $lock = $client->claim($resource_name);
 
     $server_thread_register->join();
 
 
-    my $server_thread_release = make_server_thread($server, [
-        204, [], [], ]);
+    my $server_thread_release = Nessy::Client::TestWebServer->new(
+        [204, [], [], ]);
 
     note('release claim by letting it go out of scope');
     undef($lock);
@@ -148,16 +110,16 @@ sub test_get_undef {
 }
 
 sub test_renewal {
-    my $server_thread_register = make_server_thread($server, [
-        201, ['Location' => "$url/v1/claims/abc"], [], ]);
+    my $server_thread_register = Nessy::Client::TestWebServer->new(
+        [201, ['Location' => "$url/v1/claims/abc"], [], ]);
 
     my $lock = $client->claim($resource_name, ttl => 1);
 
     $server_thread_register->join();
 
 
-    my $server_thread_renewal = make_server_thread($server, [
-        200, [], [], ]);
+    my $server_thread_renewal = Nessy::Client::TestWebServer->new(
+        [200, [], [], ]);
 
     my($env_renewal) = $server_thread_renewal->join;
 
@@ -167,8 +129,8 @@ sub test_renewal {
         { ttl => 1 },
         'Claim renewal body');
 
-    my $server_thread_release = make_server_thread($server, [
-        204, [], [], ]);
+    my $server_thread_release = Nessy::Client::TestWebServer->new(
+        [204, [], [], ]);
 
     ok($lock->release, 'Release lock');
 
@@ -176,7 +138,7 @@ sub test_renewal {
 }
 
 sub test_waiting_to_activate {
-    my $server_thread_register = make_server_thread($server,
+    my $server_thread_register = Nessy::Client::TestWebServer->new(
         [ 202, [ Location => "$url/v1/claims/abc" ], [] ],
         [ 409, [], [] ],
         [ 409, [], [] ],
@@ -209,8 +171,8 @@ sub test_waiting_to_activate {
 
     _envs_are_as_expected(\@envs, \@expected);
 
-    my $server_thread_release = make_server_thread($server, [
-        204, [], [], ]);
+    my $server_thread_release = Nessy::Client::TestWebServer->new(
+        [204, [], [], ]);
     ok($lock->release, 'Release lock');
     $server_thread_release->join;
 }
@@ -230,7 +192,7 @@ sub _envs_are_as_expected {
 
 
 sub test_revoked_while_activating {
-    my $server_thread_register = make_server_thread($server,
+    my $server_thread_register = Nessy::Client::TestWebServer->new(
         [ 202, [ Location => "$url/v1/claims/abc" ], [] ],
         [ 400, [], [] ],
     );
@@ -256,7 +218,7 @@ sub test_revoked_while_activating {
 }
 
 sub test_server_error_while_activating {
-    my $server_thread_register = make_server_thread($server,
+    my $server_thread_register = Nessy::Client::TestWebServer->new(
         [ 202, [ Location => "$url/v1/claims/abc" ], [] ],
         [ 500, [], [] ],
         [ 200, [], [] ],
@@ -284,14 +246,14 @@ sub test_server_error_while_activating {
 
     _envs_are_as_expected(\@envs, \@expected);
 
-    my $server_thread_release = make_server_thread($server, [
-        204, [], [], ]);
+    my $server_thread_release = Nessy::Client::TestWebServer->new(
+        [204, [], [], ]);
     ok($lock->release, 'Release lock');
     $server_thread_release->join;
 }
 
 sub test_server_error_while_renewing {
-    my $server_thread_register = make_server_thread($server,
+    my $server_thread_register = Nessy::Client::TestWebServer->new(
         [ 201, ['Location' => "$url/v1/claims/abc"], [], ],
     );
 
@@ -299,7 +261,7 @@ sub test_server_error_while_renewing {
 
     $server_thread_register->join();
 
-    my $server_thread_renewal = make_server_thread($server,
+    my $server_thread_renewal = Nessy::Client::TestWebServer->new(
         [ 500, [], [] ],
         [ 200, [], [],]
     );
@@ -319,37 +281,11 @@ sub test_server_error_while_renewing {
 
     _envs_are_as_expected(\@env_renewal, \@expected);
 
-    my $server_thread_release = make_server_thread($server, [
-        204, [], [], ]);
+    my $server_thread_release = Nessy::Client::TestWebServer->new(
+        [204, [], [], ]);
 
     ok($lock->release, 'Release lock');
 
     my($env_release) = $server_thread_release->join;
 }
 
-
-
-sub _new_http_server {
-    my $socket = IO::Socket::INET->new(
-        LocalAddr   => 'localhost',
-        Proto       => 'tcp',
-        Listen      => 5);
-
-    my $server = HTTP::Server::PSGI->new(
-        host => $socket->sockaddr,
-        port => $socket->sockport,
-        timeout => 120);
-
-    $server->{listen_sock} = $socket;
-
-    return ($server, $socket->sockhost, $socket->sockport);
-}
-
-sub _get_request_body {
-    my ($psgi_input) = @_;
-
-    my $body = '';
-    while ($psgi_input->read($body, 1024, length($body))) {}
-
-    return JSON::decode_json($body);
-}
