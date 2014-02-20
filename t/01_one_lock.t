@@ -3,17 +3,8 @@
 use strict;
 use warnings FATAL => qw(all);
 
-use Test::More;
-BEGIN {
-    my $can_use_threads = eval 'use threads; 1';
-    if ($can_use_threads) {
-        plan tests => 17;
-    }
-    else {
-        plan skip_all => 'Needs threaded perl';
-    }
-};
-
+use forks;
+use Test::More tests => 17;
 
 use Nessy::Client;
 use AnyEvent;
@@ -57,6 +48,9 @@ sub make_server_thread {
         $server->run( sub {
             $env = shift;
             $env->{__BODY__} = _get_request_body( $env->{'psgi.input'} );
+            delete $env->{'psgi.input'};
+            delete $env->{'psgi.errors'};
+            delete $env->{'psgix.io'};
             $env->{'psgix.harakiri.commit'} = 1;
             return $response;
         });
