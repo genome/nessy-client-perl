@@ -3,7 +3,7 @@
 use strict;
 use warnings FATAL => qw(all);
 
-use Test::More tests => 60;
+use Test::More tests => 62;
 
 use Nessy::Client;
 use AnyEvent;
@@ -28,6 +28,7 @@ test_waiting_to_activate();
 
 test_revoked_while_activating();
 test_revoked_while_active();
+test_server_error_while_registering();
 test_server_error_while_activating();
 test_server_error_while_renewing();
 
@@ -254,6 +255,24 @@ sub test_revoked_while_active {
     local $SIG{PIPE} = sub { $got_sigpipe++ };
     undef $lock;
     is($got_sigpipe, 1, 'Expected SIGPIPE during destruction of defunct lock');
+}
+
+sub test_server_error_while_registering {
+    my $server_thread_register = Nessy::Client::TestWebServer->new(
+        [ 500, [ Location => "$url/v1/claims/" ], [] ],
+    );
+
+    my $warning_message = '';
+    local $SIG{__WARN__} = sub { $warning_message = shift };
+    my $expected_file = __FILE__;
+    my $expected_line = __LINE__ + 1;
+    my $lock = $client->claim($resource_name, ttl => 1);
+    ok(! $lock, 'lock was rejected');
+    like($warning_message,
+        qr(claim $resource_name at $expected_file:$expected_line failed: server error),
+        'Got expected warning');
+
+    $server_thread_register->join;
 }
 
 sub test_server_error_while_activating {
