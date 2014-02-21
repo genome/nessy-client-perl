@@ -275,6 +275,7 @@ sub test_send_activating {
     _verify_http_params($params,
         [ 'PATCH' => $claim_location_url,
           headers => {'Content-Type' => 'application/json'},
+          timeout => (1/8),
           body => $json->encode({ status => 'active' }),
         ]);
 
@@ -396,6 +397,7 @@ sub test_send_renewal {
     _verify_http_params($params,
         [ 'PATCH' => $claim_location_url,
           headers => {'Content-Type' => 'application/json'},
+          timeout => (1/8),
           body => $json->encode({ ttl => $ttl}),
         ]);
 

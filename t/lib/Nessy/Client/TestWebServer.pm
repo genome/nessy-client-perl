@@ -80,9 +80,16 @@ sub _run_web_server {
         my $response = shift @responses;
         push @envs, $env;
         $env->{'psgix.harakiri.commit'} = 1 unless(@responses);
-        return $response;
+
+        if ($response eq 'BAIL OUT') {
+            goto SEND_RESULT;
+        }
+        else {
+            return $response;
+        }
     });
 
+    SEND_RESULT:
     _send_result($result_pipe, @envs);
 }
 

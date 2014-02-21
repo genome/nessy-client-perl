@@ -3,7 +3,7 @@
 use strict;
 use warnings FATAL => qw(all);
 
-use Test::More tests => 64;
+use Test::More tests => 80;
 
 use Nessy::Client;
 use AnyEvent;
@@ -27,6 +27,7 @@ test_renewal();
 test_waiting_to_activate();
 
 test_revoked_while_activating();
+test_http_timeout_while_activating();
 test_revoked_while_active();
 test_server_error_while_registering();
 test_revoked_while_releasing();
@@ -225,6 +226,56 @@ sub test_revoked_while_activating {
     );
 
     _envs_are_as_expected(\@envs, \@expected);
+}
+
+sub test_http_timeout_while_activating {
+    my $server_thread_register_timeout = Nessy::Client::TestWebServer->new(
+        [ 202, [ Location => "$url/v1/claims/abc" ], [] ],
+        'BAIL OUT',
+    );
+
+    my $condvar = AnyEvent->condvar;
+    $client->claim($resource_name, ttl => 1, cb => $condvar);
+
+    my(@envs) = $server_thread_register_timeout->join();
+
+    is(scalar(@envs), 2, 'Server got 2 requests');
+    my @expected = (
+        {   REQUEST_METHOD => 'POST',
+            PATH_INFO => '/v1/claims/',
+            __BODY__ => { resource => $resource_name, ttl => 1 }
+        },
+        {   REQUEST_METHOD => 'PATCH',
+            PATH_INFO => '/v1/claims/abc',
+            __BODY__ => { status => 'active' },
+        },
+    );
+
+    _envs_are_as_expected(\@envs, \@expected);
+
+    my $server_thread_register = Nessy::Client::TestWebServer->new(
+        [ 200, [], [] ],
+        [ 204, [], [] ],
+    );
+    my $lock = $condvar->recv;
+    isa_ok($lock, 'Nessy::Claim');
+
+    ok($lock->release, 'Release lock');
+
+    my @env_register = $server_thread_register->join;
+
+    is(scalar(@env_register), 2, 'Server got 2 requests');
+
+    _envs_are_as_expected(\@env_register, [
+        {   REQUEST_METHOD => 'PATCH',
+            PATH_INFO => '/v1/claims/abc',
+            __BODY__ => { status => 'active' },
+        },
+        {   REQUEST_METHOD => 'PATCH',
+            PATH_INFO => '/v1/claims/abc',
+            __BODY__ => { status => 'released' },
+        },
+    ]);
 }
 
 sub test_revoked_while_active {
