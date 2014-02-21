@@ -87,6 +87,8 @@ sub _claim_failure_generator {
 
     return sub {
         my $self = shift;
+        my ($body, $headers) = @_;
+
         $self->_remove_all_watchers();
         $self->state(STATE_FAILED);
         $self->_call_success_fail_callback('on_fail_cb', $error);
