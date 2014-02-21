@@ -42,7 +42,7 @@ sub url {
     unless ($url) {
         my $self = shift;
         $url = sprintf('http://%s:%d',
-                $self->socket->sockhost, $self->socket->sockaddr);
+                $self->socket->sockhost, $self->socket->sockport);
     }
     return $url;
 }
