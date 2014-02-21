@@ -3,7 +3,7 @@
 use strict;
 use warnings FATAL => qw(all);
 
-use Test::More tests => 62;
+use Test::More tests => 64;
 
 use Nessy::Client;
 use AnyEvent;
@@ -29,6 +29,7 @@ test_waiting_to_activate();
 test_revoked_while_activating();
 test_revoked_while_active();
 test_server_error_while_registering();
+test_revoked_while_releasing();
 test_server_error_while_activating();
 test_server_error_while_renewing();
 
@@ -227,6 +228,22 @@ sub test_revoked_while_activating {
 }
 
 sub test_revoked_while_active {
+    _test_revoked_lock(
+        [ 201, ['Location' => "$url/v1/claims/abc"], [] ], # register
+        [ 200, [], [], ],       # renew
+        [ 400, [], [], ],       # fail on second renewal
+    );
+}
+
+sub test_revoked_while_releasing {
+    _test_revoked_lock(
+        [ 201, ['Location' => "$url/v1/claims/abc"], [] ], # register
+        [ 409, [], [], ],       # fail on releasing
+    );
+}
+
+sub _test_revoked_lock {
+    my @server_responses = @_;
     # Start a new daemon so it will see the env var below and not kill us
     local $ENV{'NESSY_TEST'} = 1;
     my $client = Nessy::Client->new( url => $url, default_ttl => $ttl);
@@ -236,10 +253,7 @@ sub test_revoked_while_active {
     local $SIG{ALRM} = sub { ok(0, 'Daemon did not exit in time') };
 
     my $server_thread = Nessy::Client::TestWebServer->new(
-        [ 201, ['Location' => "$url/v1/claims/abc"], [] ], # register
-        [ 200, [], [], ],       # renew
-        [ 400, [], [], ],       # fail on second renewal
-    );
+        @server_responses);
 
     my $lock = $client->claim($resource_name, ttl => 1);
 
