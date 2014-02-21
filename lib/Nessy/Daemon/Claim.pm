@@ -157,6 +157,9 @@ sub _make_response_generator {
             || $self->can("${prefix}_${status_class}XX");
 
         unless (my $rv = eval { $coderef && $self->$coderef($body, $headers); }) {
+            unless (defined $rv) {
+                $rv = '(undef)';
+            }
             $self->send_fatal_error(
                 "Error when handling status $status"
                     ." in ${prefix} for $command. returned: $rv\n\texception: $@\n"
