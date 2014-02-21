@@ -47,16 +47,29 @@ sub url {
     return $url;
 }
 
+sub host_and_port {
+    my $self = shift;
+    return sprintf('%s:%d',
+        $self->socket->sockhost, $self->socket->sockport);
+}
+
+sub server_host_and_port {
+    my $self = shift;
+    my $url = $self->real_server_url;
+    return join ':', $url =~ m|http://(.*):(.*)|;
+}
+
 sub do_one_request {
     my $self = shift;
 
     my $sock = $self->socket->accept();
     my $request_data = $self->_read_request_from_socket($sock);
-    my $rewritten = $self->_proxy_rewrite($request_data);
+    my $rewritten = $self->_proxy_rewrite_for_server($request_data);
     my $server_sock = $self->_send_data_to_real_server($rewritten);
 
     my $response_data = $self->_read_request_from_socket($server_sock);
-    my $rewritten_response_data = $self->proxy_rewrite($response_data);
+    my $rewritten_response_data = $self->_proxy_rewrite_for_client(
+        $response_data);
 
     $sock->print($rewritten_response_data);
 
@@ -68,19 +81,32 @@ sub do_one_request {
 sub _proxy_rewrite_for_server {
     my($self, $data) = @_;
 
-    $self->_proxt_rewrite($data, $self->url, $self->real_server_url);
+    $self->_proxy_rewrite($data, $self->host_and_port,
+        $self->server_host_and_port);
+
+    my $r = HTTP::Request->parse($data);
+    my $content_length = length( $r->content );
+    $r->header( 'Content-length' => $content_length );
+    return $r->as_string;
 }
 
 sub _proxy_rewrite_for_client {
     my($self, $data) = @_;
 
-    $self->_proxy_rewrite($data, $self->real_server_url, $self->url);
+    $self->_proxy_rewrite($data, $self->server_host_and_port,
+        $self->host_and_port);
+
+    my $r = HTTP::Response->parse($data);
+    my $content_length = length( $r->content );
+    $r->header( 'Content-length' => $content_length );
+    return $r->as_string;
 }
 
 sub _proxy_rewrite {
     my($self, $data, $search, $replace) = @_;
 
-    $data =~ s/\Q$search\E/$replace/g;
+    $data =~ s/$search/$replace/msg;
+
     return $data;
 }
 
@@ -88,10 +114,11 @@ sub _send_data_to_real_server {
     my $self = shift;
     my $data = shift;
 
-    my $peer = $self->real_server_url =~ m#http://(.*)/?#;
+    my ($peer) = $self->real_server_url =~ m#http://([^/]+)#;
     my $sock = IO::Socket::INET->new(
                     PeerAddr => $peer,
-                    Proto => 'tcp');
+                    Proto => 'tcp')
+    or Carp::croak "Failed to create socket: $!";
 
     $sock->print($data);
     return $sock;
@@ -105,9 +132,10 @@ sub _read_request_from_socket {
     my $buf = '';
     while($sel->can_read) {
         my $count = $sock->sysread($buf, 1024, length($buf));
-        unless ($count) {
+        unless (defined $count) {
             Carp::croak("Error reading from socket: $!");
         }
+        last unless $count;
     }
     return $buf;
 }
