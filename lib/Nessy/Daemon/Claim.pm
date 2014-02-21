@@ -236,6 +236,7 @@ sub send_activating {
     $self->_send_http_request(
         PATCH => $self->claim_location_url,
         headers => {'Content-Type' => 'application/json'},
+        timeout => ($self->_ttl_timer_value / 2),
         body => $json_parser->encode({ status => 'active' }),
         $responder,
     );
@@ -273,6 +274,7 @@ sub send_renewal {
     $self->_send_http_request(
         PATCH => $self->claim_location_url,
         headers => {'Content-Type' => 'application/json'},
+        timeout => ($self->_ttl_timer_value / 2),
         body => $json_parser->encode({ ttl => $ttl }),
         $responder);
 }
@@ -344,6 +346,7 @@ sub recv_release_response_204 {
 _install_sub('recv_release_response_400', __PACKAGE__->_release_failure_generator('release: bad request'));
 _install_sub('recv_release_response_404', __PACKAGE__->_release_failure_generator('release: non-existent claim'));
 _install_sub('recv_release_response_409', __PACKAGE__->_release_failure_generator('release: lost claim'));
+_install_sub('recv_release_response_5XX', __PACKAGE__->_release_failure_generator('release: server error'));
 
 sub _create_timer_event {
     my $self = shift;

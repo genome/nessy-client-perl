@@ -3,7 +3,7 @@
 use strict;
 use warnings FATAL => qw(all);
 
-use Test::More tests => 80;
+use Test::More tests => 82;
 
 use Nessy::Client;
 use AnyEvent;
@@ -33,6 +33,7 @@ test_revoked_while_releasing();
 test_server_error_while_registering();
 test_server_error_while_activating();
 test_server_error_while_renewing();
+test_server_error_while_releasing();
 
 sub test_get_release {
 
@@ -335,6 +336,27 @@ sub test_server_error_while_registering {
     ok(! $lock, 'lock was rejected');
     like($warning_message,
         qr(claim $resource_name at $expected_file:$expected_line failed: server error),
+        'Got expected warning');
+
+    $server_thread_register->join;
+}
+
+sub test_server_error_while_releasing {
+    my $server_thread_register = Nessy::Client::TestWebServer->new(
+        [ 201, [ Location => "$url/v1/claims/abc" ], [] ],
+        [ 500, [], [] ],
+    );
+
+    my $expected_file = __FILE__;
+    my $expected_line = __LINE__ + 1;
+    my $lock = $client->claim($resource_name, ttl => 1);
+
+    my $warning_message = '';
+    local $SIG{__WARN__} = sub { $warning_message = shift };
+
+    ok(! $lock->release, 'Expecting release to fail');
+    like($warning_message,
+        qr(release $resource_name failed. Claim originated at $expected_file:$expected_line),
         'Got expected warning');
 
     $server_thread_register->join;
