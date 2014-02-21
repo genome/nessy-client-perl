@@ -29,8 +29,8 @@ test_waiting_to_activate();
 test_revoked_while_activating();
 test_http_timeout_while_activating();
 test_revoked_while_active();
-test_server_error_while_registering();
 test_revoked_while_releasing();
+test_server_error_while_registering();
 test_server_error_while_activating();
 test_server_error_while_renewing();
 
