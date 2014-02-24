@@ -37,14 +37,10 @@ sub _make_new_useragent {
     return $ua;
 }
 
-my $url;
 sub url {
-    unless ($url) {
-        my $self = shift;
-        $url = sprintf('http://%s:%d',
-                $self->socket->sockhost, $self->socket->sockport);
-    }
-    return $url;
+    my $self = shift;
+    sprintf('http://%s:%d',
+            $self->socket->sockhost, $self->socket->sockport);
 }
 
 sub host_and_port {
