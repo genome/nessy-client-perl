@@ -42,10 +42,22 @@ my $json_parser = JSON->new();
 sub new {
     my($class, %params) = @_;
 
+    $class->_set_proxy();
+
     my $self = $class->_verify_params(\%params, qw(url resource_name ttl on_fatal_error api_version));
     bless $self, $class;
     $self->state(STATE_NEW);
     return $self;
+}
+
+my $proxy_already_set = 0;
+sub _set_proxy {
+    return if $proxy_already_set;
+
+    $proxy_already_set = 1;
+    if ($ENV{NESSY_CLIENT_PROXY}) {
+        AnyEvent::HTTP::set_proxy($ENV{NESSY_CLIENT_PROXY});
+    }
 }
 
 sub start {
