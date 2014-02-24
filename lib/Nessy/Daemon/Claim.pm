@@ -103,7 +103,9 @@ sub _claim_failure_generator {
 
         $self->_remove_all_watchers();
         $self->state(STATE_FAILED);
-        $self->_call_success_fail_callback('on_fail_cb', $error);
+        $self->_call_success_fail_callback('on_fail_cb',
+            join ': ', $headers->{Status}, $error);
+
         1;
     };
 }
