@@ -65,7 +65,8 @@ sub do_one_request {
     my $sock = $self->socket->accept();
     my $request_data = $self->_read_request_from_socket($sock);
     my $rewritten = $self->_proxy_rewrite_for_server($request_data);
-    my $server_sock = $self->_send_data_to_real_server($rewritten);
+    my $server_sock = $self->_connect_to_real_server();
+    $server_sock->print($rewritten);
 
     my $response_data = $self->_read_request_from_socket($server_sock);
     my $rewritten_response_data = $self->_proxy_rewrite_for_client(
@@ -110,17 +111,14 @@ sub _proxy_rewrite {
     return $data;
 }
 
-sub _send_data_to_real_server {
+sub _connect_to_real_server {
     my $self = shift;
-    my $data = shift;
 
     my ($peer) = $self->real_server_url =~ m#http://([^/]+)#;
     my $sock = IO::Socket::INET->new(
                     PeerAddr => $peer,
                     Proto => 'tcp')
     or Carp::croak "Failed to create socket: $!";
-
-    $sock->print($data);
     return $sock;
 }
 
