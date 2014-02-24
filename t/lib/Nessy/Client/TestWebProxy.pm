@@ -64,51 +64,16 @@ sub do_one_request {
 
     my $sock = $self->socket->accept();
     my $request_data = $self->_read_request_from_socket($sock);
-    my $rewritten = $self->_proxy_rewrite_for_server($request_data);
+
     my $server_sock = $self->_connect_to_real_server();
-    $server_sock->print($rewritten);
+    $server_sock->syswrite($request_data);
 
     my $response_data = $self->_read_request_from_socket($server_sock);
-    my $rewritten_response_data = $self->_proxy_rewrite_for_client(
-        $response_data);
-
-    $sock->print($rewritten_response_data);
+    $sock->syswrite($response_data);
 
     my $http_request = HTTP::Request->parse($request_data);
     my $http_response = HTTP::Response->parse($response_data);
     return ($http_request, $http_response);
-}
-
-sub _proxy_rewrite_for_server {
-    my($self, $data) = @_;
-
-    $self->_proxy_rewrite($data, $self->host_and_port,
-        $self->server_host_and_port);
-
-    my $r = HTTP::Request->parse($data);
-    my $content_length = length( $r->content );
-    $r->header( 'Content-length' => $content_length );
-    return $r->as_string;
-}
-
-sub _proxy_rewrite_for_client {
-    my($self, $data) = @_;
-
-    $self->_proxy_rewrite($data, $self->server_host_and_port,
-        $self->host_and_port);
-
-    my $r = HTTP::Response->parse($data);
-    my $content_length = length( $r->content );
-    $r->header( 'Content-length' => $content_length );
-    return $r->as_string;
-}
-
-sub _proxy_rewrite {
-    my($self, $data, $search, $replace) = @_;
-
-    $data =~ s/$search/$replace/msg;
-
-    return $data;
 }
 
 sub _connect_to_real_server {
