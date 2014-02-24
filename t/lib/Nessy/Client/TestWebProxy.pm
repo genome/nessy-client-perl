@@ -88,20 +88,40 @@ sub _connect_to_real_server {
 }
 
 sub _read_request_from_socket {
-    my $self = shift;
-    my $sock = shift;
+    my($self, $sock) = @_;
 
     my $sel = IO::Select->new($sock);
     my $buf = '';
-    while($sel->can_read) {
-        my $count = $sock->sysread($buf, 1024, length($buf));
+
+    my $do_read = sub {
+        my $bytes_to_read = shift || 1024;
+        my $count = $sock->sysread($buf, $bytes_to_read, length($buf));
         unless (defined $count) {
             Carp::croak("Error reading from socket: $!");
         }
-        last unless $count;
+        return $count;
+    };
+
+    # First get the headers
+    my($content_length, $body_length);
+    while($sel->can_read) {
+        $do_read->();
+        if ($buf =~ m/\r\n\r\n(.*)/) {
+            $body_length = length($1);
+            # read in all the headers
+            my($content_length) = $buf =~ m/^Content-Length: (\d+)/im;
+            last;
+        }
     }
+
+    # now read in the body
+    $content_length ||= 0;
+    while ($body_length < $content_length) {
+        my $read = $do_read->($content_length - $body_length);
+        $body_length += $read;
+    }
+
     return $buf;
 }
-
 
 1;
