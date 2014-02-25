@@ -13,7 +13,7 @@ use lib 't/lib';
 use Nessy::Client::TestWebProxy;
 
 if ($ENV{NESSY_SERVER_URL}) {
-    plan tests => 39;
+    plan tests => 51;
 }
 else {
     plan skip_all => 'Needs nessy-server for testing; '
@@ -27,6 +27,7 @@ test_renewal();
 test_waiting_claim();
 
 test_server_not_responding_during_activate();
+test_server_not_responding_during_renew();
 
 sub test_get_release {
     my($client, $proxy) = _make_client_and_proxy();
@@ -105,11 +106,64 @@ sub test_waiting_claim {
     is($activate_request2->uri, $claim2_location, 'Activation request 2 URI');
     is($activate_response2->code, 200, 'Activation response 200');
 
+    local $SIG{ALRM} = sub {ok(0, 'recv on waiting claim took too long'); exit };
+    alarm(1);
     my $claim2 = $claim2_activated->recv;
+    alarm(0);
     ok($claim2, 'Second claim is now active');
 
     _release($claim2, $proxy);
 }
+
+sub test_server_not_responding_during_renew {
+    my @tests = (drop_one_request => 1, ignore_one_request => 0);
+    for (my $i = 0; $i < @tests; $i += 2) {
+        _test_server_not_responding_during_renew(@tests[$i, $i+1]);
+    }
+}
+
+sub _test_server_not_responding_during_renew {
+    my $drop_method = shift;
+    my $should_check_req_after_drop = shift;
+
+    my($client, $proxy) = _make_client_and_proxy();
+    my $ttl = 1;
+    my $claim = _claim($client, $proxy, ttl => $ttl);
+    ok($claim, 'make claim for renewal');
+
+    {
+        my($renew_request, undef) = $proxy->$drop_method();
+        if ($should_check_req_after_drop) {
+            is($renew_request->method, 'PATCH', 'First renewal request was a PATCH');
+            is_deeply(JSON::decode_json($renew_request->content),
+                    { ttl => $ttl },
+                    'Renewal body');
+        }
+    }
+
+    {
+        my($renew_request, undef) = $proxy->$drop_method();
+        if ($should_check_req_after_drop) {
+            is($renew_request->method, 'PATCH', 'Second renewal request was a PATCH');
+            is_deeply(JSON::decode_json($renew_request->content),
+                    { ttl => $ttl },
+                    'Renewal body');
+        }
+    }
+
+    {
+        my($renew_request, $renew_response) = $proxy->do_one_request();
+        is($renew_request->method, 'PATCH', 'Second renewal request was a PATCH');
+        is_deeply(JSON::decode_json($renew_request->content),
+                { ttl => $ttl },
+                'Renewal body');
+        is($renew_response->code, 200, 'renew response 200');
+    }
+
+    _release($claim, $proxy);
+
+}
+
 
 sub test_server_not_responding_during_activate {
     my @tests = (drop_one_request => 1, ignore_one_request => 0);
@@ -160,7 +214,10 @@ sub _test_server_not_responding_during_activate {
         is($activate_response3->code, 200, 'Activation response 200');
     }
 
+    local $SIG{ALRM} = sub {ok(0, 'recv on waiting claim took too long'); exit };
+    alarm(1);
     my $claim2 = $claim2_activated->recv;
+    alarm(0);
     isa_ok($claim2, 'Nessy::Claim');
     _release($claim2, $proxy);
 }
