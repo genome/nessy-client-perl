@@ -12,6 +12,9 @@ use AnyEvent::Handle;
 use JSON qw();
 use Carp;
 use Scalar::Util qw();
+use Getopt::Long;
+use File::Basename;
+use Fcntl;
 
 sub start {
     my $self = shift;
@@ -23,6 +26,41 @@ sub start {
     $cv ||= AnyEvent->condvar;
     $self->event_loop_cv($cv);
     $cv->recv;
+}
+
+sub run {
+    my $self = shift;
+
+    # clear the close-on-exec flag
+    my $sock_flags = fcntl($self->client_socket, F_GETFD, 0) || die "fcntl F_GETFD: $!";
+    fcntl($self->client_socket, F_SETFD, $sock_flags & ~FD_CLOEXEC) || die "fcntl F_SETFD: $!";
+
+    my $client_socket_fd = fileno($self->client_socket);
+
+    my $inc = File::Basename::dirname(__FILE__) . '/..';
+    exec($^X,
+        '-I', $inc,
+        __FILE__,
+        '--fd', $client_socket_fd,
+        map { ("--$_" , $self->$_) } qw(url api_version));
+    die "daemon exec failed: $!";
+}
+
+sub _run {
+    my($url, $client_socket_fd, $default_ttl, $api_version);
+    my $options = GetOptions(
+                    'url=s'         => \$url,
+                    'fd=i'          => \$client_socket_fd,
+                    'default_ttl=i' => \$default_ttl,
+                    'api_version=s' => \$api_version);
+    my $client_socket;
+    open($client_socket, '>>&=', $client_socket_fd) || die "Can't create filehandle for fd $client_socket_fd: $!";
+
+    my $self = __PACKAGE__->new(url => $url,
+                                client_socket => $client_socket,
+                                default_ttl => $default_ttl,
+                                api_version => $api_version);
+    $self->start();
 }
 
 sub shutdown {
@@ -358,5 +396,9 @@ sub _log_error {
 sub DESTROY {
     my $self = shift;
     $self->shutdown;
+}
+
+unless (caller) {
+    _run();
 }
 1;

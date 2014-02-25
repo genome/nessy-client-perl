@@ -44,6 +44,8 @@ sub new {
         my $watcher = $self->_create_socket_watcher($socket1);
         $self->socket_watcher($watcher);
 
+        $socket2->close();
+
         return $self;
 
     } elsif (defined $pid) {
@@ -53,9 +55,8 @@ sub new {
             my $daemon = $daemon_class->new(
                                 url => $url,
                                 client_socket => $socket2,
-                                default_ttl => $ttl,
                                 api_version => $api_version);
-            $daemon->start();
+            $daemon->run();
         };
         Carp::croak($@) if $@;
         exit;

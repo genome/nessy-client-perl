@@ -8,7 +8,7 @@ use Nessy::Client;
 use POSIX ":sys_wait_h";
 use AnyEvent;
 
-use Test::More tests => 17;
+use Test::More tests => 18;
 
 test_constructor();
 test_ping();
@@ -43,6 +43,8 @@ sub test_ping {
 
 sub test_shutdown {
     my $client = Nessy::Client->new(url => 'http://example.org');
+
+    ok(kill(0, $client->pid), 'daemon is running before shutdown');
 
     my $pid = $client->pid;
 
@@ -179,6 +181,7 @@ sub release {
     1;
 }
 
+sub run { shift->start }  # don't exec a new process
 sub add_claim { }
 sub remove_claim { }
 
