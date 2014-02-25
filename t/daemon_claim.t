@@ -226,8 +226,8 @@ sub test_registration_response_202 {
 
 sub test_registration_response_failure {
     my %status_error_message = (
-        '400'   => 'bad request',
-        '500'   => 'server error',
+        '400'   => '400: bad request',
+        '500'   => '500: server error',
     );
 
     while (my ($status, $message) = each %status_error_message) {
@@ -377,7 +377,7 @@ sub test_activating_response_400 {
     ok(! $claim->timer_watcher, 'Claim has no ttl timer');
     is($success, 0, 'success callback not fired');
     is($fail, 1, 'fail callback fired');
-    is_deeply(\@fail_args, [ $claim, 'activating: bad request' ], 'fail callback got expected args');
+    is_deeply(\@fail_args, [ $claim, '400: activating: bad request' ], 'fail callback got expected args');
 }
 
 sub test_send_renewal {

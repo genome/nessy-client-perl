@@ -209,7 +209,7 @@ sub test_revoked_while_activating {
     my $lock = $client->claim($resource_name, ttl => 1);
     ok(! $lock, 'lock was rejected');
     like($warning_message,
-        qr(claim $resource_name at $expected_file:$expected_line failed: activating: bad request),
+        qr(claim $resource_name at $expected_file:$expected_line failed: 400: activating: bad request),
         'Got expected warning');
 
     my(@envs) = $server_thread_register->join();
@@ -335,7 +335,7 @@ sub test_server_error_while_registering {
     my $lock = $client->claim($resource_name, ttl => 1);
     ok(! $lock, 'lock was rejected');
     like($warning_message,
-        qr(claim $resource_name at $expected_file:$expected_line failed: server error),
+        qr(claim $resource_name at $expected_file:$expected_line failed: 500: server error),
         'Got expected warning');
 
     $server_thread_register->join;
