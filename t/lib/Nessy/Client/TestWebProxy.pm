@@ -72,6 +72,24 @@ sub do_one_request {
     return ($http_request, $http_response);
 }
 
+sub drop_one_request {
+    my $self = shift;
+
+    my $sock = $self->socket->accept();
+    my $request_data = $self->_read_request_from_socket($sock);
+    my $http_request = HTTP::Request->parse($request_data);
+
+    return return ($http_request, undef);
+}
+
+sub ignore_one_request {
+    my $self = shift;
+
+    my $select = IO::Select->new($self->socket);
+    $select->can_read();
+    return;
+}
+
 sub _connect_to_real_server {
     my $self = shift;
 

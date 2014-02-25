@@ -13,7 +13,7 @@ use lib 't/lib';
 use Nessy::Client::TestWebProxy;
 
 if ($ENV{NESSY_SERVER_URL}) {
-    plan tests => 23;
+    plan tests => 39;
 }
 else {
     plan skip_all => 'Needs nessy-server for testing; '
@@ -25,6 +25,8 @@ my $ttl = 7;
 test_get_release();
 test_renewal();
 test_waiting_claim();
+
+test_server_not_responding_during_activate();
 
 sub test_get_release {
     my($client, $proxy) = _make_client_and_proxy();
@@ -106,6 +108,60 @@ sub test_waiting_claim {
     my $claim2 = $claim2_activated->recv;
     ok($claim2, 'Second claim is now active');
 
+    _release($claim2, $proxy);
+}
+
+sub test_server_not_responding_during_activate {
+    my @tests = (drop_one_request => 1, ignore_one_request => 0);
+    for (my $i = 0; $i < @tests; $i += 2) {
+        _test_server_not_responding_during_activate(@tests[$i, $i+1]);
+    }
+}
+
+sub _test_server_not_responding_during_activate {
+    my $drop_method = shift;
+    my $should_check_req_after_drop = shift;
+
+    my $proxy = Nessy::Client::TestWebProxy->new($ENV{NESSY_SERVER_URL});
+    local $ENV{NESSY_CLIENT_PROXY} = $proxy->url;
+    my $client1 = Nessy::Client->new( url => $ENV{NESSY_SERVER_URL}, default_ttl => $ttl);
+    my $client2 = Nessy::Client->new( url => $ENV{NESSY_SERVER_URL}, default_ttl => $ttl);
+
+    my $claim1 = _claim($client1, $proxy, ttl => 999, user_data => 'original claim');
+    my $resource_name = $claim1->resource_name;
+    ok($claim1, 'make claim for contention');
+
+    my $claim2_activated = AnyEvent->condvar;
+    $client2->claim($resource_name, cb => $claim2_activated, ttl => 1, user_data => 'waiting claim');
+    my($register_request, $register_response) = $proxy->do_one_request();
+    is($register_request->method, 'POST', 'Registration request was a POST');
+
+    {
+        my($activate_request, undef) = $proxy->$drop_method();
+        is($activate_request->method, 'PATCH', 'First activation request was a PATCH') if $should_check_req_after_drop;
+    }
+
+    {
+        my($activate_request, undef) = $proxy->drop_one_request();
+        is($activate_request->method, 'PATCH', 'Second activation request was a PATCH') if $should_check_req_after_drop;
+    }
+
+    {
+        my($activate_request2, $activate_response2) = $proxy->do_one_request();
+        is($activate_request2->method, 'PATCH', 'Second activation request was a PATCH');
+        is($activate_response2->code, 409, 'Activation response 409');
+    }
+
+    _release($claim1, $proxy);
+
+    {
+        my($activate_request3, $activate_response3) = $proxy->do_one_request();
+        is($activate_request3->method, 'PATCH', 'Second activation request was a PATCH');
+        is($activate_response3->code, 200, 'Activation response 200');
+    }
+
+    my $claim2 = $claim2_activated->recv;
+    isa_ok($claim2, 'Nessy::Claim');
     _release($claim2, $proxy);
 }
 
