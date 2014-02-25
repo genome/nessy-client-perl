@@ -99,8 +99,8 @@ sub _read_request_from_socket {
     };
 
     # First get the headers
-    my($content_length, $body_length);
-    while($sel->can_read) {
+    my($content_length, $body_length) = (0,0);
+    while(1) {
         $do_read->();
         if ($buf =~ m/\r\n\r\n(.*)/) {
             $body_length = length($1);
@@ -111,7 +111,6 @@ sub _read_request_from_socket {
     }
 
     # now read in the body
-    $content_length ||= 0;
     while ($body_length < $content_length) {
         my $read = $do_read->($content_length - $body_length);
         $body_length += $read;
