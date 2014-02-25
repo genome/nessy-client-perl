@@ -13,7 +13,7 @@ use lib 't/lib';
 use Nessy::Client::TestWebProxy;
 
 if ($ENV{NESSY_SERVER_URL}) {
-    plan tests => 8;
+    plan tests => 23;
 }
 else {
     plan skip_all => 'Needs nessy-server for testing; '
@@ -24,6 +24,7 @@ my $ttl = 7;
 
 test_get_release();
 test_renewal();
+test_waiting_claim();
 
 sub test_get_release {
     my($client, $proxy) = _make_client_and_proxy();
@@ -41,10 +42,7 @@ sub test_get_release {
 }
 
 sub test_renewal {
-    #my($client, $proxy) = _make_client_and_proxy();
-    my $proxy = Nessy::Client::TestWebProxy->new($ENV{NESSY_SERVER_URL});
-    local $ENV{NESSY_CLIENT_PROXY} = $proxy->url;
-    my $client = Nessy::Client->new( url => $ENV{NESSY_SERVER_URL}, default_ttl => $ttl);
+    my($client, $proxy) = _make_client_and_proxy();
 
     my $ttl = 1;
     my $claim = _claim($client, $proxy, ttl => $ttl);
@@ -55,10 +53,60 @@ sub test_renewal {
         ($ttl/4)+1, sub { ($request, $response) = $proxy->do_one_request });
 
     is($request->method, 'PATCH', 'renewal request is a PATCH');
-    is($request->content, JSON::encode_json({ ttl => $ttl}), 'request updates ttl');
+    is_deeply(JSON::decode_json($request->content),
+            { ttl => $ttl},
+            'request updates ttl');
     ok($response->is_success, 'Response was success');
 
     _release($claim, $proxy);
+}
+
+sub test_waiting_claim {
+    my $proxy = Nessy::Client::TestWebProxy->new($ENV{NESSY_SERVER_URL});
+    local $ENV{NESSY_CLIENT_PROXY} = $proxy->url;
+    my $client1 = Nessy::Client->new( url => $ENV{NESSY_SERVER_URL}, default_ttl => $ttl);
+    my $client2 = Nessy::Client->new( url => $ENV{NESSY_SERVER_URL}, default_ttl => $ttl);
+
+    my $claim1 = _claim($client1, $proxy, ttl => 999, user_data => 'original claim');
+    my $resource_name = $claim1->resource_name;
+    ok($claim1, 'make claim for contention');
+
+    my $claim2_activated = AnyEvent->condvar;
+    $client2->claim($resource_name, cb => $claim2_activated, ttl => 1, user_data => 'waiting claim');
+    my($register_request, $register_response) = $proxy->do_one_request();
+    is($register_request->method, 'POST', 'Registration request was a POST');
+    is_deeply(JSON::decode_json($register_request->content),
+        { resource => $resource_name, ttl => 1, user_data => 'waiting claim' },
+        'Registration request content');
+    is($register_response->code, 202, 'Response was 202');
+    my $claim2_location = $register_response->header('Location');
+    ok($claim2_location, 'Response includes Location header');
+
+    ok(! $claim2_activated->ready, 'Contested claim is not yet ready');
+
+
+    my($activate_request1, $activate_response1) = $proxy->do_one_request();
+    is($activate_request1->method, 'PATCH', 'Activation request was a PATCH');
+    is_deeply(JSON::decode_json($activate_request1->content),
+        { status => 'active' },
+        'Activation content');
+    is($activate_request1->uri, $claim2_location, 'Activation request URI');
+    is($activate_response1->code, 409, 'Activation response 409');
+
+    _release($claim1, $proxy);
+
+    my($activate_request2, $activate_response2) = $proxy->do_one_request();
+    is($activate_request2->method, 'PATCH', 'Activation request 2 was a PATCH');
+    is($activate_request2->content,
+        JSON::encode_json({ status => 'active' }),
+        'Activation content');
+    is($activate_request2->uri, $claim2_location, 'Activation request 2 URI');
+    is($activate_response2->code, 200, 'Activation response 200');
+
+    my $claim2 = $claim2_activated->recv;
+    ok($claim2, 'Second claim is now active');
+
+    _release($claim2, $proxy);
 }
 
 sub _claim {
