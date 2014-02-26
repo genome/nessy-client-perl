@@ -38,8 +38,10 @@ sub run {
     my $client_socket_fd = fileno($self->client_socket);
 
     my $inc = File::Basename::dirname(__FILE__) . '/..';
+    my @cover; @cover = qw(-MDevel::Cover) if ($INC{'Devel/Cover.pm'});
     exec($^X,
         '-I', $inc,
+        @cover,
         __FILE__,
         '--fd', $client_socket_fd,
         map { ("--$_" , $self->$_) } qw(url api_version));
