@@ -3,6 +3,8 @@ package Nessy::Client;
 use strict;
 use warnings;
 
+our $VERSION = '0.001';
+
 use Nessy::Properties qw(pid socket socket_watcher serial_responder_registry api_version default_ttl);
 
 use Nessy::Claim;
