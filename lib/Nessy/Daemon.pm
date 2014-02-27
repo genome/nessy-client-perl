@@ -313,7 +313,7 @@ sub _claim_class {
 sub release {
     my($self, $message) = @_;
 
-    my $resource_name = $message->{resource_name};
+    my $resource_name = $message->resource_name;
     my $claim = $self->lookup_claim($resource_name);
     $claim || Carp::croak("No claim with resource $resource_name");
     $self->remove_claim($claim);
