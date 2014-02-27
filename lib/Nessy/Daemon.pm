@@ -358,11 +358,6 @@ sub all_claims {
     values %$claims;
 }
 
-sub _respond_to_requestor {
-    my($self, $message) = @_;
-
-}
-
 sub fatal_error {
     my($self, $message) = @_;
 
