@@ -330,6 +330,30 @@ sub send_fatal_error {
     $self->on_fatal_error->($self,$message);
 }
 
+sub validate {
+    my $self = shift;
+    my $cb = shift;
+
+    if ($self->state ne STATE_ACTIVE
+        and
+        $self->state ne STATE_RENEWING
+    ) {
+        $cb->(0);
+        return;
+    }
+
+    my $responder = sub {
+        my($body, $headers) = @_;
+
+        my $status = $self->_response_status($headers);
+        my $status_class = substr($status,0,1);
+        $cb->($status_class == 2);
+    };
+
+    $self->_send_renewal_request($responder);
+}
+
+
 sub release {
     my $self = shift;
     my(%params) = @_;

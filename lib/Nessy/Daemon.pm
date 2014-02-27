@@ -236,6 +236,7 @@ my %allowed_command = (
     release => 'release',
     ping    => 'ping',
     shutdown => 'shutdown_cmd',
+    validate => 'validate',
 );
 
 sub dispatch_command {
@@ -325,6 +326,25 @@ sub release {
                             $self->release_failed($claim, $message, $error_message);
                         },
         );
+    1;
+}
+
+sub validate {
+    my($self, $message) = @_;
+
+    my $resource_name = $message->resource_name;
+    my $claim = $self->lookup_claim($resource_name);
+
+    my $responder = sub {
+        my $result = shift;
+        if ($result) {
+            $message->succeed;
+        } else {
+            $message->failed;
+        }
+        $self->_send_return_message($message);
+    };
+    $claim->validate($responder);
     1;
 }
 

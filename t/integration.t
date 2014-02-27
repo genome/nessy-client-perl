@@ -13,7 +13,7 @@ use lib 't/lib';
 use Nessy::Client::TestWebProxy;
 
 if ($ENV{NESSY_SERVER_URL}) {
-    plan tests => 51;
+    plan tests => 56;
 }
 else {
     plan skip_all => 'Needs nessy-server for testing; '
@@ -24,6 +24,7 @@ my $ttl = 7;
 
 test_get_release();
 test_renewal();
+test_validate();
 test_waiting_claim();
 
 test_server_not_responding_during_activate();
@@ -60,6 +61,27 @@ sub test_renewal {
             { ttl => $ttl},
             'request updates ttl');
     ok($response->is_success, 'Response was success');
+
+    _release($claim, $proxy);
+}
+
+sub test_validate {
+    my($client, $proxy) = _make_client_and_proxy();
+
+    my $claim = _claim($client, $proxy);
+    ok($claim, 'make claim for validate');
+
+    my $validated = AnyEvent->condvar;
+    $claim->validate($validated);
+    my($request, $response) = $proxy->do_one_request();
+
+    is($request->method, 'PATCH', 'validate request is a PATCH');
+    is_deeply(JSON::decode_json($request->content),
+            { ttl => $ttl},
+            'request updates ttl');
+    ok($response->is_success, 'Response was success');
+
+    ok($validated->recv, 'claim is validated');
 
     _release($claim, $proxy);
 }

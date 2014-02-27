@@ -6,7 +6,7 @@ use warnings;
 use Nessy::Daemon;
 use Nessy::Client::Message;
 
-use Test::More tests => 73;
+use Test::More tests => 85;
 use Carp;
 use JSON;
 use Socket;
@@ -25,6 +25,8 @@ test_add_remove_claim();
 test_make_claim();
 test_make_claim_failure();
 test_release_claim_success_and_failure();
+
+test_validate_success_and_failure();
 
 test_daemon_exits_when_socket_closes();
 
@@ -215,6 +217,47 @@ sub test_make_claim_failure {
     like($@, qr(No data read from socket), 'After destruction, daemon has no more messages for us');
 }
 
+sub test_validate_success_and_failure {
+    _test_validate_success_and_failure($_) foreach ( 200, 400, 404, 409 );
+}
+
+sub _test_validate_success_and_failure {
+    my $response_code = shift;
+    my $daemon = _new_test_daemon();
+
+    my $claim = Nessy::Daemon::FakeClaim->new(
+                    client => $daemon,
+                    on_fatal_error => sub { },
+                    api_version => 'v1');
+
+    ok($claim->state('active'), 'Set claim active');
+    ok($daemon->add_claim($claim), "Add claim to daemon for response code $response_code");
+
+    my $message = Nessy::Client::Message->new(
+                        resource_name => $claim->resource_name,
+                        command => 'validate',
+                        serial => 1,
+                    );
+    _send_to_socket($message);
+
+    my $cv = AnyEvent->condvar;
+    local $Nessy::Daemon::FakeClaim::on_validate_cb = sub { $cv->send; };
+    @Nessy::Daemon::FakeClaim::next_http_response = ([
+        '',
+        { Status => $response_code },
+    ]);
+
+    _event_loop($daemon, $cv);
+
+    my $response = _read_from_socket();
+    if ($response_code >= 200 and $response_code < 300) {
+        ok($response->is_succeeded, 'claim validates');
+    } else {
+        ok($response->is_failed, 'claim failed validation');
+    }
+}
+
+
 sub test_release_claim_success_and_failure {
     _test_release_claim_success_and_failure($_) foreach ( 204, 400, 404, 409 );
 }
@@ -373,7 +416,7 @@ package Nessy::Daemon::FakeClaim;
 
 use base 'Nessy::Daemon::Claim';
 
-our($on_start_cb, $on_release_cb);
+our($on_start_cb, $on_release_cb, $on_validate_cb);
 
 sub new {
     my $class = shift;
@@ -427,3 +470,13 @@ sub _release_called {
     return shift->{_release_called};
 }
 
+sub validate {
+    my $self = shift;
+    my $cb = shift;
+
+    my $wrapper_cb = sub {
+        $on_validate_cb->(@_);
+        $cb->(@_);
+    };
+    $self->SUPER::validate($wrapper_cb);
+}

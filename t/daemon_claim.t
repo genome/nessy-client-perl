@@ -8,7 +8,8 @@ use Nessy::Daemon::Claim;
 use JSON;
 use Carp;
 use Data::Dumper;
-use Test::More tests => 134;
+use Test::More tests => 144;
+use AnyEvent;
 
 # defaults when creating a new claim object for testing
 our $url = 'http://example.org';
@@ -42,6 +43,8 @@ test_release_response_400();
 test_release_response_409();
 
 test_release_failure();
+
+test_validate_success_and_failure();
 
 sub _new_claim {
     my $claim = Nessy::Daemon::TestClaim->new(
@@ -557,6 +560,42 @@ sub test_release_response_409 {
     is_deeply(\@fail_args, [ $claim, 'release: lost claim' ], 'fail callback got expected args' );
     is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
 }
+
+sub test_validate_success_and_failure {
+    my @tests = ( 200 => 1, 409 => '' );
+
+    for(my $i = 0; $i < @tests; $i += 2) {
+        _test_validate_success_and_failure(@tests[$i, $i+1]);
+    }
+}
+
+sub _test_validate_success_and_failure {
+    my $response_code = shift;
+    my $should_succeed = shift;
+
+    my $claim = _new_claim();
+    my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
+    $claim->state('active');
+
+    my $validate_cb = AnyEvent->condvar;
+    ok($claim->validate($validate_cb), 'call validate()');
+
+    my $params = $claim->_http_method_params();
+    my $cb = $params->[0]->[-1];
+    my $json = JSON->new();
+    _verify_http_params($params,
+        [ 'PATCH' => $fake_claim_location_url,
+          headers => {'Content-Type' => 'application/json'},
+          timeout => $ttl/8,
+          body => $json->encode({ ttl => $ttl }),
+        ]);
+
+    # simulate calling the HTTP response callback
+    $cb->('', { Status => $response_code });
+
+    is($validate_cb->recv, $should_succeed, 'Validate callback got response');
+}
+
 
 package Nessy::Daemon::TestClaim;
 BEGIN {

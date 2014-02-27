@@ -124,9 +124,12 @@ sub claim {
         if ($response->is_succeeded) {
             my $claim_class = $self->_claim_class_name;
             my $on_release = $self->_make_on_release_closure($resource_name, $caller_location);
+            my $on_validate = $self->_make_on_validate_closure($resource_name, $caller_location);
             $claim = $claim_class->new(
                     resource_name => $resource_name,
-                    on_release => $on_release);
+                    on_release => $on_release,
+                    on_validate => $on_validate,
+                );
         } else {
             warn("claim $resource_name at $caller_location failed: ".$response->error_message);
         }
@@ -175,6 +178,20 @@ sub _make_on_release_closure {
     };
 }
 
+sub _make_on_validate_closure {
+    my($self, $resource_name, $caller_location) = @_;
+
+    return sub {
+        my $provided_cb = shift;
+
+        if ($provided_cb) {
+            $self->_validate_claim($resource_name, $provided_cb);
+        } else {
+            $self->_validate_claim($resource_name);
+        }
+    }
+}
+
 sub _release {
     my($self, $resource_name, $cb) = @_;
 
@@ -189,6 +206,29 @@ sub _release {
     my $result = $self->_send_command_with_callback(
         $report_response_succeeded,
         command => 'release',
+        resource_name => $resource_name,
+    );
+
+    if ($is_blocking) {
+        return $cb->recv;
+    }
+    return;
+}
+
+sub _validate_claim {
+    my($self, $resource_name, $cb) = @_;
+
+    my $is_blocking = !$cb;
+    $cb ||= AnyEvent->condvar;
+
+    my $report_response_succeeded = sub {
+        my $response = shift;
+        $cb->( $response->is_succeeded );
+    };
+
+    my $result = $self->_send_command_with_callback(
+        $report_response_succeeded,
+        command => 'validate',
         resource_name => $resource_name,
     );
 
