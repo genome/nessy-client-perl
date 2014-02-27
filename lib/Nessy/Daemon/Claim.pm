@@ -286,12 +286,18 @@ sub send_renewal {
     my $responder = $self->_make_response_generator(
                         'renew',
                         'recv_renewal_response');
-    my $ttl = $self->ttl;
+    $self->_send_renewal_request($responder);
+}
+
+
+sub _send_renewal_request {
+    my($self, $responder) = @_;
+
     $self->_send_http_request(
         PATCH => $self->claim_location_url,
         headers => {'Content-Type' => 'application/json'},
         timeout => ($self->_ttl_timer_value / 2),
-        body => $json_parser->encode({ ttl => $ttl }),
+        body => $json_parser->encode({ ttl => $self->ttl }),
         $responder);
 }
 
