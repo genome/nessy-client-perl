@@ -1,0 +1,5 @@
+libnessy-client-perl (0.001-1) unstable; urgency=low
+
+  * Initial release
+
+ -- Anthony Brummett <abrummet@genome.wustl.edu>  Fri, 28 Feb 2014 10:08:00 -0500
