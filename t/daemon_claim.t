@@ -8,7 +8,7 @@ use Nessy::Daemon::Claim;
 use JSON;
 use Carp;
 use Data::Dumper;
-use Test::More tests => 144;
+use Test::More tests => 151;
 use AnyEvent;
 
 # defaults when creating a new claim object for testing
@@ -20,6 +20,8 @@ our $user_data = { some => 'hash' };
 test_failed_constructor();
 test_constructor();
 test_start_state_machine();
+
+test_start_state_machine_timeout();
 
 test_start_state_machine_failure();
 
@@ -54,6 +56,7 @@ sub _new_claim {
                 user_data => $user_data,
                 on_fatal_error => sub { Carp::croak("unexpected fatal error: $_[1]") },
                 api_version => 'v1',
+                @_,
             );
     return $claim;
 }
@@ -81,28 +84,29 @@ sub test_failed_constructor {
             qr($missing_arg is a required param),
             "missing arg $missing_arg throws an exception");
     }
+
+    $claim = eval { Nessy::Daemon::Claim->new(%all_params, timeout => 0) };
+    like($@, qr(timeout must be undef or a positive number), 'exception with timeout 0');
 }
 
 sub test_constructor {
-    my $claim;
-    $claim = Nessy::Daemon::TestClaim->new(
+    my %common_args = (
                 url => $url,
                 resource_name => $resource_name,
                 ttl => $ttl,
                 on_fatal_error => sub { Carp::croak('unexpected fatal error') },
                 api_version => 'v1',
-            );
+        );
+
+    my $claim;
+    $claim = Nessy::Daemon::TestClaim->new( %common_args );
     ok($claim, 'Create Claim');
 
-    $claim = Nessy::Daemon::TestClaim->new(
-                url => $url,
-                resource_name => $resource_name,
-                ttl => $ttl,
-                on_fatal_error => sub { Carp::croak('unexpected fatal error') },
-                user_data => $user_data,
-                api_version => 'v1',
-            );
+    $claim = Nessy::Daemon::TestClaim->new( %common_args, user_data => $user_data);
     ok($claim, 'Create Claim with user data');
+
+    $claim = Nessy::Daemon::TestClaim->new( %common_args, timeout => 1 );
+    ok($claim, 'Create claim with timeout');
 }
 
 sub _verify_http_params {
@@ -143,6 +147,27 @@ sub test_start_state_machine {
         ]);
 
     is($callback_called, 0, 'neither success nor fail callbacks were called');
+}
+
+sub test_start_state_machine_timeout {
+    my $claim = _new_claim( timeout => 0.1 );
+    ok($claim, 'Create claim with timeout');
+
+    my($on_success_called, $on_fail_called) = (0,0);
+    my $cv = AnyEvent->condvar();
+    my $on_success = sub { $on_success_called++; $cv->send(); };
+    my $on_fail = sub { $on_fail_called++; $cv->send(@_) };
+    my $started = $claim->start(
+                    on_success => $on_success,
+                    on_fail => $on_fail );
+    ok($started, 'start() with timeout');
+
+    my @on_fail_args = $cv->recv();
+    is_deeply(\@on_fail_args,
+            [ $claim, 'TIMEOUT: timeout expired' ],
+            'on_fail callback got expected args');
+    is($on_success_called, 0, 'on_success callback was not called');
+    is($on_fail_called, 1, 'on_fail callback was called');
 }
 
 sub test_start_state_machine_failure {

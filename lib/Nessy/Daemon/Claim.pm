@@ -5,7 +5,7 @@ use warnings;
 
 use Nessy::Properties qw(
             resource_name user_data state url claim_location_url timer_watcher ttl api_version
-            on_success_cb on_fail_cb on_fatal_error);
+            on_success_cb on_fail_cb on_fatal_error timeout);
 
 use AnyEvent;
 use AnyEvent::HTTP;
@@ -45,6 +45,11 @@ sub new {
     $class->_set_proxy();
 
     my $self = $class->_verify_params(\%params, qw(url resource_name ttl on_fatal_error api_version));
+
+    if (defined($self->{timeout}) and $self->{timeout} <= 0) {
+        Carp::croak("timeout must be undef or a positive number");
+    }
+
     bless $self, $class;
     $self->state(STATE_NEW);
     return $self;
@@ -137,6 +142,25 @@ sub send_register {
     $request_body->{user_data} = $self->user_data
         if defined $self->user_data;
 
+
+    if ($self->timeout) {
+        my $request_watcher = $self->_send_http_request(
+                POST => $self->url . '/' . $self->api_version . '/claims/',
+                headers => {'Content-Type' => 'application/json'},
+                body => $json_parser->encode($request_body),
+                $responder,
+            );
+
+        my $timed_out_registering = sub {
+            undef $request_watcher;
+            $responder->('', { Status => 'TIMEOUT' });
+        };
+        my $timer_watcher = $self->_create_timer_event(
+                                    after => $self->timeout,
+                                    cb => $timed_out_registering,
+                            );
+        $self->timer_watcher($timer_watcher);
+    }
     $self->_send_http_request(
         POST => $self->url . '/' . $self->api_version . '/claims/',
         headers => {'Content-Type' => 'application/json'},
@@ -239,6 +263,7 @@ sub recv_register_response_202 {
     $self->timer_watcher($w);
 }
 
+_install_sub('recv_register_response_TIMEOUT', __PACKAGE__->_claim_failure_generator('timeout expired'));
 _install_sub('recv_register_response_400', __PACKAGE__->_claim_failure_generator('bad request'));
 _install_sub('recv_register_response_5XX', __PACKAGE__->_claim_failure_generator('server error'));
 
