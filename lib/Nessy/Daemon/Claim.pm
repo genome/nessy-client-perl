@@ -5,7 +5,7 @@ use warnings;
 
 use Nessy::Properties qw(
             resource_name user_data state url claim_location_url timer_watcher ttl api_version
-            on_success_cb on_fail_cb on_fatal_error timeout);
+            on_success_cb on_fail_cb on_fatal_error timeout registration_timeout_watcher);
 
 use AnyEvent;
 use AnyEvent::HTTP;
@@ -151,22 +151,29 @@ sub send_register {
                 $responder,
             );
 
-        my $timed_out_registering = sub {
-            undef $request_watcher;
-            $responder->('', { Status => 'TIMEOUT' });
-        };
+        my $timed_out_registering = $self->_registration_timeout_handler($responder, $request_watcher);
         my $timer_watcher = $self->_create_timer_event(
                                     after => $self->timeout,
                                     cb => $timed_out_registering,
                             );
-        $self->timer_watcher($timer_watcher);
+        $self->registration_timeout_watcher($timer_watcher);
+    } else {
+        $self->_send_http_request(
+            POST => $self->url . '/' . $self->api_version . '/claims/',
+            headers => {'Content-Type' => 'application/json'},
+            body => $json_parser->encode($request_body),
+            $responder,
+        );
     }
-    $self->_send_http_request(
-        POST => $self->url . '/' . $self->api_version . '/claims/',
-        headers => {'Content-Type' => 'application/json'},
-        body => $json_parser->encode($request_body),
-        $responder,
-    );
+}
+
+sub _registration_timeout_handler {
+    my($self, $responder, $request_watcher) = @_;
+    return sub {
+        undef $request_watcher;
+        $responder->('', { Status => 'TIMEOUT' });
+        1;
+    };
 }
 
 sub _send_http_request {
@@ -230,6 +237,8 @@ sub recv_register_response_201 {
 
 sub _successfully_activated {
     my $self = shift;
+
+    $self->registration_timeout_watcher(undef);
 
     $self->transition(STATE_ACTIVE);
 
@@ -433,6 +442,7 @@ sub _ttl_timer_value {
 sub _remove_all_watchers {
     my $self = shift;
     $self->timer_watcher(undef);
+    $self->registration_timeout_watcher(undef);
 }
 
 sub _default_http_timeout_seconds { 5 }

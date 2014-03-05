@@ -6,7 +6,7 @@ use warnings;
 use Nessy::Daemon;
 use Nessy::Client::Message;
 
-use Test::More tests => 85;
+use Test::More tests => 93;
 use Carp;
 use JSON;
 use Socket;
@@ -23,6 +23,7 @@ test_start();
 test_add_remove_claim();
 
 test_make_claim();
+test_make_claim_timeout();
 test_make_claim_failure();
 test_release_claim_success_and_failure();
 
@@ -216,6 +217,53 @@ sub test_make_claim_failure {
     eval { _read_from_socket() };
     like($@, qr(No data read from socket), 'After destruction, daemon has no more messages for us');
 }
+
+sub test_make_claim_timeout {
+    my $daemon = _new_test_daemon();
+
+    my $message = Nessy::Client::Message->new(
+                        resource_name => 'foo',
+                        command => 'claim',
+                        serial => 1,
+                        args => { timeout => 0.01, ttl => 1 },
+                    );
+    _send_to_socket($message);
+
+    my $cv = AnyEvent->condvar();
+    local $Nessy::Daemon::FakeClaim::on_registration_timeout_cb = sub { $cv->send; };
+    @Nessy::Daemon::FakeClaim::next_http_response = ([
+        '',
+        { Status => 202, location => '/abc' },
+        { Status => 409 },
+    ]);
+
+    _event_loop($daemon, $cv);
+
+    my $response = _read_from_socket();
+
+    my %expected = (    resource_name => 'foo',
+                        command => 'claim',
+                        result => 'failed',
+                        error_message => 'TIMEOUT: timeout expired'
+                );
+    foreach my $key ( keys %expected ) {
+        is($response->$key, $expected{$key}, "Response key $key");
+    }
+
+    my $claim = $daemon->lookup_claim('foo');
+    ok(! $claim, 'daemon did not create claim for resource_name foo');
+
+    eval { _read_from_socket() };
+    like($@, qr(No data read from socket), 'Daemon has no more messages for us');
+
+    $Nessy::TestDaemon::destroy_called = 0;
+    undef $daemon;
+    ok($Nessy::TestDaemon::destroy_called, 'Daemon destroyed');
+
+    eval { _read_from_socket() };
+    like($@, qr(No data read from socket), 'After destruction, daemon has no more messages for us');
+}
+
 
 sub test_validate_success_and_failure {
     _test_validate_success_and_failure($_) foreach ( 200, 400, 404, 409 );
@@ -416,7 +464,7 @@ package Nessy::Daemon::FakeClaim;
 
 use base 'Nessy::Daemon::Claim';
 
-our($on_start_cb, $on_release_cb, $on_validate_cb);
+our($on_start_cb, $on_release_cb, $on_validate_cb, $on_registration_timeout_cb);
 
 sub new {
     my $class = shift;
@@ -479,4 +527,13 @@ sub validate {
         $cb->(@_);
     };
     $self->SUPER::validate($wrapper_cb);
+}
+
+sub _registration_timeout_handler {
+    my $self = shift;
+    my $cb = $self->SUPER::_registration_timeout_handler(@_);
+    return sub {
+        $on_registration_timeout_cb->() if ($on_registration_timeout_cb);
+        $cb->(@_);
+    };
 }

@@ -16,7 +16,6 @@ test_daemon_exits_from_destructor();
 test_shutdown();
 
 test_claim_success();
-test_claim_timeout();
 test_claim_failure();
 
 test_claim_release();

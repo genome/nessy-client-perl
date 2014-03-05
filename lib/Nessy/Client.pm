@@ -5,7 +5,7 @@ use warnings;
 
 our $VERSION = '0.001';
 
-use Nessy::Properties qw(pid socket socket_watcher serial_responder_registry api_version default_ttl);
+use Nessy::Properties qw(pid socket socket_watcher serial_responder_registry api_version default_ttl default_timeout);
 
 use Nessy::Claim;
 use Nessy::Daemon;
@@ -26,7 +26,6 @@ my $MESSAGE_SERIAL = 1;
 sub new {
     my($class, %params) = @_;
 
-    my $ttl = $params{default_ttl} || $class->_default_ttl;
     my $api_version = $params{api_version} || $class->_default_api_version;
 
     my $url = $params{url} || Carp::croak('url is a required param');
@@ -40,7 +39,8 @@ sub new {
         my $self = bless {}, $class;
         $self->api_version($api_version);
         $self->pid($pid);
-        $self->default_ttl( $ttl );
+        $self->default_ttl( $params{default_ttl} || $class->_default_ttl );
+        $self->default_timeout( $params{default_timeout} || $class->_default_timeout );
         $self->serial_responder_registry({});
 
         my $watcher = $self->_create_socket_watcher($socket1);
@@ -68,6 +68,7 @@ sub new {
 }
 
 sub _default_ttl { 60 } # seconds
+sub _default_timeout { undef } # seconds or undef means wait as long as it takes
 sub _default_api_version { 'v1' }
 
 sub _daemon_class_name { 'Nessy::Daemon' }
@@ -110,7 +111,7 @@ sub claim {
 
     $resource_name || Carp::croak('resource_name is a required param');
 
-    my($user_data, $cb, $ttl) = @params{'user_data','cb','ttl'};
+    my($user_data, $cb, $ttl, $timeout) = @params{'user_data','cb','ttl','timeout'};
 
     my $is_blocking = !$cb;
     $cb ||= AnyEvent->condvar;
@@ -137,11 +138,12 @@ sub claim {
     };
 
     $ttl ||= $self->default_ttl;
+    $timeout ||= $self->default_timeout;
     my $result = $self->_send_command_with_callback(
         $report_response,
         command => 'claim',
         resource_name => $resource_name,
-        args => { user_data => $user_data, ttl => $ttl },
+        args => { user_data => $user_data, ttl => $ttl, timeout => $timeout },
     );
 
     if ($is_blocking) {

@@ -3,7 +3,7 @@
 use strict;
 use warnings FATAL => qw(all);
 
-use Test::More tests => 87;
+use Test::More tests => 89;
 
 use Nessy::Client;
 use AnyEvent;
@@ -26,6 +26,7 @@ test_get_undef();
 test_renewal();
 test_validate();
 test_waiting_to_activate();
+test_register_timeout();
 
 test_revoked_while_activating();
 test_http_timeout_while_activating();
@@ -172,6 +173,20 @@ sub test_validate {
     ok($lock->release, 'Release lock');
 
     my($env_release) = $server_thread_release->join;
+}
+
+sub test_register_timeout {
+    my $server_thread_register = Nessy::Client::TestWebServer->new(
+        [ 202, [ Location => "$url/v1/claims/abc" ], [] ],
+    );
+
+    my $warn_message;
+    local $SIG{__WARN__} = sub { $warn_message = shift };
+    my $lock = $client->claim($resource_name, ttl => 1, timeout => 0.1);
+    ok(! $lock, 'attempting claim timed out');
+    like($warn_message, qr(claim foo .* failed: TIMEOUT: timeout expired), 'Got expected warning');
+
+    $server_thread_register->join();
 }
 
 sub test_waiting_to_activate {

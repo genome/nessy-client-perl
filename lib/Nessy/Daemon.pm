@@ -283,6 +283,7 @@ sub claim {
                     user_data => $args->{user_data},
                     url => $self->url,
                     ttl => $args->{ttl},
+                    timeout => $args->{timeout},
                     api_version => $self->api_version,
                     on_fatal_error => sub { $self_copy->_on_fatal_error(@_) },
                 );

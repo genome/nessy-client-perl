@@ -13,7 +13,7 @@ use lib 't/lib';
 use Nessy::Client::TestWebProxy;
 
 if ($ENV{NESSY_SERVER_URL}) {
-    plan tests => 56;
+    plan tests => 59;
 }
 else {
     plan skip_all => 'Needs nessy-server for testing; '
@@ -26,6 +26,7 @@ test_get_release();
 test_renewal();
 test_validate();
 test_waiting_claim();
+test_register_timeout();
 
 test_server_not_responding_during_activate();
 test_server_not_responding_during_renew();
@@ -84,6 +85,24 @@ sub test_validate {
     ok($validated->recv, 'claim is validated');
 
     _release($claim, $proxy);
+}
+
+sub test_register_timeout {
+    # Note that this test does not go through the proxy
+    my $client1 = Nessy::Client->new( url => $ENV{NESSY_SERVER_URL}, default_ttl => $ttl);
+    my $client2 = Nessy::Client->new( url => $ENV{NESSY_SERVER_URL}, default_ttl => $ttl);
+
+    my ($resource_name, $user_data) = get_resource_and_user_data();
+    my $claim1 = $client1->claim($resource_name, ttl => 999, user_data => 'original claim');
+    ok($claim1, 'make claim for contention');
+
+    my $warning_message;
+    local $SIG{__WARN__} = sub { $warning_message = shift };
+    my $claim2_activated = AnyEvent->condvar;
+    $client2->claim($resource_name, cb => $claim2_activated, ttl => 1, user_data => 'waiting claim', timeout => 0.1);
+
+    ok(! $claim2_activated->recv, 'second claim failed');
+    like($warning_message, qr(TIMEOUT: timeout expired), 'expected warning message');
 }
 
 sub test_waiting_claim {
