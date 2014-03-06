@@ -1,3 +1,9 @@
+libnessy-client-perl (0.002-1) unstable; urgency=low
+
+  * Nessy::Client::claim() now accepts timeout parameter
+
+ -- Anthony Brummett <abrummet@genome.wustl.edu>  Thu, 6 Mar 2014 14:53:00 -0500
+
 libnessy-client-perl (0.001-1) unstable; urgency=low
 
   * Initial release
