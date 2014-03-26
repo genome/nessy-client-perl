@@ -11,7 +11,6 @@ use AnyEvent;
 use AnyEvent::HTTP;
 use JSON;
 use Data::Dumper;
-use Memoize qw(memoize);
 use Scalar::Util qw();
 use Sub::Name;
 use Sub::Install;
@@ -39,10 +38,9 @@ my %STATE = (
 );
 
 
-memoize('json_parser');
+my $json_parser;
 sub json_parser {
-    my $class = shift;
-    return JSON->new();
+    $json_parser ||= JSON->new();
 }
 
 sub new {
