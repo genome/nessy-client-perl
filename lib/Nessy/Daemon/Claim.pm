@@ -55,6 +55,11 @@ sub new {
     return $self;
 }
 
+sub class {
+    my $self = shift;
+    return ref $self;
+}
+
 my $proxy_already_set = 0;
 sub _set_proxy {
     return if $proxy_already_set;
