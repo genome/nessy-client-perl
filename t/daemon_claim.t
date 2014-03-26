@@ -139,7 +139,7 @@ sub test_start_state_machine {
     is(scalar($claim->remaining_state_transitions), 0, 'expected state transitions for start()');
 
     my $params = $claim->_http_method_params();
-    my $json = JSON->new();
+    my $json = JSON->new()->canonical(1);
     _verify_http_params($params,
         [ 'POST' => "${url}/v1/claims/",
           headers => {'Content-Type' => 'application/json'},
@@ -299,7 +299,7 @@ sub test_send_activating {
     ok($claim->send_activating(), 'send_activating()');
 
     my $params = $claim->_http_method_params();
-    my $json = JSON->new();
+    my $json = JSON->new()->canonical(1);
     _verify_http_params($params,
         [ 'PATCH' => $claim_location_url,
           headers => {'Content-Type' => 'application/json'},
@@ -421,7 +421,7 @@ sub test_send_renewal {
     ok($claim->send_renewal(), 'send_renewal()');
 
     my $params = $claim->_http_method_params();
-    my $json = JSON->new();
+    my $json = JSON->new()->canonical(1);
     _verify_http_params($params,
         [ 'PATCH' => $claim_location_url,
           headers => {'Content-Type' => 'application/json'},
@@ -500,7 +500,7 @@ sub test_send_release {
     ok($release, 'send_release()');
 
     my $params = $claim->_http_method_params();
-    my $json = JSON->new();
+    my $json = JSON->new()->canonical(1);
     _verify_http_params($params,
         [ 'PATCH' => $claim_location_url,
           headers => {'Content-Type' => 'application/json'},
@@ -607,7 +607,7 @@ sub _test_validate_success_and_failure {
 
     my $params = $claim->_http_method_params();
     my $cb = $params->[0]->[-1];
-    my $json = JSON->new();
+    my $json = JSON->new()->canonical(1);
     _verify_http_params($params,
         [ 'PATCH' => $fake_claim_location_url,
           headers => {'Content-Type' => 'application/json'},
@@ -625,6 +625,11 @@ sub _test_validate_success_and_failure {
 package Nessy::Daemon::TestClaim;
 BEGIN {
     our @ISA = qw( Nessy::Daemon::Claim );
+}
+
+my $json_parser;
+sub json_parser {
+    $json_parser ||= JSON->new()->canonical(1);
 }
 
 sub new {
