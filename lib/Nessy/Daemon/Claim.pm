@@ -11,6 +11,7 @@ use AnyEvent;
 use AnyEvent::HTTP;
 use JSON;
 use Data::Dumper;
+use Memoize qw(memoize);
 use Scalar::Util qw();
 use Sub::Name;
 use Sub::Install;
@@ -38,7 +39,12 @@ my %STATE = (
 );
 
 
-my $json_parser = JSON->new();
+memoize('json_parser');
+sub json_parser {
+    my $class = shift;
+    return JSON->new();
+}
+
 sub new {
     my($class, %params) = @_;
 
@@ -152,7 +158,7 @@ sub send_register {
         my $request_watcher = $self->_send_http_request(
                 POST => $self->url . '/' . $self->api_version . '/claims/',
                 headers => {'Content-Type' => 'application/json'},
-                body => $json_parser->encode($request_body),
+                body => $self->class->json_parser->encode($request_body),
                 $responder,
             );
 
@@ -166,7 +172,7 @@ sub send_register {
         $self->_send_http_request(
             POST => $self->url . '/' . $self->api_version . '/claims/',
             headers => {'Content-Type' => 'application/json'},
-            body => $json_parser->encode($request_body),
+            body => $self->class->json_parser->encode($request_body),
             $responder,
         );
     }
@@ -292,7 +298,7 @@ sub send_activating {
         PATCH => $self->claim_location_url,
         headers => {'Content-Type' => 'application/json'},
         timeout => ($self->_ttl_timer_value / 2),
-        body => $json_parser->encode({ status => 'active' }),
+        body => $self->class->json_parser->encode({ status => 'active' }),
         $responder,
     );
 }
@@ -336,7 +342,7 @@ sub _send_renewal_request {
         PATCH => $self->claim_location_url,
         headers => {'Content-Type' => 'application/json'},
         timeout => ($self->_ttl_timer_value / 2),
-        body => $json_parser->encode({ ttl => $self->ttl }),
+        body => $self->class->json_parser->encode({ ttl => $self->ttl }),
         $responder);
 }
 
@@ -416,7 +422,7 @@ sub release {
     $self->_send_http_request(
         PATCH => $self->claim_location_url,
         headers => {'Content-Type' => 'application/json'},
-        body => $json_parser->encode({ status => 'released' }),
+        body => $self->class->json_parser->encode({ status => 'released' }),
         $responder,
     );
 }
