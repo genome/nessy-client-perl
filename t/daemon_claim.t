@@ -627,12 +627,9 @@ BEGIN {
     our @ISA = qw( Nessy::Daemon::Claim );
 }
 
-use Memoize qw(memoize);
-
-memoize('json_parser');
+my $json_parser;
 sub json_parser {
-    my $class = shift;
-    return JSON->new()->canonical(1);
+    $json_parser ||= JSON->new()->canonical(1);
 }
 
 sub new {
