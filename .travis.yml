@@ -10,7 +10,7 @@ before_script:
     - git clone https://github.com/genome/nessy-server.git
     - pushd nessy-server
     - sudo pip install -r requirements.txt
-    - LOCKING_DB='postgres://postgres@localhost/locking' ./devserver &
+    - LOCKING_DB='postgres://postgres@localhost/nessy' ./devserver &
     - popd
 
 script:
