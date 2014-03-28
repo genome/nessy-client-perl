@@ -4,4 +4,15 @@ perl:
   - "5.10"  # Without quotes this will use perl version 5.1
   - 5.12
   - 5.18
-script: prove -I t/lib --lib --verbose --recurse t/
+
+before_script:
+    - psql -c 'create database nessy;' -U postgres
+    - git clone https://github.com/genome/nessy-server.git
+    - pushd nessy-server
+    - git show HEAD
+    - sudo pip install -r requirements.txt
+    - LOCKING_DB='postgres://postgres@localhost/nessy' ./devserver &
+    - popd
+
+script:
+    - NESSY_SERVER_URL=http://localhost:5000 prove -I t/lib --lib --verbose --recurse t/

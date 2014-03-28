@@ -1,7 +1,7 @@
 package Nessy::Client::TestWebProxy;
 
 use strict;
-use warnings;
+use warnings FATAL => qw(all);
 
 use Carp;
 use Socket;
@@ -120,10 +120,10 @@ sub _read_request_from_socket {
     my($content_length, $body_length) = (0,0);
     while(1) {
         $do_read->();
-        if ($buf =~ m/\r\n\r\n(.*)/) {
+        if ($buf =~ m/\r\n\r\n(.*)/s) {
             $body_length = length($1);
             # read in all the headers
-            my($content_length) = $buf =~ m/^Content-Length: (\d+)/im;
+            ($content_length) = $buf =~ m/^Content-Length: (\d+)/im;
             last;
         }
     }
