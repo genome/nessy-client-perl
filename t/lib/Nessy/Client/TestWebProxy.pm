@@ -1,7 +1,7 @@
 package Nessy::Client::TestWebProxy;
 
 use strict;
-use warnings;
+use warnings FATAL => qw(all);
 
 use Carp;
 use Socket;
