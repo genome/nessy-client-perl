@@ -108,7 +108,7 @@ sub _read_request_from_socket {
     my $buf = '';
 
     my $do_read = sub {
-        my $bytes_to_read = shift || 1024;
+        my $bytes_to_read = shift || 4096;
         my $count = $sock->sysread($buf, $bytes_to_read, length($buf));
         unless (defined $count) {
             Carp::croak("Error reading from socket: $!");
