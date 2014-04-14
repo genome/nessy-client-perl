@@ -327,3 +327,140 @@ sub bailout {
 }
 
 1;
+
+=pod
+
+=head1 NAME
+
+Nessy::Client - Client API for the Nessy lock server
+
+=head1 SYNOPSIS
+
+  use Nessy::Client;
+
+  my $client = Nessy::Client->new( url => 'http://nessy.server.example.org/' );
+
+  my $claim = $client->claim( "my resource" );
+
+  do_something_while_resource_is_locked();
+
+  $claim->release();
+
+=head1 Constructor
+
+  my $client = Nessy::Client->new( url => $url,
+                                   default_ttl => $ttl_seconds,
+                                   default_timeout => $timeout_seconds,
+                                   api_version => $version_string );
+
+Create a new connection to the Nessy locking server.  C<url> is the top-level
+URL the Nessy locking server is listening on.  C<default_ttl> is the default
+time-to-live for all claims created through this client instance.
+C<default_timeout> is the default command timeout for claims.  C<api_version>
+is the dialect to use when talking to the server.
+
+C<url> is the only required argument.  C<default_ttl> will default to 60
+seconds.  C<default_timeout> will default to C<undef>, meaning that commands
+will block for as long as necessary.  C<api_version> will default to "v1".
+
+When a client instance is created, it will fork/exec a process
+(L<Nessy::Daemon>) that manages claims for the creating process.
+
+=head1 Methods
+
+=over 4
+
+=item api_version()
+
+=item api_version($new_version)
+
+Get or set the api_version.  Changing this attribute does not affect any
+claims already created.
+
+=item default_ttl
+
+=item default_ttl( $new_default_ttl_seconds )
+
+Get or the set the detault_ttl.  Changing this attribute does not affect any
+claims already created.
+
+=item default_timeout
+
+=item default_timeout( $new_timeout_seconds )
+
+Get or the set the default_timeout.  Changing this attribute does not affect any
+claims already created.
+
+=item claim()
+
+  my $claim = $client->claim( $resource_name, %params);
+
+Attempt to lock a named resource.  C<$resource_name> is a plain string.
+C<%params> is an optional list of key/value pairs.  The default behavior is
+for claim() to block until the named resource has been successfully claimed.
+It returns an instance of L<Nessy::Claim> on success, and a false value on
+failure, such as if the command timeout expires before the claim is locked.
+
+Optional params are:
+
+=over 2
+
+=item ttl
+
+Time-to-live for this claim.  Overrides the client's default_ttl.  When a
+claim is made, it is valid on the server for this many seconds.  A claim's
+ttl is refreshed periodicly by the Daemon process, and so can persist for
+longer than the ttl.
+
+=item timeout
+
+Command timeout for this claim.  Overrides the client's default_ttl.
+
+=item user_data
+
+User data attached to this claim.  The server does not use it at all.
+This data may be a reference to a deep data structure.  It must be serializable
+with the JSON module.
+
+=item cb
+
+Normally claim() is a blocking function.  If cb is a function ref, then
+claim() returns immediately.  When the claim is finalized as successful or not,
+this function is called with the result as the only argument.  In order for
+this asynchronous call to proceed, the main program must enter the AnyEvent
+event loop.
+
+=back
+
+=item ping()
+
+  my $worked = $client->ping()
+
+  $client->ping( $result_coderef );
+
+Returns true if the Daemon process is alive, false otherwise.  ping
+accepts an optional callback coderef.  As with the claim() method, this
+callback can only run if the main process enters the AnyEvent loop.
+
+=item shutdown()
+
+  $client->shutdown()
+
+Shuts down the Daemon process.  Any claims still being held will be
+abandoned.  The Daemon process will exit on its own if the parent
+process terminates.
+
+=back
+
+=head1 SEE ALSO
+
+L<Nessy::Claim>, L<Nessy::Daemon>
+
+=head1 LICENCE AND COPYRIGHT
+
+Copyright (C) 2014 Washington University in St. Louis, MO.
+
+This sofware is licensed under the same terms as Perl itself.
+See the LICENSE file in this distribution.
+
+=cut

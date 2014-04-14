@@ -421,3 +421,88 @@ unless (caller) {
     _run();
 }
 1;
+
+=pod
+
+=head1 NAME
+
+Nessy::Daemon - Process to manage Claims for the main program
+
+=head1 DESCRIPTION
+
+The Dameon process is started by L<Nessy::Client> to manage claims on behalf of
+the main program. Since Nessy claims must be refreshed periocically, the Daemon
+process allows this to happen even if the main program is not event based.  The
+Client and Daemon communicate over a file descriptior by sending L<Nessy::Client::Message>
+objects serialized with the JSON module.
+
+=head1 CONSTRUCTOR
+
+  my $daemon = Nessy::Daemon->new(
+                    url => $server_url,
+                    client_socket => $socket_object,
+                    api_version => $version );
+  $daemon->run();
+
+Creates a new Nessy::Daemon instance.  C<url> is the top-level URL of the
+Nessy server.  C<api_version> is the dialect to use when talking to the
+Nessy server.  C<client_socket> is a L<IO::Socket> instance to communicate
+over.
+
+The C<run> method does a fork/exec to run the Nessy::Daemon module from the
+command line, while keeping the communication socket open.  If the Daemon
+detects the socket is closed, it will exit.
+
+=head1 Commands
+
+The Client controls the Daemon by sending serialized L<Nessy::Client::Message>
+objects through the open socket.  Commands are processed initially by C<dispatch_command()>.
+The following commands are recognized:
+
+=over 4
+
+=item claim()
+
+Create a new L<Nessy::Daemon::Claim> object and call C<start()> on it.  The Message
+args may contain these key/value pairs:
+
+=over 2
+
+=item user_data
+
+=item ttl
+
+=item timeout
+
+=back
+
+=item release()
+
+Release the resource named in the Message.
+
+=item validate()
+
+Call C<validate()> on the Claim named in the Message.
+
+=item ping()
+
+The Daemon immediately responds with a successful response.
+
+=item shutdown
+
+Shuts down the Daemon by first releasing all currently held Claims and
+then exiting.  This command is implemented by the C<shutdown_cmd()> method.
+
+=back
+
+L<Nessy::Claim>, L<Nessy::Daemon::Claim>
+
+=head1 LICENCE AND COPYRIGHT
+
+Copyright (C) 2014 Washington University in St. Louis, MO.
+
+This sofware is licensed under the same terms as Perl itself.
+See the LICENSE file in this distribution.
+
+=cut
+
