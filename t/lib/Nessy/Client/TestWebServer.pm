@@ -54,6 +54,16 @@ sub _make_new_socket {
         Listen      => 5);
 }
 
+sub wait_for_block_next {
+    my $self = shift;
+    $self->{pipe}->getline();
+}
+
+sub proceed_after_block_next {
+    my $self = shift;
+    $self->{pipe}->say();
+}
+
 sub join {
     my $self = shift;
 
@@ -81,6 +91,12 @@ sub _run_web_server {
         my $response = shift @responses;
         push @envs, $env;
         $env->{'psgix.harakiri.commit'} = 1 unless(@responses);
+
+        if ($response eq 'BLOCK NEXT') {
+            $result_pipe->say('WAITING');
+            scalar <$result_pipe>;
+            $response = shift @responses;
+        }
 
         if ($response eq 'BAIL OUT') {
             goto SEND_RESULT;
