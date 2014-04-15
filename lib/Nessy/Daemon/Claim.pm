@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use Nessy::Properties qw(
-            resource_name user_data state url claim_location_url timer_watcher ttl api_version
+            _release_queue resource_name user_data state url claim_location_url timer_watcher ttl api_version
             on_success_cb on_fail_cb on_fatal_error timeout registration_timeout_watcher);
 
 use AnyEvent;
@@ -59,7 +59,10 @@ sub new {
     }
 
     bless $self, $class;
+
+    $self->_release_queue([]);
     $self->state(STATE_NEW);
+
     return $self;
 }
 
@@ -96,11 +99,21 @@ sub can_transition {
     return;
 }
 
+sub _process_release_queue {
+    my $self = shift;
+    for my $sub (@{$self->_release_queue}) {
+        $sub->();
+    }
+}
+
 sub transition {
     my($self, $new_state) = @_;
 
     if ($self->can_transition($new_state)) {
         $self->state($new_state);
+        if ($self->can_release) {
+            $self->_process_release_queue();
+        }
         return 1;
     }
     $self->send_fatal_error(Carp::shortmess("Illegal transition from ".$self->state." to $new_state"));
@@ -409,9 +422,19 @@ sub validate {
 sub release {
     my $self = shift;
     my(%params) = @_;
+    for my $name (qw(on_success on_fail)) {
+        unless (exists $params{$name}) {
+            Carp::croak("$name is required")
+        }
+    }
+    unless ($self->can_release) {
+        push @{$self->_release_queue}, sub { $self->release(%params) };
+        return;
+    }
 
-    $self->on_success_cb($params{on_success}) || Carp::croak('on_success is required');
-    $self->on_fail_cb($params{on_fail}) || Carp::croak('on_fail is required');
+
+    $self->on_success_cb($params{on_success});
+    $self->on_fail_cb($params{on_fail});
 
     if ($self->state eq STATE_NEW) {
         $self->transition(STATE_RELEASED);
