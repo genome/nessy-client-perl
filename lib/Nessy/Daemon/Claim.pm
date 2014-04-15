@@ -37,6 +37,10 @@ my %STATE = (
     STATE_RELEASED()    => [],
 );
 
+sub can_release {
+    my $self = shift;
+    return $self->can_transition(STATE_RELEASING());
+}
 
 my $json_parser;
 sub json_parser {
