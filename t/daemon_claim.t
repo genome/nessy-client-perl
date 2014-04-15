@@ -8,7 +8,7 @@ use Nessy::Daemon::Claim;
 use JSON;
 use Carp;
 use Data::Dumper;
-use Test::More tests => 156;
+use Test::More tests => 158;
 use AnyEvent;
 
 # defaults when creating a new claim object for testing
@@ -601,11 +601,13 @@ sub test_release_during_renewing {
         'claim is still in RENEWING state after calling release');
     is($claim->_http_method_params(), undef, 'no HTTP request was made');
     is($success + $fail, 0, 'neither success nor fail fired');
+    is(scalar(@{$claim->_release_queue}), 1, 'release was queued');
 
     $claim->transition(Nessy::Daemon::Claim::STATE_ACTIVE());
     is($claim->state, Nessy::Daemon::Claim::STATE_RELEASING(),
         'after transition the claim is in RELEASING state');
     is(scalar(@{$claim->_http_method_params}), 1, 'an HTTP request was made');
+    is(scalar(@{$claim->_release_queue}), 0, 'release queue is empty');
 }
 
 sub test_validate_success_and_failure {

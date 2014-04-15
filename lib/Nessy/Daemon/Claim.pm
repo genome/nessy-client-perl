@@ -101,7 +101,7 @@ sub can_transition {
 
 sub _process_release_queue {
     my $self = shift;
-    for my $sub (@{$self->_release_queue}) {
+    while (my $sub = shift @{$self->_release_queue}) {
         $sub->();
     }
 }
