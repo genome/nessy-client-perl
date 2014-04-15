@@ -79,15 +79,25 @@ sub start {
     $self->send_register();
 }
 
-sub transition {
-    my($self, $new_state) = @_;
+sub can_transition {
+    my ($self, $to) = @_;
 
     my @allowed_next = @{ $STATE{ $self->state } };
     foreach my $allowed_next ( @allowed_next ) {
-        if ($allowed_next eq $new_state) {
-            $self->state($new_state);
+        if ($allowed_next eq $to) {
             return 1;
         }
+    }
+
+    return;
+}
+
+sub transition {
+    my($self, $new_state) = @_;
+
+    if ($self->can_transition($new_state)) {
+        $self->state($new_state);
+        return 1;
     }
     $self->send_fatal_error(Carp::shortmess("Illegal transition from ".$self->state." to $new_state"));
 }
