@@ -3,12 +3,12 @@ package Nessy::Client::TestWebServer;
 use strict;
 use warnings FATAL => qw(all);
 
-use IO::Pipe;
 use Carp;
 use Storable;
 use JSON;
-use Socket qw(IPPROTO_TCP TCP_NODELAY);
+use Socket qw( AF_UNIX IPPROTO_TCP PF_UNSPEC SOCK_STREAM TCP_NODELAY );
 use IO::Socket::INET;
+use IO::Socket qw();
 
 use HTTP::Server::PSGI;
 
@@ -21,15 +21,16 @@ sub new {
         $SERVER_SOCKET = $class->_make_new_socket();
     }
 
-    my $pipe = IO::Pipe->new();
+    my ($client, $server) = IO::Socket->socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC)
+        or die "socketpair: $!";
     if (my $pid = fork()) {
-        $pipe->reader;
-        my $self = { pipe => $pipe, pid => $pid };
+        close $server;
+        my $self = { pipe => $client, pid => $pid };
         return bless $self, $class;
 
     } elsif (defined $pid) {
-        $pipe->writer;
-        _run_web_server($SERVER_SOCKET, $pipe, @responses);
+        close $client;
+        _run_web_server($SERVER_SOCKET, $server, @responses);
         exit;
 
     } else {
