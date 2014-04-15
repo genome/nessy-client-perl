@@ -3,7 +3,7 @@
 use strict;
 use warnings FATAL => qw(all);
 
-use Test::More tests => 89;
+use Test::More tests => 90;
 
 use Nessy::Client;
 use AnyEvent;
@@ -36,6 +36,8 @@ test_server_error_while_registering();
 test_server_error_while_activating();
 test_server_error_while_renewing();
 test_server_error_while_releasing();
+
+test_release_during_renewing();
 
 sub test_get_release {
 
@@ -481,3 +483,18 @@ sub test_server_error_while_renewing {
     my($env_release) = $server_thread_release->join;
 }
 
+sub test_release_during_renewing {
+    my $server_thread_register = Nessy::Client::TestWebServer->new(
+        [ 201, ['Location' => "$url/v1/claims/abc"], []],
+        'BLOCK NEXT',
+        [200, [], []], # renew
+        [204, [], []], # release
+    );
+
+    my $lock = $client->claim($resource_name, ttl => 1);
+    $server_thread_register->wait_for_block_next();
+    my $cond = AnyEvent->condvar;
+    $lock->release($cond);
+    $server_thread_register->proceed_after_block_next();
+    ok($cond->recv(), 'release callback fired');
+}
