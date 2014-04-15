@@ -8,7 +8,7 @@ use Nessy::Daemon::Claim;
 use JSON;
 use Carp;
 use Data::Dumper;
-use Test::More tests => 151;
+use Test::More tests => 156;
 use AnyEvent;
 
 # defaults when creating a new claim object for testing
@@ -45,6 +45,8 @@ test_release_response_400();
 test_release_response_409();
 
 test_release_failure();
+
+test_release_during_renewing();
 
 test_validate_success_and_failure();
 
@@ -584,6 +586,26 @@ sub test_release_response_409 {
     is($fail, 1, 'fail callback fired');
     is_deeply(\@fail_args, [ $claim, 'release: lost claim' ], 'fail callback got expected args' );
     is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
+}
+
+sub test_release_during_renewing {
+    my $claim = _new_claim();
+    $claim->state(Nessy::Daemon::Claim::STATE_RENEWING());
+
+    my($success, $fail) = (0, 0);
+    $claim->release(
+        on_success => sub { $success++ },
+        on_fail    => sub { $fail++ },
+    );
+    is($claim->state, Nessy::Daemon::Claim::STATE_RENEWING(),
+        'claim is still in RENEWING state after calling release');
+    is($claim->_http_method_params(), undef, 'no HTTP request was made');
+    is($success + $fail, 0, 'neither success nor fail fired');
+
+    $claim->transition(Nessy::Daemon::Claim::STATE_ACTIVE());
+    is($claim->state, Nessy::Daemon::Claim::STATE_RELEASING(),
+        'after transition the claim is in RELEASING state');
+    is(scalar(@{$claim->_http_method_params}), 1, 'an HTTP request was made');
 }
 
 sub test_validate_success_and_failure {
