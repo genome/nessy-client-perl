@@ -84,7 +84,7 @@ sub _release_all_claims_in_shutdown {
                 on_success => sub { 1 },
                 on_fail => sub {
                         my ($claim, $error) = @_;
-                        $self->_log_error($error);
+                        _log_error($error);
                 },
             );
     }
@@ -138,7 +138,7 @@ sub client_error_event {
     if ($is_fatal) {
         $self->fatal_error($msg);
     } else {
-        $self->_log_error("client_error_event: $msg");
+        _log_error("client_error_event: $msg");
     }
 }
 
@@ -382,7 +382,7 @@ sub all_claims {
 sub fatal_error {
     my($self, $message) = @_;
 
-    $self->_log_error("Fatal error: $message");
+    _log_error("Fatal error: $message");
     $self->_try_kill_parent('TERM');
     sleep($self->fatal_error_delay_time);
     $self->_exit_if_parent_dead(1);
@@ -404,7 +404,7 @@ sub _exit_if_parent_dead {
 }
 
 sub _log_error {
-    my($self, $error_message) = @_;
+    my($error_message) = @_;
     print STDERR $error_message,"\n";
     eval {
         require AnyEvent::Debug;
