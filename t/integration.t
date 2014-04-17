@@ -20,7 +20,7 @@ else {
         .' set NESSY_SERVER_URL to something like http://127.0.0.1/';
 }
 
-my $ttl = 7;
+my $ttl = 20;
 
 test_get_release();
 test_renewal();
@@ -49,7 +49,6 @@ sub test_get_release {
 sub test_renewal {
     my($client, $proxy) = _make_client_and_proxy();
 
-    my $ttl = 1;
     my $claim = _claim($client, $proxy, ttl => $ttl);
     ok($claim, 'make claim for renewal');
 
