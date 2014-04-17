@@ -1,3 +1,10 @@
+libnessy-client-perl (0.003-1) lucid; urgency=low
+
+  * Fix "illegal transition" crash when claim is released during renewal.
+  * Added documentation.
+
+ -- Nathaniel Nutter <nnutter@genome.wustl.edu>  Thu, 17 Apr 2014 12:18:19 -0500
+
 libnessy-client-perl (0.002-1) unstable; urgency=low
 
   * Nessy::Client::claim() now accepts timeout parameter
