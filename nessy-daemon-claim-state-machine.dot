@@ -1,0 +1,39 @@
+digraph "nessy-daemon-claim" {
+    {
+        node [shape=oval]
+        "new"
+        "waiting"
+        "active"
+        "released"
+        "fail"
+    }
+
+    {
+        node [shape=box]
+        "Registering"
+        "Activating"
+        "Releasing"
+        "Renewing"
+    }
+
+    "new"       ->  "Registering"   [label="Register (POST)"];
+    "waiting"   ->  "Activating"    [label="Activate (PATCH)"];
+    "active"    ->  "Releasing"     [label="Release (PATCH)"];
+    "active"    ->  "Renewing"      [label="Renew (PATCH)"];
+
+    edge [color=green];
+    "Registering"   ->  "active"    [label="201"];
+    "Activating"    ->  "active"    [label="200"];
+    "Renewing"      ->  "active"    [label="200"];
+    "Releasing"     ->  "released"  [label="204"];
+
+    edge [color=blue];
+    "Registering"   ->  "waiting"   [label="202"];
+    "Activating"    ->  "waiting"   [label="409"];
+
+    edge [color=red];
+    "Registering"   ->  "fail"      [label="400"];
+    "Activating"    ->  "fail"      [label="400,404"];
+    "Renewing"      ->  "fail"      [label="400,404,409"];
+    "Releasing"     ->  "fail"      [label="400,404,409"];
+};
