@@ -1,4 +1,4 @@
-digraph "nessy-daemon-claim" {
+digraph "nessy-daemon-claim-state-machine" {
     {
         node [shape=oval]
         "new"
@@ -6,8 +6,7 @@ digraph "nessy-daemon-claim" {
         "active"
         "released"
         "fail"
-    }
-
+    } 
     {
         node [shape=box]
         "Registering"
