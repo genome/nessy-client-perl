@@ -605,9 +605,9 @@ sub test_release_response_409 {
     my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
 
     my $response_handler = $claim->_make_response_generator('claim', 'recv_release_response');
-    # It is not clear what the release response would look like for a 409
-    # because it is not clear that this can ever happen
-    ok($response_handler->('', { Status => 409 }),
+    my $response_body =
+        '{"status": "FakeStatus", "exception_class": "ConflictException", "message": "This never happens.", "claim_id": 999999}';
+    ok($response_handler->($response_body, { Status => 409 }),
         'send 409 response to release');
 
     is($claim->state, 'failed', 'Claim state is failed');
@@ -617,7 +617,7 @@ sub test_release_response_409 {
     is_deeply(\@fail_args, [ $claim,
         join("\n", '409: release: lost claim',
             '----RESPONSE BODY----',
-            '(no response body)',
+            $response_body,
             '----END RESPONSE BODY----')
     ], 'fail callback got expected args' );
     is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
