@@ -130,7 +130,7 @@ sub _call_success_fail_callback {
     $self->$cb(@args);
 }
 
-sub _claim_failure_generator {
+sub _failure_generator {
     my($class, $error) = @_;
 
     return sub {
@@ -142,18 +142,6 @@ sub _claim_failure_generator {
         $self->_call_success_fail_callback('on_fail_cb',
             join ': ', $headers->{Status}, $error);
 
-        1;
-    };
-}
-
-sub _release_failure_generator {
-    my($class, $error) = @_;
-
-    return sub {
-        my $self = shift;
-        $self->_remove_all_watchers();
-        $self->state(STATE_FAILED);
-        $self->_call_success_fail_callback('on_fail_cb', $error);
         1;
     };
 }
@@ -303,9 +291,9 @@ sub recv_register_response_202 {
     $self->timer_watcher($w);
 }
 
-_install_sub('recv_register_response_TIMEOUT', __PACKAGE__->_claim_failure_generator('timeout expired'));
-_install_sub('recv_register_response_400', __PACKAGE__->_claim_failure_generator('bad request'));
-_install_sub('recv_register_response_5XX', __PACKAGE__->_claim_failure_generator('server error'));
+_install_sub('recv_register_response_TIMEOUT', __PACKAGE__->_failure_generator('timeout expired'));
+_install_sub('recv_register_response_400', __PACKAGE__->_failure_generator('bad request'));
+_install_sub('recv_register_response_5XX', __PACKAGE__->_failure_generator('server error'));
 
 sub send_activating {
     my $self = shift;
@@ -341,8 +329,8 @@ sub recv_activating_response_5XX {
     return 1;
 }
 
-_install_sub('recv_activating_response_400', __PACKAGE__->_claim_failure_generator('activating: bad request'));
-_install_sub('recv_activating_response_404', __PACKAGE__->_claim_failure_generator('activating: non-existent claim'));
+_install_sub('recv_activating_response_400', __PACKAGE__->_failure_generator('activating: bad request'));
+_install_sub('recv_activating_response_404', __PACKAGE__->_failure_generator('activating: non-existent claim'));
 
 sub send_renewal {
     my $self = shift;
@@ -464,10 +452,10 @@ sub recv_release_response_204 {
     1;
 }
 
-_install_sub('recv_release_response_400', __PACKAGE__->_release_failure_generator('release: bad request'));
-_install_sub('recv_release_response_404', __PACKAGE__->_release_failure_generator('release: non-existent claim'));
-_install_sub('recv_release_response_409', __PACKAGE__->_release_failure_generator('release: lost claim'));
-_install_sub('recv_release_response_5XX', __PACKAGE__->_release_failure_generator('release: server error'));
+_install_sub('recv_release_response_400', __PACKAGE__->_failure_generator('release: bad request'));
+_install_sub('recv_release_response_404', __PACKAGE__->_failure_generator('release: non-existent claim'));
+_install_sub('recv_release_response_409', __PACKAGE__->_failure_generator('release: lost claim'));
+_install_sub('recv_release_response_5XX', __PACKAGE__->_failure_generator('release: server error'));
 
 sub _create_timer_event {
     my $self = shift;

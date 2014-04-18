@@ -560,7 +560,7 @@ sub test_release_response_400 {
     is($claim->timer_watcher, undef, 'ttl timer was removed');
     is($success, 0, 'success callback not fired');
     is($fail, 1, 'fail callback fired');
-    is_deeply(\@fail_args, [ $claim, 'release: bad request' ], 'fail callback got expected args');
+    is_deeply(\@fail_args, [ $claim, '400: release: bad request' ], 'fail callback got expected args');
     is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
 }
 
@@ -584,7 +584,7 @@ sub test_release_response_409 {
     is($claim->timer_watcher, undef, 'ttl timer was removed');
     is($success, 0, 'success callback not fired');
     is($fail, 1, 'fail callback fired');
-    is_deeply(\@fail_args, [ $claim, 'release: lost claim' ], 'fail callback got expected args' );
+    is_deeply(\@fail_args, [ $claim, '409: release: lost claim' ], 'fail callback got expected args' );
     is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
 }
 
