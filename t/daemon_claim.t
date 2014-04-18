@@ -165,9 +165,12 @@ sub test_start_state_machine_timeout {
     ok($started, 'start() with timeout');
 
     my @on_fail_args = $cv->recv();
-    is_deeply(\@on_fail_args,
-            [ $claim, 'TIMEOUT: timeout expired' ],
-            'on_fail callback got expected args');
+    is_deeply(\@on_fail_args, [ $claim,
+        join("\n", 'TIMEOUT: timeout expired',
+            '----RESPONSE BODY----',
+            '(no response body)',
+            '----END RESPONSE BODY----')
+    ], 'on_fail callback got expected args');
     is($on_success_called, 0, 'on_success callback was not called');
     is($on_fail_called, 1, 'on_fail callback was called');
 }
@@ -284,7 +287,12 @@ sub _test_registration_response_failure {
 
     is($success, 0, 'success callback not fired');
     is($fail, 1, 'fail callback fired');
-    is_deeply(\@fail_args, [$claim, $error_message], 'Error callback got expected args');
+    is_deeply(\@fail_args, [$claim,
+        join("\n", $error_message,
+            '----RESPONSE BODY----',
+            '(no response body)',
+            '----END RESPONSE BODY----')
+    ], 'Error callback got expected args');
 
     ok(! $claim->claim_location_url, 'Claim has no location URL');
 }
@@ -407,7 +415,12 @@ sub test_activating_response_400 {
     ok(! $claim->timer_watcher, 'Claim has no ttl timer');
     is($success, 0, 'success callback not fired');
     is($fail, 1, 'fail callback fired');
-    is_deeply(\@fail_args, [ $claim, '400: activating: bad request' ], 'fail callback got expected args');
+    is_deeply(\@fail_args, [ $claim,
+        join("\n", '400: activating: bad request',
+            '----RESPONSE BODY----',
+            '(no response body)',
+            '----END RESPONSE BODY----')
+    ], 'fail callback got expected args');
 }
 
 sub test_send_renewal {
@@ -560,7 +573,12 @@ sub test_release_response_400 {
     is($claim->timer_watcher, undef, 'ttl timer was removed');
     is($success, 0, 'success callback not fired');
     is($fail, 1, 'fail callback fired');
-    is_deeply(\@fail_args, [ $claim, '400: release: bad request' ], 'fail callback got expected args');
+    is_deeply(\@fail_args, [ $claim,
+        join("\n", '400: release: bad request',
+            '----RESPONSE BODY----',
+            '(no response body)',
+            '----END RESPONSE BODY----')
+    ], 'fail callback got expected args');
     is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
 }
 
@@ -584,7 +602,12 @@ sub test_release_response_409 {
     is($claim->timer_watcher, undef, 'ttl timer was removed');
     is($success, 0, 'success callback not fired');
     is($fail, 1, 'fail callback fired');
-    is_deeply(\@fail_args, [ $claim, '409: release: lost claim' ], 'fail callback got expected args' );
+    is_deeply(\@fail_args, [ $claim,
+        join("\n", '409: release: lost claim',
+            '----RESPONSE BODY----',
+            '(no response body)',
+            '----END RESPONSE BODY----')
+    ], 'fail callback got expected args' );
     is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
 }
 

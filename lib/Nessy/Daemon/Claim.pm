@@ -130,6 +130,17 @@ sub _call_success_fail_callback {
     $self->$cb(@args);
 }
 
+sub _format_response_body {
+    my($self, $body) = @_;
+
+    return
+    "----RESPONSE BODY----\n".
+    (defined($body) and length($body)
+        ? "$body\n"
+        : "(no response body)\n").
+    "----END RESPONSE BODY----";
+}
+
 sub _failure_generator {
     my($class, $error) = @_;
 
@@ -140,7 +151,8 @@ sub _failure_generator {
         $self->_remove_all_watchers();
         $self->state(STATE_FAILED);
         $self->_call_success_fail_callback('on_fail_cb',
-            join ': ', $headers->{Status}, $error);
+            join(': ', $headers->{Status}, $error)."\n".
+            $self->_format_response_body($body));
 
         1;
     };
