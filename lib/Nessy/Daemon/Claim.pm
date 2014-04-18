@@ -378,7 +378,8 @@ sub recv_renewal_response_4XX {
 
     my $status = $headers->{Status};
     $self->send_fatal_error(
-        'claim '.$self->resource_name." failed renewal with code $status");
+        'claim '.$self->resource_name." failed renewal with code $status\n".
+            $self->_format_response_body($body));
     return 1;
 }
 

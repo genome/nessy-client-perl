@@ -498,8 +498,12 @@ sub test_renewal_response_400 {
     ok(! $claim->timer_watcher, 'Claim has no ttl timer');
     is($callback_fired, 0, 'neither success nor fail callback fired');
     is($fatal_error, 1, 'Fatal error callback fired');
-    is_deeply(\@fatal_error_args, [ $claim, 'claim foo failed renewal with code 400' ],
-            'fatal error callback got expected args');
+    is_deeply(\@fatal_error_args, [ $claim,
+        join("\n", 'claim foo failed renewal with code 400',
+            '----RESPONSE BODY----',
+            $response_body,
+            '----END RESPONSE BODY----')
+    ], 'fatal error callback got expected args');
 }
 
 sub test_send_release {
