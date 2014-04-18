@@ -7,9 +7,9 @@ perl:
 
 before_script:
     - psql -c 'create database nessy;' -U postgres
-    - git clone https://github.com/genome/nessy-server.git
+    - git clone --depth 1 https://github.com/genome/nessy-server.git
     - pushd nessy-server
-    - git show HEAD
+    - git --no-pager show -s
     - sudo pip install -r requirements.txt
     - LOCKING_DB='postgres://postgres@localhost/nessy' ./devserver &
     - popd
