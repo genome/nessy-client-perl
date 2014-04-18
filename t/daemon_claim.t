@@ -408,7 +408,9 @@ sub test_activating_response_400 {
     my $fake_timer_watcher = $claim->timer_watcher('abc');
 
     my $response_handler = $claim->_make_response_generator('claim', 'recv_activating_response');
-    ok($response_handler->('', { Status => 400 }),
+    my $response_body =
+        '{"exception_class": "InvalidRequest", "message": "Found no eligible claims for activating resource:  kiwala-test"}';
+    ok($response_handler->($response_body, { Status => 400 }),
         'send 400 response to activation');
 
     is($claim->state, 'failed', 'Claim state is failed');
@@ -418,7 +420,7 @@ sub test_activating_response_400 {
     is_deeply(\@fail_args, [ $claim,
         join("\n", '400: activating: bad request',
             '----RESPONSE BODY----',
-            '(no response body)',
+            $response_body,
             '----END RESPONSE BODY----')
     ], 'fail callback got expected args');
 }
@@ -487,7 +489,9 @@ sub test_renewal_response_400 {
     my $fake_timer_watcher = $claim->timer_watcher('abc');
 
     my $response_handler = $claim->_make_response_generator('claim', 'recv_renewal_response');
-    ok($response_handler->('', { Status => 400 }),
+    my $response_body =
+        '{ "status": "expired", "exception_class": "InvalidRequest", "message": "Failed to update ttl", "claim_id": 999999 }';
+    ok($response_handler->($response_body, { Status => 400 }),
         'send 400 response to renewal');
 
     is($claim->state, 'failed', 'Claim state is failed');
@@ -566,7 +570,9 @@ sub test_release_response_400 {
     my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
 
     my $response_handler = $claim->_make_response_generator('claim', 'recv_release_response');
-    ok($response_handler->('', { Status => 400 }),
+    my $response_body =
+        '{"status": "expired", "exception_class": "InvalidRequest", "message": "Failed to remove lock.", "claim_id": 999999}';
+    ok($response_handler->($response_body, { Status => 400 }),
         'send 400 response to release');
 
     is($claim->state, 'failed', 'Claim state is failed');
@@ -576,7 +582,7 @@ sub test_release_response_400 {
     is_deeply(\@fail_args, [ $claim,
         join("\n", '400: release: bad request',
             '----RESPONSE BODY----',
-            '(no response body)',
+            $response_body,
             '----END RESPONSE BODY----')
     ], 'fail callback got expected args');
     is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
@@ -595,6 +601,8 @@ sub test_release_response_409 {
     my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
 
     my $response_handler = $claim->_make_response_generator('claim', 'recv_release_response');
+    # It is not clear what the release response would look like for a 409
+    # because it is not clear that this can ever happen
     ok($response_handler->('', { Status => 409 }),
         'send 409 response to release');
 
