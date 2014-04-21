@@ -165,9 +165,9 @@ sub test_start_state_machine_timeout {
     ok($started, 'start() with timeout');
 
     my @on_fail_args = $cv->recv();
-    is_deeply(\@on_fail_args,
-            [ $claim, 'TIMEOUT: timeout expired' ],
-            'on_fail callback got expected args');
+    is_deeply(\@on_fail_args, [ $claim,
+        "Unexpected response in state 'registering' on resource 'foo' (HTTP TIMEOUT): (no response body)"
+    ], 'on_fail callback got expected args');
     is($on_success_called, 0, 'on_success callback was not called');
     is($on_fail_called, 1, 'on_fail callback was called');
 }
@@ -284,7 +284,9 @@ sub _test_registration_response_failure {
 
     is($success, 0, 'success callback not fired');
     is($fail, 1, 'fail callback fired');
-    is_deeply(\@fail_args, [$claim, $error_message], 'Error callback got expected args');
+    is_deeply(\@fail_args, [$claim,
+        "Unexpected response in state 'registering' on resource 'foo' (HTTP $status_code): (no response body)"
+    ], 'Error callback got expected args');
 
     ok(! $claim->claim_location_url, 'Claim has no location URL');
 }
@@ -400,14 +402,18 @@ sub test_activating_response_400 {
     my $fake_timer_watcher = $claim->timer_watcher('abc');
 
     my $response_handler = $claim->_make_response_generator('claim', 'recv_activating_response');
-    ok($response_handler->('', { Status => 400 }),
+    my $response_body =
+        '{"exception_class": "InvalidRequest", "message": "Found no eligible claims for activating resource:  kiwala-test"}';
+    ok($response_handler->($response_body, { Status => 400 }),
         'send 400 response to activation');
 
     is($claim->state, 'failed', 'Claim state is failed');
     ok(! $claim->timer_watcher, 'Claim has no ttl timer');
     is($success, 0, 'success callback not fired');
     is($fail, 1, 'fail callback fired');
-    is_deeply(\@fail_args, [ $claim, '400: activating: bad request' ], 'fail callback got expected args');
+    is_deeply(\@fail_args, [ $claim,
+        "Unexpected response in state 'activating' on resource 'foo' (HTTP 400): $response_body"
+    ], 'fail callback got expected args');
 }
 
 sub test_send_renewal {
@@ -467,6 +473,8 @@ sub test_renewal_response_400 {
     $claim->on_success_cb(sub { $callback_fired++ });
     $claim->on_fail_cb(sub { $callback_fired++ });
 
+    $claim->state('renewing');
+
     my $fatal_error = 0;
     my @fatal_error_args;
     $claim->on_fatal_error(sub { @fatal_error_args = @_; $fatal_error++ });
@@ -474,15 +482,18 @@ sub test_renewal_response_400 {
     my $fake_timer_watcher = $claim->timer_watcher('abc');
 
     my $response_handler = $claim->_make_response_generator('claim', 'recv_renewal_response');
-    ok($response_handler->('', { Status => 400 }),
+    my $response_body =
+        '{ "status": "expired", "exception_class": "InvalidRequest", "message": "Failed to update ttl", "claim_id": 999999 }';
+    ok($response_handler->($response_body, { Status => 400 }),
         'send 400 response to renewal');
 
     is($claim->state, 'failed', 'Claim state is failed');
     ok(! $claim->timer_watcher, 'Claim has no ttl timer');
     is($callback_fired, 0, 'neither success nor fail callback fired');
     is($fatal_error, 1, 'Fatal error callback fired');
-    is_deeply(\@fatal_error_args, [ $claim, 'claim foo failed renewal with code 400' ],
-            'fatal error callback got expected args');
+    is_deeply(\@fatal_error_args, [ $claim,
+        "Unexpected response in state 'renewing' on resource 'foo' (HTTP 400): $response_body"
+    ], 'fatal error callback got expected args');
 }
 
 sub test_send_release {
@@ -553,14 +564,18 @@ sub test_release_response_400 {
     my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
 
     my $response_handler = $claim->_make_response_generator('claim', 'recv_release_response');
-    ok($response_handler->('', { Status => 400 }),
+    my $response_body =
+        '{"status": "expired", "exception_class": "InvalidRequest", "message": "Failed to remove lock.", "claim_id": 999999}';
+    ok($response_handler->($response_body, { Status => 400 }),
         'send 400 response to release');
 
     is($claim->state, 'failed', 'Claim state is failed');
     is($claim->timer_watcher, undef, 'ttl timer was removed');
     is($success, 0, 'success callback not fired');
     is($fail, 1, 'fail callback fired');
-    is_deeply(\@fail_args, [ $claim, 'release: bad request' ], 'fail callback got expected args');
+    is_deeply(\@fail_args, [ $claim,
+        "Unexpected response in state 'releasing' on resource 'foo' (HTTP 400): $response_body"
+    ], 'fail callback got expected args');
     is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
 }
 
@@ -577,14 +592,18 @@ sub test_release_response_409 {
     my $fake_claim_location_url = $claim->claim_location_url("${url}/claim/abc");
 
     my $response_handler = $claim->_make_response_generator('claim', 'recv_release_response');
-    ok($response_handler->('', { Status => 409 }),
+    my $response_body =
+        '{"status": "FakeStatus", "exception_class": "ConflictException", "message": "This never happens.", "claim_id": 999999}';
+    ok($response_handler->($response_body, { Status => 409 }),
         'send 409 response to release');
 
     is($claim->state, 'failed', 'Claim state is failed');
     is($claim->timer_watcher, undef, 'ttl timer was removed');
     is($success, 0, 'success callback not fired');
     is($fail, 1, 'fail callback fired');
-    is_deeply(\@fail_args, [ $claim, 'release: lost claim' ], 'fail callback got expected args' );
+    is_deeply(\@fail_args, [ $claim,
+        "Unexpected response in state 'releasing' on resource 'foo' (HTTP 409): $response_body"
+    ], 'fail callback got expected args' );
     is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
 }
 
