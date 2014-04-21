@@ -101,7 +101,7 @@ sub test_register_timeout {
     $client2->claim($resource_name, cb => $claim2_activated, ttl => 1, user_data => 'waiting claim', timeout => 0.1);
 
     ok(! $claim2_activated->recv, 'second claim failed');
-    like($warning_message, qr(TIMEOUT: timeout expired), 'expected warning message');
+    like($warning_message, qr/Unexpected response in state 'waiting' on resource '[^']+' \(HTTP TIMEOUT\): \(no response body\)/, 'expected warning message');
 }
 
 sub test_waiting_claim {

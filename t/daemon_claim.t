@@ -166,10 +166,7 @@ sub test_start_state_machine_timeout {
 
     my @on_fail_args = $cv->recv();
     is_deeply(\@on_fail_args, [ $claim,
-        join("\n", 'TIMEOUT: timeout expired',
-            '----RESPONSE BODY----',
-            '(no response body)',
-            '----END RESPONSE BODY----')
+        "Unexpected response in state 'registering' on resource 'foo' (HTTP TIMEOUT): (no response body)"
     ], 'on_fail callback got expected args');
     is($on_success_called, 0, 'on_success callback was not called');
     is($on_fail_called, 1, 'on_fail callback was called');
@@ -288,10 +285,7 @@ sub _test_registration_response_failure {
     is($success, 0, 'success callback not fired');
     is($fail, 1, 'fail callback fired');
     is_deeply(\@fail_args, [$claim,
-        join("\n", $error_message,
-            '----RESPONSE BODY----',
-            '(no response body)',
-            '----END RESPONSE BODY----')
+        "Unexpected response in state 'registering' on resource 'foo' (HTTP $status_code): (no response body)"
     ], 'Error callback got expected args');
 
     ok(! $claim->claim_location_url, 'Claim has no location URL');
@@ -418,10 +412,7 @@ sub test_activating_response_400 {
     is($success, 0, 'success callback not fired');
     is($fail, 1, 'fail callback fired');
     is_deeply(\@fail_args, [ $claim,
-        join("\n", '400: activating: bad request',
-            '----RESPONSE BODY----',
-            $response_body,
-            '----END RESPONSE BODY----')
+        "Unexpected response in state 'activating' on resource 'foo' (HTTP 400): $response_body"
     ], 'fail callback got expected args');
 }
 
@@ -482,6 +473,8 @@ sub test_renewal_response_400 {
     $claim->on_success_cb(sub { $callback_fired++ });
     $claim->on_fail_cb(sub { $callback_fired++ });
 
+    $claim->state('renewing');
+
     my $fatal_error = 0;
     my @fatal_error_args;
     $claim->on_fatal_error(sub { @fatal_error_args = @_; $fatal_error++ });
@@ -499,10 +492,7 @@ sub test_renewal_response_400 {
     is($callback_fired, 0, 'neither success nor fail callback fired');
     is($fatal_error, 1, 'Fatal error callback fired');
     is_deeply(\@fatal_error_args, [ $claim,
-        join("\n", 'claim foo failed renewal with code 400',
-            '----RESPONSE BODY----',
-            $response_body,
-            '----END RESPONSE BODY----')
+        "Unexpected response in state 'renewing' on resource 'foo' (HTTP 400): $response_body"
     ], 'fatal error callback got expected args');
 }
 
@@ -584,10 +574,7 @@ sub test_release_response_400 {
     is($success, 0, 'success callback not fired');
     is($fail, 1, 'fail callback fired');
     is_deeply(\@fail_args, [ $claim,
-        join("\n", '400: release: bad request',
-            '----RESPONSE BODY----',
-            $response_body,
-            '----END RESPONSE BODY----')
+        "Unexpected response in state 'releasing' on resource 'foo' (HTTP 400): $response_body"
     ], 'fail callback got expected args');
     is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
 }
@@ -615,10 +602,7 @@ sub test_release_response_409 {
     is($success, 0, 'success callback not fired');
     is($fail, 1, 'fail callback fired');
     is_deeply(\@fail_args, [ $claim,
-        join("\n", '409: release: lost claim',
-            '----RESPONSE BODY----',
-            $response_body,
-            '----END RESPONSE BODY----')
+        "Unexpected response in state 'releasing' on resource 'foo' (HTTP 409): $response_body"
     ], 'fail callback got expected args' );
     is($claim->claim_location_url, $fake_claim_location_url, 'Claim has a location URL');
 }

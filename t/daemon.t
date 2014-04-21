@@ -244,11 +244,8 @@ sub test_make_claim_timeout {
     my %expected = (    resource_name => 'foo',
                         command => 'claim',
                         result => 'failed',
-                        error_message => join("\n",
-                            'TIMEOUT: timeout expired',
-                            '----RESPONSE BODY----',
-                            '(no response body)',
-                            '----END RESPONSE BODY----')
+                        error_message => q|Unexpected response in state 'waiting' |
+                            .q|on resource 'foo' (HTTP TIMEOUT): (no response body)|
                 );
     foreach my $key ( keys %expected ) {
         is($response->$key, $expected{$key}, "Response key $key");
