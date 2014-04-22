@@ -13,12 +13,12 @@ digraph "nessy-daemon-claim-state-machine" {
     withdrawn
 
     // Failure states
-    f_abort      [label="fail"]
-    f_activate   [label="fail"]
-    f_register   [label="fail"]
-    f_release    [label="fail"]
-    f_renew      [label="fail"]
-    f_withdraw   [label="fail"]
+    f_abort    [label="fail"]
+    f_activate [label="fail"]
+    f_register [label="fail"]
+    f_release  [label="fail"]
+    f_renew    [label="fail"]
+    f_withdraw [label="fail"]
 
     // Retry states
     r_abort    [label="retrying abort"]
@@ -46,8 +46,8 @@ digraph "nessy-daemon-claim-state-machine" {
     a_register -> active     [color=black label="201"]
     a_register -> waiting    [color=black label="202"]
 
-    a_register -> r_register [color=blue  label="404,5xx"]
-    r_register -> a_register [color=blue]
+    a_register -> r_register [color=black label="404,5xx"]
+    r_register -> a_register [color=black]
 
     a_register -> f_register [color=red   label="4xx"]
 
@@ -55,34 +55,42 @@ digraph "nessy-daemon-claim-state-machine" {
     // Paths away from active
     active  -> a_renew   [color=black]
     a_renew -> active    [color=black label="200"]
-    a_renew -> r_renew   [color=blue  label="5xx"]
-    r_renew -> a_renew   [color=blue]
+    a_renew -> r_renew   [color=black label="5xx" minlen=2]
+    r_renew -> a_renew   [color=black]
 
 
     a_renew -> f_renew   [color=red label="4xx"]
 
     active  -> a_abort   [color=black]
+    a_renew -> a_abort   [color=blue]
+    r_renew -> a_abort   [color=black]
+
+    a_renew -> a_release [color=blue]
+    r_renew -> a_release [color=black]
+
     active  -> a_release [color=black]
 
 
     // Paths away from waiting
     waiting    -> a_activate [color=black weight=0.5]
     a_activate -> waiting    [color=black label="409" weight=0.5]
-    a_activate -> r_activate [color=blue  label="5xx"]
-    r_activate -> a_activate [color=blue]
+    a_activate -> r_activate [color=black label="5xx" minlen=2]
+    r_activate -> a_activate [color=black]
     a_activate -> active     [color=black label="200"]
 
 
     a_activate -> f_activate [color=red   label="4xx"]
 
     waiting    -> a_withdraw [color=black]
+    a_activate -> a_withdraw [color=blue]
+    r_activate -> a_withdraw [color=black]
 
 
     // Paths away from a_withdraw
     a_withdraw -> withdrawn  [color=black label="204"]
 
-    a_withdraw -> r_withdraw [color=blue  label="5xx"]
-    r_withdraw -> a_withdraw [color=blue]
+    a_withdraw -> r_withdraw [color=black label="5xx"]
+    r_withdraw -> a_withdraw [color=black]
 
     a_withdraw -> f_withdraw [color=red   label="4xx"]
 
@@ -90,18 +98,17 @@ digraph "nessy-daemon-claim-state-machine" {
     // Paths away from a_release
     a_release -> released  [color=black label="204"]
 
-    a_release -> r_release [color=blue  label="5xx"]
-    r_release -> a_release [color=blue]
+    a_release -> r_release [color=black label="5xx"]
+    r_release -> a_release [color=black]
 
     a_release -> f_release [color=red   label="4xx"]
 
     // Paths away from a_abort
     a_abort -> aborted [color=black label="204"]
-    a_abort -> r_abort [color=blue  label="5xx"]
+    a_abort -> r_abort [color=black label="5xx"]
 
-    r_abort -> a_abort [color=blue]
+    r_abort -> a_abort [color=black]
     a_abort -> f_abort [color=red   label="4xx"]
-
 
     // Formatting
     {
@@ -114,57 +121,5 @@ digraph "nessy-daemon-claim-state-machine" {
         aborted
         released
         withdrawn
-    }
-
-    // Put "fail" nodes on same line as action nodes
-    {
-        rank=same
-        a_abort
-        f_abort
-    }
-
-    {
-        rank=same
-        a_activate
-        f_activate
-    }
-
-    {
-        rank=same
-        a_register
-        f_register
-    }
-
-    {
-        rank=same
-        a_release
-        f_release
-    }
-
-    {
-        rank=same
-        a_withdraw
-        f_withdraw
-    }
-
-    {
-        rank=same
-        a_renew
-        f_renew
-    }
-
-    // Put actions from "waiting" on same line
-    {
-        rank=same
-        a_activate
-        a_withdraw
-    }
-
-    // Put actions form "active" on same line
-    {
-        rank=same
-        a_abort
-        a_release
-        a_renew
     }
 }
