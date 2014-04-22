@@ -1,40 +1,117 @@
 digraph "nessy-daemon-claim-state-machine" {
-    {
+    //node [fontsize=1,height=0.25,width=0.25]
+    subgraph "cluster-rest" {
         node [shape=oval]
         "new"
         "waiting"
         "active"
-        "released"
-        "fail"
-    } 
-    {
+        "failed-registering"
+        "failed-releasing"
+        "failed-withdrawing"
+        "failed-aborting"
+        {
+            rank=same
+            "released"
+            "withdrawn"
+            "aborted"
+        }
+        
         node [shape=box]
         "Registering"
         "Activating"
         "Releasing"
         "Renewing"
+        "Withdrawing"
+        "Aborting"
+        "RecoverFailedRegistering"
+        "RecoverFailedReleasing"
+        "RecoverFailedWithdrawing"
+        "RecoverFailedAborting"
+        
+        
+        // Possible Requests on the Nessy Server
+        edge [color=black]
+        "new"                           -> "released"                   [label=""]
+        "new"                           -> "Registering"                [label="Register (POST)"]
+        "waiting"                       -> "Activating"                 [label="Activate (PATCH)"]
+        "waiting"                       -> "Withdrawing"                [label="Withdraw (PATCH)"]
+        "waiting"                       -> "Aborting"                   [label="Abort (PATCH)"]
+        "active"                        -> "Releasing"                  [label="Release (PATCH)"]
+        "active"                        -> "Renewing"                   [label="Renew (PATCH)"]
+        "active"                        -> "Withdrawing"                [label="Withdraw (PATCH)"]
+        "active"                        -> "Aborting"                   [label="Abort (PATCH)"]
+        "failed-registering"            -> "RecoverFailedRegistering"   [label="Recover (GET)"]
+        "failed-releasing"              -> "RecoverFailedReleasing"     [label="Recover (GET)"]
+        "failed-withdrawing"            -> "RecoverFailedWithdrawing"   [label="Recover (GET)"]
+        "failed-aborting"               -> "RecoverFailedAborting"      [label="Recover (GET)"]
+        
+        edge [color=green]
+        "Registering"                   -> "active"                     [label="201"]
+        "Activating"                    -> "active"                     [label="200"]
+        "Renewing"                      -> "active"                     [label="200,500"]
+        "Releasing"                     -> "released"                   [label="204"]
+        
+        edge [color=blue]
+        "Registering"                   -> "waiting"                    [label="202"]
+        "Activating"                    -> "waiting"                    [label="409,500"]
+        
+        edge [color=black]
+        "Withdrawing"                   -> "withdrawn"                  [label="204"]
+        "Aborting"                      -> "aborted"                    [label="204"]
+        
+        edge [color=black]
+        // 500 response while Registering
+        "Registering"                   -> "failed-registering"         [label="500"]
+        "RecoverFailedRegistering"      -> "failed-registering"         [label="500"]
+        "RecoverFailedRegistering"      -> "new"                        [label="404"]
+        "RecoverFailedRegistering"      -> "active"                     [label="200 [status=active]"]
+        "RecoverFailedRegistering"      -> "waiting"                    [label="200 [status=waiting]"]
+        
+        // 500 response while Releasing
+        "Releasing"                     -> "failed-releasing"           [label="500"]
+        "RecoverFailedReleasing"        -> "failed-releasing"           [label="500"]
+        "RecoverFailedReleasing"        -> "active"                     [label="200 [status=active]"]
+        "RecoverFailedReleasing"        -> "released"                   [label="200 [status=released]"]
+        
+        // 500 response while Withdrawing
+        "Withdrawing"                   ->  "failed-withdrawing"        [label="500"]
+        "RecoverFailedWithdrawing"      ->  "failed-withdrawing"        [label="500"]
+        "RecoverFailedWithdrawing"      ->  "waiting"                   [label="200 [status=waiting]"]
+        "RecoverFailedWithdrawing"      ->  "active"                    [label="200 [status=active]"]
+        "RecoverFailedWithdrawing"      ->  "withdrawn"                 [label="200 [status=withdrawn]"]
+        
+        // 500 response while Aborting
+        "Aborting"                      ->  "failed-aborting"           [label="500"]
+        "RecoverFailedAborting"         ->  "failed-aborting"           [label="500"]
+        "RecoverFailedAborting"         ->  "waiting"                   [label="200 [status=waiting]"]
+        "RecoverFailedAborting"         ->  "active"                    [label="200 [status=active]"]
+        "RecoverFailedAborting"         ->  "aborted"                   [label="200 [status=aborted]"]
     }
+    subgraph "cluster-failures" {
+        node [shape=oval]
+        "fail"
 
-    "new"       ->  "released"      [label=""]
+        node [shape=box]
+        f00[label="Registering"]
+        f01[label="Activating"]
+        f02[label="Renewing"]
+        f03[label="Releasing"]
+        f04[label="Withdrawing"]
+        f05[label="Aborting"]
+        f06[label="RecoverFailedRegistering"]
+        f07[label="RecoverFailedReleasing"]
+        f08[label="RecoverFailedWithdrawing"]
+        f09[label="RecoverFailedAborting"]
 
-    "new"       ->  "Registering"   [label="Register (POST)"]
-    "waiting"   ->  "Activating"    [label="Activate (PATCH)"]
-    "active"    ->  "Releasing"     [label="Release (PATCH)"]
-    "active"    ->  "Renewing"      [label="Renew (PATCH)"]
-
-    edge [color=green];
-    "Registering"   ->  "active"    [label="201"]
-    "Activating"    ->  "active"    [label="200"]
-    "Renewing"      ->  "active"    [label="200,500"]
-    "Releasing"     ->  "released"  [label="204"]
-
-    edge [color=blue];
-    "Registering"   ->  "waiting"   [label="202"]
-    "Activating"    ->  "waiting"   [label="409,500"]
-
-    edge [color=red];
-    "Registering"   ->  "fail"      [label="400,500"]
-    "Activating"    ->  "fail"      [label="400,404"]
-    "Renewing"      ->  "fail"      [label="400,404,409"]
-    "Releasing"     ->  "fail"      [label="400,404,409,500"]
+        f00 -> "fail" [label="400"]
+        f01 -> "fail" [label="400,404"]
+        f02 -> "fail" [label="400,404,409"]
+        f03 -> "fail" [label="400,404,409"]
+        f04 -> "fail" [label="400"]
+        f05 -> "fail" [label="400"]
+        f06 -> "fail" [label="400"]
+        f07 -> "fail" [label="400,404,409"]
+        f08 -> "fail" [label="400"]
+        f09 -> "fail" [label="400"]
+    }
 }
