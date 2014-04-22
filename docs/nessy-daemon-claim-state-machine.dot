@@ -1,117 +1,170 @@
 digraph "nessy-daemon-claim-state-machine" {
-    //node [fontsize=1,height=0.25,width=0.25]
-    subgraph "cluster-rest" {
-        node [shape=oval]
-        "new"
-        "waiting"
-        "active"
-        "failed-registering"
-        "failed-releasing"
-        "failed-withdrawing"
-        "failed-aborting"
-        {
-            rank=same
-            "released"
-            "withdrawn"
-            "aborted"
-        }
-        
-        node [shape=box]
-        "Registering"
-        "Activating"
-        "Releasing"
-        "Renewing"
-        "Withdrawing"
-        "Aborting"
-        "RecoverFailedRegistering"
-        "RecoverFailedReleasing"
-        "RecoverFailedWithdrawing"
-        "RecoverFailedAborting"
-        
-        
-        // Possible Requests on the Nessy Server
-        edge [color=black]
-        "new"                           -> "released"                   [label=""]
-        "new"                           -> "Registering"                [label="Register (POST)"]
-        "waiting"                       -> "Activating"                 [label="Activate (PATCH)"]
-        "waiting"                       -> "Withdrawing"                [label="Withdraw (PATCH)"]
-        "waiting"                       -> "Aborting"                   [label="Abort (PATCH)"]
-        "active"                        -> "Releasing"                  [label="Release (PATCH)"]
-        "active"                        -> "Renewing"                   [label="Renew (PATCH)"]
-        "active"                        -> "Withdrawing"                [label="Withdraw (PATCH)"]
-        "active"                        -> "Aborting"                   [label="Abort (PATCH)"]
-        "failed-registering"            -> "RecoverFailedRegistering"   [label="Recover (GET)"]
-        "failed-releasing"              -> "RecoverFailedReleasing"     [label="Recover (GET)"]
-        "failed-withdrawing"            -> "RecoverFailedWithdrawing"   [label="Recover (GET)"]
-        "failed-aborting"               -> "RecoverFailedAborting"      [label="Recover (GET)"]
-        
-        edge [color=green]
-        "Registering"                   -> "active"                     [label="201"]
-        "Activating"                    -> "active"                     [label="200"]
-        "Renewing"                      -> "active"                     [label="200,500"]
-        "Releasing"                     -> "released"                   [label="204"]
-        
-        edge [color=blue]
-        "Registering"                   -> "waiting"                    [label="202"]
-        "Activating"                    -> "waiting"                    [label="409,500"]
-        
-        edge [color=black]
-        "Withdrawing"                   -> "withdrawn"                  [label="204"]
-        "Aborting"                      -> "aborted"                    [label="204"]
-        
-        edge [color=black]
-        // 500 response while Registering
-        "Registering"                   -> "failed-registering"         [label="500"]
-        "RecoverFailedRegistering"      -> "failed-registering"         [label="500"]
-        "RecoverFailedRegistering"      -> "new"                        [label="404"]
-        "RecoverFailedRegistering"      -> "active"                     [label="200 [status=active]"]
-        "RecoverFailedRegistering"      -> "waiting"                    [label="200 [status=waiting]"]
-        
-        // 500 response while Releasing
-        "Releasing"                     -> "failed-releasing"           [label="500"]
-        "RecoverFailedReleasing"        -> "failed-releasing"           [label="500"]
-        "RecoverFailedReleasing"        -> "active"                     [label="200 [status=active]"]
-        "RecoverFailedReleasing"        -> "released"                   [label="200 [status=released]"]
-        
-        // 500 response while Withdrawing
-        "Withdrawing"                   ->  "failed-withdrawing"        [label="500"]
-        "RecoverFailedWithdrawing"      ->  "failed-withdrawing"        [label="500"]
-        "RecoverFailedWithdrawing"      ->  "waiting"                   [label="200 [status=waiting]"]
-        "RecoverFailedWithdrawing"      ->  "active"                    [label="200 [status=active]"]
-        "RecoverFailedWithdrawing"      ->  "withdrawn"                 [label="200 [status=withdrawn]"]
-        
-        // 500 response while Aborting
-        "Aborting"                      ->  "failed-aborting"           [label="500"]
-        "RecoverFailedAborting"         ->  "failed-aborting"           [label="500"]
-        "RecoverFailedAborting"         ->  "waiting"                   [label="200 [status=waiting]"]
-        "RecoverFailedAborting"         ->  "active"                    [label="200 [status=active]"]
-        "RecoverFailedAborting"         ->  "aborted"                   [label="200 [status=aborted]"]
+    node [shape=oval]
+    // Start state
+    new
+
+    // In progress states
+    active
+    waiting
+
+    // Final states
+    aborted
+    released
+    withdrawn
+
+    // Failure states
+    f_abort      [label="fail"]
+    f_activate   [label="fail"]
+    f_register   [label="fail"]
+    f_release    [label="fail"]
+    f_renew      [label="fail"]
+    f_withdraw   [label="fail"]
+
+    // Retry states
+    r_abort    [label="retrying abort"]
+    r_activate [label="retrying activate"]
+    r_register [label="retrying register"]
+    r_release  [label="retrying release"]
+    r_renew    [label="retrying renew"]
+    r_withdraw [label="retrying withdraw"]
+
+    // Action states
+    node [shape=box]
+    a_abort    [label="Aborting"]
+    a_activate [label="Activating"]
+    a_register [label="Registering"]
+    a_release  [label="Releasing"]
+    a_renew    [label="Renewing"]
+    a_withdraw [label="Withdrawing"]
+
+
+    // Paths from start node
+    new -> a_register [color=black]
+
+
+    // Paths away from a_register
+    a_register -> active     [color=black label="201"]
+    a_register -> waiting    [color=black label="202"]
+
+    a_register -> r_register [color=blue  label="404,5xx"]
+    r_register -> a_register [color=blue]
+
+    a_register -> f_register [color=red   label="4xx"]
+
+
+    // Paths away from active
+    active  -> a_renew   [color=black]
+    a_renew -> active    [color=black label="200"]
+    a_renew -> r_renew   [color=blue  label="5xx"]
+    r_renew -> a_renew   [color=blue]
+
+
+    a_renew -> f_renew   [color=red label="4xx"]
+
+    active  -> a_abort   [color=black]
+    active  -> a_release [color=black]
+
+
+    // Paths away from waiting
+    waiting    -> a_activate [color=black weight=0.5]
+    a_activate -> waiting    [color=black label="409" weight=0.5]
+    a_activate -> r_activate [color=blue  label="5xx"]
+    r_activate -> a_activate [color=blue]
+    a_activate -> active     [color=black label="200"]
+
+
+    a_activate -> f_activate [color=red   label="4xx"]
+
+    waiting    -> a_withdraw [color=black]
+
+
+    // Paths away from a_withdraw
+    a_withdraw -> withdrawn  [color=black label="204"]
+
+    a_withdraw -> r_withdraw [color=blue  label="5xx"]
+    r_withdraw -> a_withdraw [color=blue]
+
+    a_withdraw -> f_withdraw [color=red   label="4xx"]
+
+
+    // Paths away from a_release
+    a_release -> released  [color=black label="204"]
+
+    a_release -> r_release [color=blue  label="5xx"]
+    r_release -> a_release [color=blue]
+
+    a_release -> f_release [color=red   label="4xx"]
+
+    // Paths away from a_abort
+    a_abort -> aborted [color=black label="204"]
+    a_abort -> r_abort [color=blue  label="5xx"]
+
+    r_abort -> a_abort [color=blue]
+    a_abort -> f_abort [color=red   label="4xx"]
+
+
+    // Formatting
+    {
+        rank=source
+        new
     }
-    subgraph "cluster-failures" {
-        node [shape=oval]
-        "fail"
 
-        node [shape=box]
-        f00[label="Registering"]
-        f01[label="Activating"]
-        f02[label="Renewing"]
-        f03[label="Releasing"]
-        f04[label="Withdrawing"]
-        f05[label="Aborting"]
-        f06[label="RecoverFailedRegistering"]
-        f07[label="RecoverFailedReleasing"]
-        f08[label="RecoverFailedWithdrawing"]
-        f09[label="RecoverFailedAborting"]
+    {
+        rank=sink
+        aborted
+        released
+        withdrawn
+    }
 
-        f00 -> "fail" [label="400"]
-        f01 -> "fail" [label="400,404"]
-        f02 -> "fail" [label="400,404,409"]
-        f03 -> "fail" [label="400,404,409"]
-        f04 -> "fail" [label="400"]
-        f05 -> "fail" [label="400"]
-        f06 -> "fail" [label="400"]
-        f07 -> "fail" [label="400,404,409"]
-        f08 -> "fail" [label="400"]
-        f09 -> "fail" [label="400"]
+    // Put "fail" nodes on same line as action nodes
+    {
+        rank=same
+        a_abort
+        f_abort
+    }
+
+    {
+        rank=same
+        a_activate
+        f_activate
+    }
+
+    {
+        rank=same
+        a_register
+        f_register
+    }
+
+    {
+        rank=same
+        a_release
+        f_release
+    }
+
+    {
+        rank=same
+        a_withdraw
+        f_withdraw
+    }
+
+    {
+        rank=same
+        a_renew
+        f_renew
+    }
+
+    // Put actions from "waiting" on same line
+    {
+        rank=same
+        a_activate
+        a_withdraw
+    }
+
+    // Put actions form "active" on same line
+    {
+        rank=same
+        a_abort
+        a_release
+        a_renew
     }
 }
