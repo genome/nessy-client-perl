@@ -45,7 +45,7 @@ Activating        | active             | response (200)            | create rene
 Activating        | fail               | response (4xx)            | terminate client
 Activating        | retrying activate  | response (5xx)            | create retry timer
 Activating        | waiting            | response (409)            | create activate timer
-Registering       | done               | signal received           | -
+Registering       | done               | signal received           | delete timeout timer
 Registering       | done               | timeout timer triggers    | notify client of timeout
 Registering       | fail               | response (4xx except 404) | terminate client
 Registering       | retrying register  | response (5xx, 404)       | create retry timer
@@ -76,7 +76,7 @@ retrying activate | Aborting           | signal received           | send PATCH 
 retrying activate | Activating         | retry timer triggers      | send PATCH (status=active)
 retrying activate | Withdrawing        | timeout timer triggers    | send PATCH (status=withdrawn), delete retry timer
 retrying register | Registering        | retry timer triggers      | send POST
-retrying register | done               | signal received           | -
+retrying register | done               | signal received           | delete timeout timer
 retrying register | done               | timeout timer triggers    | notify client of timeout
 retrying release  | Releasing          | retry timer triggers      | send PATCH (status=released)
 retrying release  | done               | signal received           | -
