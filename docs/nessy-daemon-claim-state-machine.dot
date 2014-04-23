@@ -72,8 +72,8 @@ digraph "nessy-daemon-claim-state-machine" {
 
 
     // Paths away from waiting
-    waiting    -> a_activate [color=black weight=0.5]
-    a_activate -> waiting    [color=black label="409" weight=0.5]
+    waiting    -> a_activate [color=black]
+    a_activate -> waiting    [color=black label="409"]
     a_activate -> r_activate [color=black label="5xx" minlen=2]
     r_activate -> a_activate [color=black]
     a_activate -> active     [color=black label="200"]
