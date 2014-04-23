@@ -1,5 +1,114 @@
 # Client lock library requirements
 
+## Claim State Machine
+
+Each claim will have an instance of the below state machine associated with it.
+There must be only one claim (therefore one state machine) per resource.
+
+
+Data associated with each state:
+
+State             | Associated Data
+----------------- | -------------------------------------
+new               | timeout timer
+Aborting          | abort PATCH request
+Activating        | activate PATCH request, timeout timer
+Registering       | register POST request, timeout timer
+Releasing         | release PATCH request
+Renewing          | renew PATCH request
+Withdrawing       | withdraw PATCH request
+active            | renew timer
+done              | -
+fail              | -
+retrying abort    | retry abort timer
+retrying activate | retry activate timer, timeout timer
+retrying register | retry register timer, timeout timer
+retrying release  | retry release timer
+retrying renew    | retry renew timer
+retrying withdraw | retry withdraw timer
+waiting           | activate timer, timeout timer
+
+
+Complete transition table:
+
+Source            | Destination        | Condition                 | Actions
+----------------- | ------------------ | ------------------------- | ----------------------------------------------------
+new               | Registering        | -                         | send POST, create timeout timer
+Aborting          | aborted            | response (204)            | -
+Aborting          | done               | signal received           | -
+Aborting          | done               | timeout timer triggers    | -
+Aborting          | fail               | response (4xx)            | terminate client
+Aborting          | retrying abort     | response (5xx)            | create retry timer
+Activating        | Aborted            | signal received           | send PATCH (status=aborted)
+Activating        | Withdrawing        | timeout timer triggers    | send PATCH (status=withdrawn)
+Activating        | active             | response (200)            | create renew timer, delete timeout timer, notify client lock is acquired
+Activating        | fail               | response (4xx)            | terminate client
+Activating        | retrying activate  | response (5xx)            | create retry timer
+Activating        | waiting            | response (409)            | create activate timer
+Registering       | done               | signal received           | -
+Registering       | done               | timeout timer triggers    | notify client of timeout
+Registering       | fail               | response (4xx except 404) | terminate client
+Registering       | retrying register  | response (5xx, 404)       | create retry timer
+Registering       | waiting            | response (201)            | create renew timer
+Registering       | waiting            | response (202)            | create activate timer
+Releasing         | done               | signal received           | -
+Releasing         | done               | timeout timer triggers    | -
+Releasing         | fail               | response (4xx)            | terminate client
+Releasing         | released           | response (204)            | notify client lock is released
+Releasing         | retrying release   | response (5xx)            | create retry timer
+Renewing          | Aborting           | signal received           | send PATCH (status=aborted)
+Renewing          | Releasing          | client requests release   | send PATCH (status=released)
+Renewing          | active             | response (200)            | create renew timer
+Renewing          | fail               | response (4xx)            | terminate client
+Renewing          | retrying renew     | response (5xx)            | create retry timer
+Withdrawing       | done               | signal received           | -
+Withdrawing       | done               | timeout timer triggers    | -
+Withdrawing       | fail               | response (4xx)            | terminate client
+Withdrawing       | retrying withdraw  | response (5xx)            | create retry timer
+Withdrawing       | withdrawn          | response (204)            | -
+active            | Aborting           | signal received           | send PATCH (status=aborted), delete renew timer
+active            | Releasing          | client requests release   | send PATCH (status=released), delete renew timer
+active            | Renewing           | renew timer triggers      | send PATCH (ttl=...)
+retrying abort    | Aborting           | retry timer triggers      | send PATCH (status=aborted)
+retrying abort    | done               | signal received           | -
+retrying abort    | done               | timeout timer triggers    | -
+retrying activate | Aborting           | signal received           | send PATCH (status=aborted), delete retry timer
+retrying activate | Activating         | retry timer triggers      | send PATCH (status=active)
+retrying activate | Withdrawing        | timeout timer triggers    | send PATCH (status=withdrawn), delete retry timer
+retrying register | Registering        | retry timer triggers      | send POST
+retrying register | done               | signal received           | -
+retrying register | done               | timeout timer triggers    | notify client of timeout
+retrying release  | Releasing          | retry timer triggers      | send PATCH (status=released)
+retrying release  | done               | signal received           | -
+retrying release  | done               | timeout timer triggers    | -
+retrying renew    | Aborting           | signal received           | send PATCH (status=aborted), delete retry timer
+retrying renew    | Releasing          | client requests release   | send PATCH (status=released), delete retry timer
+retrying renew    | Renewing           | retry timer triggers      | send PATCH (ttl=...)
+retrying withdraw | Withdrawing        | retry timer triggers      | send PATCH (status=withdrawn)
+retrying withdraw | done               | signal received           | -
+retrying withdraw | done               | timeout timer triggers    | -
+waiting           | Aborting           | signal received           | send PATCH (status=aborted), delete activate timer
+waiting           | Activating         | activate timer triggers   | send PATCH (status=active)
+waiting           | Withdrawing        | timeout timer triggers    | send PATCH (status=withdrawn), delete activate timer
+
+
+Parameters used during by transitions:
+
+- ttl
+- resource
+- user data
+- timeout
+- retry params (these are not necessarily the same)
+    - abort - retrying abort should happen quickly, because we are failing
+    - activate
+    - withdraw
+    - register
+    - release
+    - renew
+- renew period
+- activate params (might include backoff)
+
+
 ## Standalone
 
 The client library should be a stand-alone library, not part of the Genome
