@@ -17,9 +17,11 @@ Registering       | waiting for response to POST                     | register 
 Releasing         | waiting for response to PATCH (status=released)  | release PATCH request
 Renewing          | waiting for response to PATCH (ttl=...)          | renew PATCH request
 Withdrawing       | waiting for response to PATCH (status=withdrawn) | withdraw PATCH request
+aborted           | final state, aborted due to error                | -
 active            | waiting to send next heartbeat                   | renew timer
 done              | final state, an un-actionable event has occurred | -
 fail              | final state, an error has occurred               | -
+released          | final state, claim successfully released         | -
 retrying abort    | abort PATCH request failed, waiting to retry     | retry abort timer
 retrying activate | activate PATCH request failed, waiting to retry  | retry activate timer, timeout timer
 retrying register | register POST request failed, waiting to retry   | retry register timer, timeout timer
@@ -27,6 +29,7 @@ retrying release  | release PATCH request failed, waiting to retry   | retry rel
 retrying renew    | renew PATCH request failed, waiting to retry     | retry renew timer
 retrying withdraw | withdraw PATCH request failed, waiting to retry  | retry withdraw timer
 waiting           | waiting until next activate attempt              | activate timer, timeout timer
+withdrawn         | final state, timed out while getting lock        | -
 
 
 Complete transition table:
