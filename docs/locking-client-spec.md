@@ -6,27 +6,27 @@ Each claim will have an instance of the below state machine associated with it.
 There must be only one claim (therefore one state machine) per resource.
 
 
-Data associated with each state:
+Complete state table:
 
-State             | Associated Data
------------------ | -------------------------------------
-new               | timeout timer
-Aborting          | abort PATCH request
-Activating        | activate PATCH request, timeout timer
-Registering       | register POST request, timeout timer
-Releasing         | release PATCH request
-Renewing          | renew PATCH request
-Withdrawing       | withdraw PATCH request
-active            | renew timer
-done              | -
-fail              | -
-retrying abort    | retry abort timer
-retrying activate | retry activate timer, timeout timer
-retrying register | retry register timer, timeout timer
-retrying release  | retry release timer
-retrying renew    | retry renew timer
-retrying withdraw | retry withdraw timer
-waiting           | activate timer, timeout timer
+State             | Description                                      | Associated Data
+----------------- | ------------------------------------------------ | -------------------------------------
+new               | initial state                                    | timeout timer
+Aborting          | waiting for response to PATCH (status=aborted)   | abort PATCH request
+Activating        | waiting for response to PATCH (status=active)    | activate PATCH request, timeout timer
+Registering       | waiting for response to POST                     | register POST request, timeout timer
+Releasing         | waiting for response to PATCH (status=released)  | release PATCH request
+Renewing          | waiting for response to PATCH (ttl=...)          | renew PATCH request
+Withdrawing       | waiting for response to PATCH (status=withdrawn) | withdraw PATCH request
+active            | waiting to send next heartbeat                   | renew timer
+done              | final state, an un-actionable event has occurred | -
+fail              | final state, an error has occurred               | -
+retrying abort    | abort PATCH request failed, waiting to retry     | retry abort timer
+retrying activate | activate PATCH request failed, waiting to retry  | retry activate timer, timeout timer
+retrying register | register POST request failed, waiting to retry   | retry register timer, timeout timer
+retrying release  | release PATCH request failed, waiting to retry   | retry release timer
+retrying renew    | renew PATCH request failed, waiting to retry     | retry renew timer
+retrying withdraw | withdraw PATCH request failed, waiting to retry  | retry withdraw timer
+waiting           | waiting until next activate attempt              | activate timer, timeout timer
 
 
 Complete transition table:
