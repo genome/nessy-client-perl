@@ -85,6 +85,10 @@ digraph "nessy-daemon-claim-state-machine" {
     a_activate -> a_withdraw [color=blue]
     r_activate -> a_withdraw [color=black]
 
+    waiting    -> a_abort    [color=black]
+    a_activate -> a_abort    [color=blue]
+    r_activate -> a_abort    [color=black]
+
 
     // Paths away from a_withdraw
     a_withdraw -> withdrawn  [color=black label="204"]
