@@ -20,6 +20,12 @@ digraph "nessy-daemon-claim-state-machine" {
     f_renew    [label="fail"]
     f_withdraw [label="fail"]
 
+    // Done states
+    d_abort    [label="done"]
+    d_register [label="done"]
+    d_release  [label="done"]
+    d_withdraw [label="done"]
+
     // Retry states
     r_abort    [label="retrying abort"]
     r_activate [label="retrying activate"]
@@ -50,6 +56,8 @@ digraph "nessy-daemon-claim-state-machine" {
     r_register -> a_register [color=black]
 
     a_register -> f_register [color=red   label="4xx"]
+    a_register -> d_register [color=magenta]
+    r_register -> d_register [color=magenta]
 
 
     // Paths away from active
@@ -97,6 +105,8 @@ digraph "nessy-daemon-claim-state-machine" {
     r_withdraw -> a_withdraw [color=black]
 
     a_withdraw -> f_withdraw [color=red   label="4xx"]
+    a_withdraw -> d_withdraw [color=magenta]
+    r_withdraw -> d_withdraw [color=magenta]
 
 
     // Paths away from a_release
@@ -106,6 +116,8 @@ digraph "nessy-daemon-claim-state-machine" {
     r_release -> a_release [color=black]
 
     a_release -> f_release [color=red   label="4xx"]
+    a_release -> d_release [color=magenta]
+    r_release -> d_release [color=magenta]
 
     // Paths away from a_abort
     a_abort -> aborted [color=black label="204"]
@@ -113,6 +125,8 @@ digraph "nessy-daemon-claim-state-machine" {
 
     r_abort -> a_abort [color=black]
     a_abort -> f_abort [color=red   label="4xx"]
+    a_abort -> d_abort [color=magenta]
+    r_abort -> d_abort [color=magenta]
 
     // Formatting
     {
