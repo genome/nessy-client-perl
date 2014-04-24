@@ -1,32 +1,70 @@
 use strict;
 use warnings;
 
-use Test::More tests => 8;
+use Test::More tests => 18;
 
 use Nessy::StateMachineFactory;
 
-my $f = Nessy::StateMachineFactory->new();
+basic_state_machine();
+conflict_state_machine();
 
-my $start_state = $f->define_start_state('start');
-ok($start_state, 'define start state');
-my $middle_state = $f->define_state('middle');
-ok($middle_state, 'define middle state');
-my $end_state = $f->define_state('end');
-ok($end_state, 'define end state');
+sub basic_state_machine {
+    my $f = Nessy::StateMachineFactory->new();
 
-my $go_event_type = $f->define_event('go');
-ok($go_event_type, 'Define go event');
+    my $start_state = $f->define_start_state('start');
+    ok($start_state, 'define start state');
+    my $middle_state = $f->define_state('middle');
+    ok($middle_state, 'define middle state');
+    my $end_state = $f->define_state('end');
+    ok($end_state, 'define end state');
 
-$f->define_transitions(
-    [ $start_state, $go_event_type, $middle_state, [ sub { ok(1, 'Fire transition from start to middle') } ] ],
-    [ $middle_state, $go_event_type, $end_state, [ sub { ok(1, 'Fire transition from middle to end') } ] ],
-);
+    my $go_event_type = $f->define_event('go');
+    ok($go_event_type, 'Define go event');
 
-my $sm = $f->produce_state_machine();
-ok($sm, 'Make a state machine');
+    $f->define_transitions(
+        [ $start_state, $go_event_type, $middle_state, [ sub { ok(1, 'Fire transition from start to middle') } ] ],
+        [ $middle_state, $go_event_type, $end_state, [ sub { ok(1, 'Fire transition from middle to end') } ] ],
+    );
 
-my $go_event = $go_event_type->new();
-ok($go_event, 'instantiate a go event');
+    my $sm = $f->produce_state_machine();
+    ok($sm, 'Make a state machine');
 
-$sm->handle_event($go_event);
-$sm->handle_event($go_event);
+    my $go_event = $go_event_type->new();
+    ok($go_event, 'instantiate a go event');
+
+    $sm->handle_event($go_event);
+    $sm->handle_event($go_event);
+}
+
+sub conflict_state_machine {
+    my $f = Nessy::StateMachineFactory->new();
+
+    my $start_state = $f->define_start_state('start');
+    ok($start_state, 'define start state');
+    my $middle_state = $f->define_state('middle');
+    ok($middle_state, 'define middle state');
+    my $forbidden_state = $f->define_state('forbidden');
+    ok($forbidden_state, 'define middle state');
+    my $end_state = $f->define_state('end');
+    ok($end_state, 'define end state');
+
+    my $go_event_type = $f->define_event('go');
+    ok($go_event_type, 'Define go event');
+    my $forbidden_event_type = $f->define_event('forbidden');
+    ok($forbidden_event_type, 'Define forbidden event');
+
+    $f->define_transitions(
+        [ $start_state, $go_event_type, $middle_state, [ sub { ok(1, 'Fire transition from start to middle') } ] ],
+        [ $start_state, $forbidden_event_type, $forbidden_state, [ sub { ok(0, 'Should not fire to forbidden') } ] ],
+        [ $middle_state, $go_event_type, $end_state, [ sub { ok(1, 'Fire transition from middle to end') } ] ],
+    );
+
+    my $sm = $f->produce_state_machine();
+    ok($sm, 'Make a state machine');
+
+    my $go_event = $go_event_type->new();
+    ok($go_event, 'instantiate a go event');
+
+    $sm->handle_event($go_event);
+    $sm->handle_event($go_event);
+}
