@@ -1,12 +1,13 @@
 use strict;
 use warnings;
 
-use Test::More tests => 18;
+use Test::More tests => 22;
 
 use Nessy::StateMachineFactory;
 
 basic_state_machine();
 conflict_state_machine();
+loop_state_machine();
 
 sub basic_state_machine {
     my $f = Nessy::StateMachineFactory->new();
@@ -67,4 +68,36 @@ sub conflict_state_machine {
 
     $sm->handle_event($go_event);
     $sm->handle_event($go_event);
+}
+
+sub loop_state_machine {
+    my $f = Nessy::StateMachineFactory->new();
+
+    my $start_state = $f->define_start_state('start');
+    ok($start_state, 'define start state');
+    my $end_state = $f->define_state('end');
+    ok($end_state, 'define end state');
+
+    my $loop_event_type = $f->define_event('loop');
+    my $break_event_type = $f->define_event('break');
+
+    my $counter = 0;
+    $f->define_transitions(
+        [ $start_state, $loop_event_type, $start_state, [ sub {++$counter} ] ],
+        [ $start_state, $break_event_type, $end_state, [ sub { ok(1, 'loop ended') } ] ],
+    );
+
+    my $sm = $f->produce_state_machine();
+
+    my $loop_event = $loop_event_type->new;
+
+    my $loop_times = 3;
+    while ($loop_times--) {
+        $sm->handle_event($loop_event);
+    }
+
+    my $break_event = $break_event_type->new();
+    $sm->handle_event($break_event);
+
+    is($counter, 3, 'Looped 3 times');
 }
