@@ -10,6 +10,9 @@ sub _define_eventstate {
 
     my $event_class = join('::', $class, $event_name);
     {   no strict 'refs';
+        if (scalar %{ $event_class . '::' }) {
+            Carp::croak("$class already exists");
+        }
         my $isa = join('::', $event_class, 'ISA');
         my $base_class = $class->_base_class;
         @$isa = ($base_class);

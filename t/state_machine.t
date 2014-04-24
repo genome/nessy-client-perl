@@ -1,13 +1,34 @@
 use strict;
 use warnings;
 
-use Test::More tests => 22;
+use Test::More tests => 24;
+use Test::Exception;
 
 use Nessy::StateMachineFactory;
 
 basic_state_machine();
 conflict_state_machine();
 loop_state_machine();
+
+duplicate_state();
+duplicate_event();
+
+sub duplicate_state {
+    _duplicate_thing('define_state');
+}
+
+sub duplicate_event {
+    _duplicate_thing('define_event');
+}
+sub _duplicate_thing {
+    my $thing = shift;
+
+    my $f = Nessy::StateMachineFactory->new();
+    $f->$thing('foo');
+
+    dies_ok { $f->$thing('foo') } "Defining duplicate $thing throws exception";
+}
+
 
 sub basic_state_machine {
     my $f = Nessy::StateMachineFactory->new();
