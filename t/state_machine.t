@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 24;
+use Test::More tests => 32;
 use Test::Exception;
 
 use Nessy::StateMachineFactory;
@@ -12,6 +12,14 @@ loop_state_machine();
 
 duplicate_state();
 duplicate_event();
+duplicate_transition();
+
+returning_false_from_action_throws_exception();
+modifying_concrete_sm_throws_exception();
+changing_start_state_throws_exception();
+missing_start_state_throws_exception();
+
+unknown_event_throws_exception_in_transition();
 
 sub duplicate_state {
     _duplicate_thing('define_state');
@@ -121,4 +129,82 @@ sub loop_state_machine {
     $sm->handle_event($break_event);
 
     is($counter, 3, 'Looped 3 times');
+}
+
+sub returning_false_from_action_throws_exception {
+    my $f = Nessy::StateMachineFactory->new();
+
+    my $start_state = $f->define_start_state('start');
+    my $loop_event_type = $f->define_event('loop');
+    $f->define_transition(
+        $start_state, $loop_event_type, $start_state, [ sub { 0 } ]
+    );
+
+    my $sm = $f->produce_state_machine();
+    my $loop_event = $loop_event_type->new;
+    dies_ok { $sm->handle_event($loop_event) } 'Returning false from action throws exception';
+}
+
+sub duplicate_transition {
+    my $f = Nessy::StateMachineFactory->new();
+
+    my $start_state = $f->define_start_state('start');
+    my $loop_event_type = $f->define_event('loop');
+
+    $f->define_transition($start_state, $loop_event_type, $start_state, sub { 1 });
+    dies_ok { $f->define_transition($start_state, $loop_event_type, $start_state, sub { 1 })}
+        'Adding duplicate transition throws exception';
+}
+
+sub modifying_concrete_sm_throws_exception {
+    my $f = Nessy::StateMachineFactory->new();
+    my $start_state = $f->define_start_state('start');
+    my $loop_event_type = $f->define_event('loop');
+
+    $f->produce_state_machine();
+
+    dies_ok { $f->define_transition($start_state, $loop_event_type, $start_state, []) }
+        'Cannot add transition to a concrete state machine';
+
+    dies_ok { $f->define_state('foo') }
+        'Cannot add a state to a concrete state machine';
+
+    dies_ok { $f->define_event('foo') }
+        'Cannot add an event to a concrete state machine';
+}
+
+sub changing_start_state_throws_exception {
+    my $f = Nessy::StateMachineFactory->new();
+    $f->define_start_state('start');
+    dies_ok { $f->define_start_state('foo') }
+        'Changing the start state of a factory throws exception';
+}
+
+sub missing_start_state_throws_exception {
+    my $f = Nessy::StateMachineFactory->new();
+
+    my $state = $f->define_state('foo');
+    my $event = $f->define_event('go');
+    $f->define_transition($state, $event, $state, []);
+
+    dies_ok { $f->produce_state_machine }
+        'produce_state_machine() with no start state throws exception';
+}
+
+sub unknown_event_throws_exception_in_transition {
+    my $f = Nessy::StateMachineFactory->new();
+    my $start_state = $f->define_start_state('start');
+    my $other_state = $f->define_state('other');
+
+    my $ping_event = $f->define_event('ping');
+    my $pong_event = $f->define_event('pong');
+
+    $f->define_transitions(
+        [ $start_state, $ping_event, $other_state, [] ],
+        [ $other_state, $pong_event, $start_state, [] ],
+    );
+
+    my $sm = $f->produce_state_machine();
+    dies_ok { $sm->handle_event($pong_event->new) }
+        'Illegal event throws exception';
 }
