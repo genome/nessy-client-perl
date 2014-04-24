@@ -14,7 +14,7 @@ sub _define_eventstate {
         my $base_class = $class->_base_class;
         @$isa = ($base_class);
     }
-    Nessy::Properties::import($event_class, @property_list);
+    Nessy::Properties::import_properties($event_class, @property_list);
 
     return $event_class;
 }
