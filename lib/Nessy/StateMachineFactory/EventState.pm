@@ -8,7 +8,7 @@ use Nessy::Properties qw();
 sub _define_eventstate {
     my($class, $event_name, @property_list) = @_;
 
-    my $event_class = join('::', __PACKAGE__, $event_name);
+    my $event_class = join('::', $class, $event_name);
     {   no strict 'refs';
         my $isa = join('::', $event_class, 'ISA');
         my $base_class = $class->_base_class;
