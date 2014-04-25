@@ -426,6 +426,28 @@ subtest 'withdraw_retrying_activate_path' => sub {
 };
 
 
+subtest 'release_failure_path' => sub {
+    my $sm = $Nessy::Daemon::StateMachine::factory->produce_state_machine();
+    ok($sm, 'state machine created');
+
+    my $ci = _mock_command_interface();
+
+    _execute_event($sm, 'e_start', command_interface => $ci);
+    _execute_event($sm, 'e_activate', command_interface => $ci);
+    _execute_event($sm, 'e_release', command_interface => $ci);
+    _execute_event($sm, 'e_fatal_error', command_interface => $ci);
+
+    _verify_calls($ci,
+        'register_claim',
+        'create_timer',
+        'notify_lock_active',
+        'delete_timer',
+        'release_claim',
+        'terminate_client',
+    );
+};
+
+
 done_testing();
 
 
