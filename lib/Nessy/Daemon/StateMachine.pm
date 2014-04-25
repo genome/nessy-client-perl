@@ -126,7 +126,7 @@ $factory->define_transitions(
 [$s_releasing         , $e_retryable_error , $s_retrying_release  , [ \&a_create_timer           ]                        ]  ,
 [$s_retrying_release  , $e_timer           , $s_releasing         , [ \&a_release_claim          ]                        ]  ,
 [$s_registering       , $e_wait            , $s_waiting           , [ \&a_create_timer           ]                        ]  ,
-[$s_waiting           , $e_timer           , $s_registering       , [ \&a_activate_claim         ]                        ]  ,
+[$s_waiting           , $e_timer           , $s_activating        , [ \&a_activate_claim         ]                        ]  ,
 [$s_registering       , $e_retryable_error , $s_retrying_register , [ \&a_create_timer           ]                        ]  ,
 [$s_retrying_register , $e_timer           , $s_registering       , [ \&a_register_claim         ]                        ]  ,
 [$s_registering       , $e_fatal_error     , $s_fail              , [ \&a_terminate_client       ]                        ]  ,
@@ -141,6 +141,9 @@ $factory->define_transitions(
 [$s_withdrawing       , $e_fatal_error     , $s_fail              , [ \&a_terminate_client       ]                        ]  ,
 [$s_withdrawing       , $e_abort           , $s_done              , [                            ]                        ]  ,
 [$s_retrying_withdraw , $e_abort           , $s_done              , [ \&a_delete_timer           ]                        ]  ,
+[$s_activating        , $e_activate        , $s_active            , [ \&a_create_timer           , \&a_notify_lock_active ]  ]  ,
+[$s_activating        , $e_wait            , $s_waiting           , [ \&a_create_timer           ]                        ]  ,
+[$s_activating        , $e_fatal_error     , $s_fail              , [ \&a_terminate_client       ]                        ]  ,
 
 );
 
