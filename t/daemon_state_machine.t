@@ -508,7 +508,7 @@ subtest 'normal_renew_path' => sub {
     _execute_event($sm, 'e_start', command_interface => $ci);
     _execute_event($sm, 'e_activate', command_interface => $ci);
     _execute_event($sm, 'e_timer', command_interface => $ci);
-    _execute_event($sm, 'e_success', command_interface => $ci,
+    _execute_event($sm, 'e_activate', command_interface => $ci,
         timer_seconds => 15);
     _execute_event($sm, 'e_release', command_interface => $ci);
 
@@ -536,7 +536,7 @@ subtest 'retry_renew_path' => sub {
     _execute_event($sm, 'e_retryable_error', command_interface => $ci,
         timer_seconds => 15);
     _execute_event($sm, 'e_timer', command_interface => $ci);
-    _execute_event($sm, 'e_success', command_interface => $ci,
+    _execute_event($sm, 'e_activate', command_interface => $ci,
         timer_seconds => 15);
     _execute_event($sm, 'e_release', command_interface => $ci);
 

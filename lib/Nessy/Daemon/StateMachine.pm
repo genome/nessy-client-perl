@@ -49,8 +49,7 @@ our $e_start = $factory->define_event('START', 'command_interface');
 our $e_activate = $factory->define_event('ACTIVATE', 'command_interface',
     'timer_seconds'); # 201
 our $e_conflict = $factory->define_event('CONFLICT', 'command_interface'); # 409
-our $e_success  = $factory->define_event('SUCCESS', 'command_interface',
-    'timer_seconds'); # 200, 204 (2xx)
+our $e_success  = $factory->define_event('SUCCESS', 'command_interface'); # 200, 204 (2xx)
 our $e_timer    = $factory->define_event('TIMER', 'command_interface');
 our $e_wait     = $factory->define_event('WAIT', 'command_interface',
     'timer_seconds'); # 202
@@ -169,7 +168,7 @@ $factory->define_transitions(
 [$s_releasing         , $e_abort           , $s_done              , [ \&a_ignore_last_command    ]                        ]  ,
 [$s_retrying_release  , $e_abort           , $s_done              , [ \&a_delete_timer           ]                        ]  ,
 [$s_active            , $e_timer           , $s_renewing          , [ \&a_renew_claim            ]                        ]  ,
-[$s_renewing          , $e_success         , $s_active            , [ \&a_create_timer           ]                        ]  ,
+[$s_renewing          , $e_activate        , $s_active            , [ \&a_create_timer           ]                        ]  ,
 [$s_renewing          , $e_retryable_error , $s_retrying_renew    , [ \&a_create_timer           ]                        ]  ,
 [$s_retrying_renew    , $e_timer           , $s_renewing          , [ \&a_renew_claim            ]                        ]  ,
 [$s_renewing          , $e_fatal_error     , $s_fail              , [ \&a_ignore_last_command    , \&a_terminate_client   ]  ]  ,
