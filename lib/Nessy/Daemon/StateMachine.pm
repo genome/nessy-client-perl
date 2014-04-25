@@ -65,7 +65,6 @@ our $e_retryable_error = $factory->define_event('RETRYABLE_ERROR',
 
 
 # ---------------------------- Actions ---------------------------------------
-
 sub a_register_claim {
     my ($from, $event, $to) = @_;
     $event->command_interface->register_claim();
