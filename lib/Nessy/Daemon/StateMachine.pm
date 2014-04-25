@@ -177,7 +177,10 @@ $factory->define_transitions(
 [$s_retrying_renew    , $e_release         , $s_releasing         , [ \&a_delete_timer           , \&a_release_claim      ]  ]  ,
 [$s_renewing          , $e_abort           , $s_releasing         , [ \&a_ignore_last_command    , \&a_abort_claim        ]  ]  ,
 [$s_retrying_renew    , $e_abort           , $s_releasing         , [ \&a_delete_timer           , \&a_abort_claim        ]  ]  ,
-
+[$s_active            , $e_abort           , $s_aborting          , [ \&a_delete_timer           , \&a_abort_claim        ]  ]  ,
+[$s_activating        , $e_abort           , $s_aborting          , [ \&a_ignore_last_command    , \&a_abort_claim        ]  ]  ,
+[$s_waiting           , $e_abort           , $s_aborting          , [ \&a_delete_timer           , \&a_abort_claim        ]  ]  ,
+[$s_retrying_activate , $e_abort           , $s_aborting          , [ \&a_delete_timer           , \&a_abort_claim        ]  ]  ,
 
 );
 
