@@ -104,6 +104,28 @@ subtest 'keep_waiting_path' => sub {
 };
 
 
+subtest 'retry_register_path' => sub {
+    my $sm = $Nessy::Daemon::StateMachine::factory->produce_state_machine();
+    ok($sm, 'state machine created');
+
+    my $ci = _mock_command_interface();
+
+    _execute_event($sm, 'e_start', command_interface => $ci);
+    _execute_event($sm, 'e_retryable_error', command_interface => $ci,
+        timer_seconds => 15);
+    _execute_event($sm, 'e_timer', command_interface => $ci);
+    _execute_event($sm, 'e_wait', command_interface => $ci,
+        timer_seconds => 15);
+
+    _verify_calls($ci,
+        'register_claim',
+        'create_timer',
+        'register_claim',
+        'create_timer',
+    );
+};
+
+
 done_testing();
 
 
