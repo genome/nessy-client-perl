@@ -120,6 +120,10 @@ $factory->define_transitions(
 [$s_registering       , $e_retryable_error , $s_retrying_register , [\&a_create_timer         ]                        ]  ,
 [$s_retrying_register , $e_timer           , $s_registering       , [\&a_register_claim       ]                        ]  ,
 [$s_registering       , $e_fatal_error     , $s_fail              , [\&a_terminate_client     ]                        ]  ,
+[$s_registering       , $e_withdraw        , $s_done              , [                         ]                        ]  ,
+[$s_registering       , $e_abort           , $s_done              , [                         ]                        ]  ,
+[$s_retrying_register , $e_withdraw        , $s_done              , [                         ]                        ]  ,
+[$s_retrying_register , $e_abort           , $s_done              , [                         ]                        ]  ,
 
 );
 
