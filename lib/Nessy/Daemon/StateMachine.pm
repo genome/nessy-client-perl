@@ -154,6 +154,8 @@ $factory->define_transitions(
 [$s_activating        , $e_withdraw        , $s_withdrawing       , [ \&a_ignore_last_command    , \&a_withdraw_claim     ]  ]  ,
 [$s_retrying_activate , $e_withdraw        , $s_withdrawing       , [ \&a_delete_timer           , \&a_withdraw_claim     ]  ]  ,
 [$s_releasing         , $e_fatal_error     , $s_fail              , [ \&a_ignore_last_command    , \&a_terminate_client   ]  ]  ,
+[$s_releasing         , $e_abort           , $s_done              , [ \&a_ignore_last_command    ]                        ]  ,
+[$s_retrying_release  , $e_abort           , $s_done              , [ \&a_delete_timer           ]                        ]  ,
 
 );
 
