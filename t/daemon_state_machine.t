@@ -59,6 +59,29 @@ subtest 'retry_release_path' => sub {
 };
 
 
+
+subtest 'waiting_to_active_path' => sub {
+    my $sm = $Nessy::Daemon::StateMachine::factory->produce_state_machine();
+    ok($sm, 'state machine created');
+
+    my $ci = _mock_command_interface();
+
+    _execute_event($sm, 'e_start', command_interface => $ci);
+    _execute_event($sm, 'e_wait', command_interface => $ci,
+        timer_seconds => 15);
+    _execute_event($sm, 'e_timer', command_interface => $ci);
+    _execute_event($sm, 'e_activate', command_interface => $ci);
+
+    _verify_calls($ci,
+        'register_claim',
+        'create_timer',
+        'activate_claim',
+        'create_timer',
+        'notify_lock_active',
+    );
+};
+
+
 done_testing();
 
 
@@ -82,6 +105,7 @@ sub _mock_command_interface {
         'delete_timer',
         'release_claim',
         'notify_lock_released',
+        'activate_claim',
     );
 
     return $ci;

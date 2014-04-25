@@ -50,7 +50,8 @@ our $e_activate = $factory->define_event('ACTIVATE', 'command_interface', 'timer
 our $e_conflict = $factory->define_event('CONFLICT', 'command_interface'); # 409
 our $e_success  = $factory->define_event('SUCCESS', 'command_interface'); # 200, 204 (2xx)
 our $e_timer    = $factory->define_event('TIMER', 'command_interface');
-our $e_wait     = $factory->define_event('WAIT', 'command_interface'); # 202
+our $e_wait     = $factory->define_event('WAIT', 'command_interface',
+    'timer_seconds'); # 202
 
 # User driven events
 our $e_abort    = $factory->define_event('ABORT', 'command_interface');
@@ -95,16 +96,23 @@ sub a_notify_lock_released {
     $event->command_interface->notify_lock_released();
 }
 
+sub a_activate_claim {
+    my ($from, $event, $to) = @_;
+    $event->command_interface->activate_claim();
+}
+
 
 # ---------------------------- Transitions -----------------------------------
 $factory->define_transitions(
 
-[$s_new              , $e_start           , $s_registering      , [\&a_register_claim       ]                         ],
-[$s_registering      , $e_activate        , $s_active           , [\&a_create_timer         , \&a_notify_lock_active ]],
-[$s_active           , $e_release         , $s_releasing        , [\&a_delete_timer         , \&a_release_claim      ]],
-[$s_releasing        , $e_success         , $s_released         , [\&a_notify_lock_released ]                         ],
-[$s_releasing        , $e_retryable_error , $s_retrying_release , [\&a_create_timer         ]                         ],
-[$s_retrying_release , $e_timer           , $s_releasing        , [\&a_release_claim        ]                         ],
+[$s_new              , $e_start           , $s_registering      , [\&a_register_claim       ]                        ]  ,
+[$s_registering      , $e_activate        , $s_active           , [\&a_create_timer         , \&a_notify_lock_active ]  ]  ,
+[$s_active           , $e_release         , $s_releasing        , [\&a_delete_timer         , \&a_release_claim      ]  ]  ,
+[$s_releasing        , $e_success         , $s_released         , [\&a_notify_lock_released ]                        ]  ,
+[$s_releasing        , $e_retryable_error , $s_retrying_release , [\&a_create_timer         ]                        ]  ,
+[$s_retrying_release , $e_timer           , $s_releasing        , [\&a_release_claim        ]                        ]  ,
+[$s_registering      , $e_wait            , $s_waiting          , [\&a_create_timer         ]                        ]  ,
+[$s_waiting          , $e_timer           , $s_registering      , [\&a_activate_claim       ]                        ]  ,
 
 );
 
