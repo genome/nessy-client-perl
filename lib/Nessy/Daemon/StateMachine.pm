@@ -100,6 +100,11 @@ sub a_activate_claim {
     $event->command_interface->activate_claim();
 }
 
+sub a_terminate_client {
+    my ($from, $event, $to) = @_;
+    $event->command_interface->terminate_client();
+}
+
 
 # ---------------------------- Transitions -----------------------------------
 $factory->define_transitions(
@@ -114,6 +119,7 @@ $factory->define_transitions(
 [$s_waiting           , $e_timer           , $s_registering       , [\&a_activate_claim       ]                        ]  ,
 [$s_registering       , $e_retryable_error , $s_retrying_register , [\&a_create_timer         ]                        ]  ,
 [$s_retrying_register , $e_timer           , $s_registering       , [\&a_register_claim       ]                        ]  ,
+[$s_registering       , $e_fatal_error     , $s_fail              , [\&a_terminate_client     ]                        ]  ,
 
 );
 

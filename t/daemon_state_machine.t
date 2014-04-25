@@ -126,6 +126,22 @@ subtest 'retry_register_path' => sub {
 };
 
 
+subtest 'register_fail_path' => sub {
+    my $sm = $Nessy::Daemon::StateMachine::factory->produce_state_machine();
+    ok($sm, 'state machine created');
+
+    my $ci = _mock_command_interface();
+
+    _execute_event($sm, 'e_start', command_interface => $ci);
+    _execute_event($sm, 'e_fatal_error', command_interface => $ci);
+
+    _verify_calls($ci,
+        'register_claim',
+        'terminate_client',
+    );
+};
+
+
 done_testing();
 
 
@@ -150,6 +166,7 @@ sub _mock_command_interface {
         'release_claim',
         'notify_lock_released',
         'activate_claim',
+        'terminate_client',
     );
 
     return $ci;
