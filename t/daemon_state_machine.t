@@ -31,6 +31,34 @@ subtest 'shortest_release_path' => sub {
 };
 
 
+subtest 'retry_release_path' => sub {
+    my $sm = $Nessy::Daemon::StateMachine::factory->produce_state_machine();
+    ok($sm, 'state machine created');
+
+    my $ci = _mock_command_interface();
+
+    _execute_event($sm, 'e_start', command_interface => $ci);
+    _execute_event($sm, 'e_activate', command_interface => $ci,
+        timer_seconds => 15);
+    _execute_event($sm, 'e_release', command_interface => $ci);
+    _execute_event($sm, 'e_retryable_error', command_interface => $ci,
+        timer_seconds => 15);
+    _execute_event($sm, 'e_timer', command_interface => $ci);
+    _execute_event($sm, 'e_success', command_interface => $ci);
+
+    _verify_calls($ci,
+        'register_claim',
+        'create_timer',
+        'notify_lock_active',
+        'delete_timer',
+        'release_claim',
+        'create_timer',
+        'release_claim',
+        'notify_lock_released',
+    );
+};
+
+
 done_testing();
 
 
