@@ -137,6 +137,7 @@ subtest 'register_fail_path' => sub {
 
     _verify_calls($ci,
         'register_claim',
+        'ignore_last_command',
         'terminate_client',
     );
 };
@@ -276,6 +277,7 @@ subtest 'withdaw_fail_path' => sub {
         'create_timer',
         'delete_timer',
         'withdraw_claim',
+        'ignore_last_command',
         'terminate_client',
     );
 };
@@ -343,6 +345,7 @@ subtest 'fail_during_activating_path' => sub {
         'register_claim',
         'create_timer',
         'activate_claim',
+        'ignore_last_command',
         'terminate_client',
     );
 };
@@ -443,6 +446,7 @@ subtest 'release_failure_path' => sub {
         'notify_lock_active',
         'delete_timer',
         'release_claim',
+        'ignore_last_command',
         'terminate_client',
     );
 };
