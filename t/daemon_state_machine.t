@@ -375,6 +375,57 @@ subtest 'retrying_activate_path' => sub {
 };
 
 
+subtest 'withdraw_activating_path' => sub {
+    my $sm = $Nessy::Daemon::StateMachine::factory->produce_state_machine();
+    ok($sm, 'state machine created');
+
+    my $ci = _mock_command_interface();
+
+    _execute_event($sm, 'e_start', command_interface => $ci);
+    _execute_event($sm, 'e_wait', command_interface => $ci,
+        'timer_seconds' => 15);
+    _execute_event($sm, 'e_timer', command_interface => $ci);
+    _execute_event($sm, 'e_withdraw', command_interface => $ci);
+    _execute_event($sm, 'e_success', command_interface => $ci);
+
+    _verify_calls($ci,
+        'register_claim',
+        'create_timer',
+        'activate_claim',
+        'ignore_last_command',
+        'withdraw_claim',
+        'notify_claim_withdrawn',
+    );
+};
+
+
+subtest 'withdraw_retrying_activate_path' => sub {
+    my $sm = $Nessy::Daemon::StateMachine::factory->produce_state_machine();
+    ok($sm, 'state machine created');
+
+    my $ci = _mock_command_interface();
+
+    _execute_event($sm, 'e_start', command_interface => $ci);
+    _execute_event($sm, 'e_wait', command_interface => $ci,
+        'timer_seconds' => 15);
+    _execute_event($sm, 'e_timer', command_interface => $ci);
+    _execute_event($sm, 'e_retryable_error', command_interface => $ci,
+        'timer_seconds' => 15);
+    _execute_event($sm, 'e_withdraw', command_interface => $ci);
+    _execute_event($sm, 'e_success', command_interface => $ci);
+
+    _verify_calls($ci,
+        'register_claim',
+        'create_timer',
+        'activate_claim',
+        'create_timer',
+        'delete_timer',
+        'withdraw_claim',
+        'notify_claim_withdrawn',
+    );
+};
+
+
 done_testing();
 
 
@@ -402,6 +453,7 @@ sub _mock_command_interface {
         'terminate_client',
         'withdraw_claim',
         'notify_claim_withdrawn',
+        'ignore_last_command',
     );
 
     return $ci;
