@@ -33,12 +33,12 @@ our $s_renewing    = $factory->define_state('RENEWING');
 our $s_withdrawing = $factory->define_state('WITHDRAWING');
 
 # "Wait for retry" states
-our $s_retry_aborting    = $factory->define_state('RETRY_ABORTING');
-our $s_retry_activating  = $factory->define_state('RETRY_ACTIVATING');
-our $s_retry_registering = $factory->define_state('RETRY_REGISTERING');
-our $s_retry_releasing   = $factory->define_state('RETRY_RELEASING');
-our $s_retry_renewing    = $factory->define_state('RETRY_RENEWING');
-our $s_retry_withdrawing = $factory->define_state('RETRY_WITHDRAWING');
+our $s_retrying_abort    = $factory->define_state('RETRYING_ABORT');
+our $s_retrying_activate = $factory->define_state('RETRYING_ACTIVATE');
+our $s_retrying_register = $factory->define_state('RETRYING_REGISTER');
+our $s_retrying_release  = $factory->define_state('RETRYING_RELEASE');
+our $s_retrying_renew    = $factory->define_state('RETRYING_RENEW');
+our $s_retrying_withdraw = $factory->define_state('RETRYING_WITHDRAW');
 
 
 # ---------------------------- Events ----------------------------------------
