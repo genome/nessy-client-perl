@@ -105,25 +105,37 @@ sub a_terminate_client {
     $event->command_interface->terminate_client();
 }
 
+sub a_withdraw_claim {
+    my ($from, $event, $to) = @_;
+    $event->command_interface->withdraw_claim();
+}
+
+sub a_notify_claim_withdrawn {
+    my ($from, $event, $to) = @_;
+    $event->command_interface->notify_claim_withdrawn();
+}
+
 
 # ---------------------------- Transitions -----------------------------------
 $factory->define_transitions(
 
-[$s_new               , $e_start           , $s_registering       , [\&a_register_claim       ]                        ]  ,
-[$s_registering       , $e_activate        , $s_active            , [\&a_create_timer         , \&a_notify_lock_active ]  ]  ,
-[$s_active            , $e_release         , $s_releasing         , [\&a_delete_timer         , \&a_release_claim      ]  ]  ,
-[$s_releasing         , $e_success         , $s_released          , [\&a_notify_lock_released ]                        ]  ,
-[$s_releasing         , $e_retryable_error , $s_retrying_release  , [\&a_create_timer         ]                        ]  ,
-[$s_retrying_release  , $e_timer           , $s_releasing         , [\&a_release_claim        ]                        ]  ,
-[$s_registering       , $e_wait            , $s_waiting           , [\&a_create_timer         ]                        ]  ,
-[$s_waiting           , $e_timer           , $s_registering       , [\&a_activate_claim       ]                        ]  ,
-[$s_registering       , $e_retryable_error , $s_retrying_register , [\&a_create_timer         ]                        ]  ,
-[$s_retrying_register , $e_timer           , $s_registering       , [\&a_register_claim       ]                        ]  ,
-[$s_registering       , $e_fatal_error     , $s_fail              , [\&a_terminate_client     ]                        ]  ,
-[$s_registering       , $e_withdraw        , $s_done              , [                         ]                        ]  ,
-[$s_registering       , $e_abort           , $s_done              , [                         ]                        ]  ,
-[$s_retrying_register , $e_withdraw        , $s_done              , [                         ]                        ]  ,
-[$s_retrying_register , $e_abort           , $s_done              , [                         ]                        ]  ,
+[$s_new               , $e_start           , $s_registering       , [\&a_register_claim          ]                        ]  ,
+[$s_registering       , $e_activate        , $s_active            , [\&a_create_timer            , \&a_notify_lock_active ]  ]  ,
+[$s_active            , $e_release         , $s_releasing         , [\&a_delete_timer            , \&a_release_claim      ]  ]  ,
+[$s_releasing         , $e_success         , $s_released          , [\&a_notify_lock_released    ]                        ]  ,
+[$s_releasing         , $e_retryable_error , $s_retrying_release  , [\&a_create_timer            ]                        ]  ,
+[$s_retrying_release  , $e_timer           , $s_releasing         , [\&a_release_claim           ]                        ]  ,
+[$s_registering       , $e_wait            , $s_waiting           , [\&a_create_timer            ]                        ]  ,
+[$s_waiting           , $e_timer           , $s_registering       , [\&a_activate_claim          ]                        ]  ,
+[$s_registering       , $e_retryable_error , $s_retrying_register , [\&a_create_timer            ]                        ]  ,
+[$s_retrying_register , $e_timer           , $s_registering       , [\&a_register_claim          ]                        ]  ,
+[$s_registering       , $e_fatal_error     , $s_fail              , [\&a_terminate_client        ]                        ]  ,
+[$s_registering       , $e_withdraw        , $s_done              , [                            ]                        ]  ,
+[$s_registering       , $e_abort           , $s_done              , [                            ]                        ]  ,
+[$s_retrying_register , $e_withdraw        , $s_done              , [                            ]                        ]  ,
+[$s_retrying_register , $e_abort           , $s_done              , [                            ]                        ]  ,
+[$s_waiting           , $e_withdraw        , $s_withdrawing       , [ \&a_delete_timer           , \&a_withdraw_claim     ]  ]  ,
+[$s_withdrawing       , $e_success         , $s_withdrawn         , [ \&a_notify_claim_withdrawn ]                        ]  ,
 
 );
 

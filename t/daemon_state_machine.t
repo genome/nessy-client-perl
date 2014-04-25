@@ -208,6 +208,28 @@ subtest 'retry_registering_abort_path' => sub {
 };
 
 
+subtest 'withdraw_from_waiting_path' => sub {
+    my $sm = $Nessy::Daemon::StateMachine::factory->produce_state_machine();
+    ok($sm, 'state machine created');
+
+    my $ci = _mock_command_interface();
+
+    _execute_event($sm, 'e_start', command_interface => $ci);
+    _execute_event($sm, 'e_wait', command_interface => $ci,
+        'timer_seconds' => 15);
+    _execute_event($sm, 'e_withdraw', command_interface => $ci);
+    _execute_event($sm, 'e_success', command_interface => $ci);
+
+    _verify_calls($ci,
+        'register_claim',
+        'create_timer',
+        'delete_timer',
+        'withdraw_claim',
+        'notify_claim_withdrawn',
+    );
+};
+
+
 done_testing();
 
 
@@ -233,6 +255,8 @@ sub _mock_command_interface {
         'notify_lock_released',
         'activate_claim',
         'terminate_client',
+        'withdraw_claim',
+        'notify_claim_withdrawn',
     );
 
     return $ci;
