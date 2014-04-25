@@ -348,6 +348,33 @@ subtest 'fail_during_activating_path' => sub {
 };
 
 
+subtest 'retrying_activate_path' => sub {
+    my $sm = $Nessy::Daemon::StateMachine::factory->produce_state_machine();
+    ok($sm, 'state machine created');
+
+    my $ci = _mock_command_interface();
+
+    _execute_event($sm, 'e_start', command_interface => $ci);
+    _execute_event($sm, 'e_wait', command_interface => $ci,
+        'timer_seconds' => 15);
+    _execute_event($sm, 'e_timer', command_interface => $ci);
+    _execute_event($sm, 'e_retryable_error', command_interface => $ci,
+        'timer_seconds' => 15);
+    _execute_event($sm, 'e_timer', command_interface => $ci);
+    _execute_event($sm, 'e_activate', command_interface => $ci);
+
+    _verify_calls($ci,
+        'register_claim',
+        'create_timer',
+        'activate_claim',
+        'create_timer',
+        'activate_claim',
+        'create_timer',
+        'notify_lock_active',
+    );
+};
+
+
 done_testing();
 
 

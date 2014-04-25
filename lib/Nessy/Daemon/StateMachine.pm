@@ -144,6 +144,8 @@ $factory->define_transitions(
 [$s_activating        , $e_activate        , $s_active            , [ \&a_create_timer           , \&a_notify_lock_active ]  ]  ,
 [$s_activating        , $e_wait            , $s_waiting           , [ \&a_create_timer           ]                        ]  ,
 [$s_activating        , $e_fatal_error     , $s_fail              , [ \&a_terminate_client       ]                        ]  ,
+[$s_activating        , $e_retryable_error , $s_retrying_activate , [ \&a_create_timer           ]                        ]  ,
+[$s_retrying_activate , $e_timer           , $s_activating        , [ \&a_activate_claim         ]                        ]  ,
 
 );
 
