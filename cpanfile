@@ -8,4 +8,5 @@ requires 'Sub::Name';
 on 'test' => sub {
     requires 'Plack';
     requires 'Test::Exception';
+    requires 'Test::MockObject';
 };
