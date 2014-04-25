@@ -180,6 +180,12 @@ $factory->define_transitions(
 [$s_activating        , $e_abort           , $s_aborting          , [ \&a_ignore_last_command    , \&a_abort_claim        ]  ]  ,
 [$s_waiting           , $e_abort           , $s_aborting          , [ \&a_delete_timer           , \&a_abort_claim        ]  ]  ,
 [$s_retrying_activate , $e_abort           , $s_aborting          , [ \&a_delete_timer           , \&a_abort_claim        ]  ]  ,
+[$s_aborting          , $e_success         , $s_aborted           , [                            ]                        ]  ,
+[$s_aborting          , $e_fatal_error     , $s_fail              , [ \&a_terminate_client       ]                        ]  ,
+[$s_aborting          , $e_retryable_error , $s_retrying_abort    , [ \&a_create_timer           ]                        ]  ,
+[$s_retrying_abort    , $e_timer           , $s_aborting          , [ \&a_abort_claim            ]                        ]  ,
+[$s_aborting          , $e_abort           , $s_done              , [ \&a_ignore_last_command    ]                        ]  ,
+[$s_retrying_abort    , $e_abort           , $s_done              , [ \&a_delete_timer           ]                        ]  ,
 
 );
 

@@ -763,6 +763,127 @@ subtest 'abort_from_activating' => sub {
 };
 
 
+subtest 'successful_abort_path' => sub {
+    my $sm = $Nessy::Daemon::StateMachine::factory->produce_state_machine();
+    ok($sm, 'state machine created');
+
+    my $ci = _mock_command_interface();
+
+    _execute_event($sm, 'e_start', command_interface => $ci);
+    _execute_event($sm, 'e_activate', command_interface => $ci,
+        timer_seconds => 15);
+    _execute_event($sm, 'e_abort', command_interface => $ci);
+    _execute_event($sm, 'e_success', command_interface => $ci);
+
+    _verify_calls($ci,
+        'register_claim',
+        'create_timer',
+        'notify_lock_active',
+        'delete_timer',
+        'abort_claim',
+    );
+};
+
+
+subtest 'failed_abort_path' => sub {
+    my $sm = $Nessy::Daemon::StateMachine::factory->produce_state_machine();
+    ok($sm, 'state machine created');
+
+    my $ci = _mock_command_interface();
+
+    _execute_event($sm, 'e_start', command_interface => $ci);
+    _execute_event($sm, 'e_activate', command_interface => $ci,
+        timer_seconds => 15);
+    _execute_event($sm, 'e_abort', command_interface => $ci);
+    _execute_event($sm, 'e_fatal_error', command_interface => $ci);
+
+    _verify_calls($ci,
+        'register_claim',
+        'create_timer',
+        'notify_lock_active',
+        'delete_timer',
+        'abort_claim',
+        'terminate_client',
+    );
+};
+
+
+subtest 'retry_abort_path' => sub {
+    my $sm = $Nessy::Daemon::StateMachine::factory->produce_state_machine();
+    ok($sm, 'state machine created');
+
+    my $ci = _mock_command_interface();
+
+    _execute_event($sm, 'e_start', command_interface => $ci);
+    _execute_event($sm, 'e_activate', command_interface => $ci,
+        timer_seconds => 15);
+    _execute_event($sm, 'e_abort', command_interface => $ci);
+    _execute_event($sm, 'e_retryable_error', command_interface => $ci,
+        timer_seconds => 15);
+    _execute_event($sm, 'e_timer', command_interface => $ci);
+    _execute_event($sm, 'e_success', command_interface => $ci);
+
+    _verify_calls($ci,
+        'register_claim',
+        'create_timer',
+        'notify_lock_active',
+        'delete_timer',
+        'abort_claim',
+        'create_timer',
+        'abort_claim',
+    );
+};
+
+
+subtest 'abort_during_aborting_path' => sub {
+    my $sm = $Nessy::Daemon::StateMachine::factory->produce_state_machine();
+    ok($sm, 'state machine created');
+
+    my $ci = _mock_command_interface();
+
+    _execute_event($sm, 'e_start', command_interface => $ci);
+    _execute_event($sm, 'e_activate', command_interface => $ci,
+        timer_seconds => 15);
+    _execute_event($sm, 'e_abort', command_interface => $ci);
+    _execute_event($sm, 'e_abort', command_interface => $ci);
+
+    _verify_calls($ci,
+        'register_claim',
+        'create_timer',
+        'notify_lock_active',
+        'delete_timer',
+        'abort_claim',
+        'ignore_last_command',
+    );
+};
+
+
+subtest 'abort_during_retrying_abort_path' => sub {
+    my $sm = $Nessy::Daemon::StateMachine::factory->produce_state_machine();
+    ok($sm, 'state machine created');
+
+    my $ci = _mock_command_interface();
+
+    _execute_event($sm, 'e_start', command_interface => $ci);
+    _execute_event($sm, 'e_activate', command_interface => $ci,
+        timer_seconds => 15);
+    _execute_event($sm, 'e_abort', command_interface => $ci);
+    _execute_event($sm, 'e_retryable_error', command_interface => $ci,
+        timer_seconds => 15);
+    _execute_event($sm, 'e_abort', command_interface => $ci);
+
+    _verify_calls($ci,
+        'register_claim',
+        'create_timer',
+        'notify_lock_active',
+        'delete_timer',
+        'abort_claim',
+        'create_timer',
+        'delete_timer',
+    );
+};
+
+
 done_testing();
 
 
