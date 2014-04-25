@@ -257,6 +257,74 @@ subtest 'retry_withdraw_path' => sub {
 };
 
 
+subtest 'withdaw_fail_path' => sub {
+    my $sm = $Nessy::Daemon::StateMachine::factory->produce_state_machine();
+    ok($sm, 'state machine created');
+
+    my $ci = _mock_command_interface();
+
+    _execute_event($sm, 'e_start', command_interface => $ci);
+    _execute_event($sm, 'e_wait', command_interface => $ci,
+        'timer_seconds' => 15);
+    _execute_event($sm, 'e_withdraw', command_interface => $ci);
+    _execute_event($sm, 'e_fatal_error', command_interface => $ci);
+
+    _verify_calls($ci,
+        'register_claim',
+        'create_timer',
+        'delete_timer',
+        'withdraw_claim',
+        'terminate_client',
+    );
+};
+
+
+subtest 'abort_during_withdraw_path' => sub {
+    my $sm = $Nessy::Daemon::StateMachine::factory->produce_state_machine();
+    ok($sm, 'state machine created');
+
+    my $ci = _mock_command_interface();
+
+    _execute_event($sm, 'e_start', command_interface => $ci);
+    _execute_event($sm, 'e_wait', command_interface => $ci,
+        'timer_seconds' => 15);
+    _execute_event($sm, 'e_withdraw', command_interface => $ci);
+    _execute_event($sm, 'e_abort', command_interface => $ci);
+
+    _verify_calls($ci,
+        'register_claim',
+        'create_timer',
+        'delete_timer',
+        'withdraw_claim',
+    );
+};
+
+
+subtest 'abort_during_withdraw_retry_path' => sub {
+    my $sm = $Nessy::Daemon::StateMachine::factory->produce_state_machine();
+    ok($sm, 'state machine created');
+
+    my $ci = _mock_command_interface();
+
+    _execute_event($sm, 'e_start', command_interface => $ci);
+    _execute_event($sm, 'e_wait', command_interface => $ci,
+        'timer_seconds' => 15);
+    _execute_event($sm, 'e_withdraw', command_interface => $ci);
+    _execute_event($sm, 'e_retryable_error', command_interface => $ci,
+        'timer_seconds' => 15);
+    _execute_event($sm, 'e_abort', command_interface => $ci);
+
+    _verify_calls($ci,
+        'register_claim',
+        'create_timer',
+        'delete_timer',
+        'withdraw_claim',
+        'create_timer',
+        'delete_timer',
+    );
+};
+
+
 done_testing();
 
 

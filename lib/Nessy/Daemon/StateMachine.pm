@@ -138,6 +138,9 @@ $factory->define_transitions(
 [$s_withdrawing       , $e_success         , $s_withdrawn         , [ \&a_notify_claim_withdrawn ]                        ]  ,
 [$s_withdrawing       , $e_retryable_error , $s_retrying_withdraw , [\&a_create_timer            ]                        ]  ,
 [$s_retrying_withdraw , $e_timer           , $s_withdrawing       , [\&a_withdraw_claim          ]                        ]  ,
+[$s_withdrawing       , $e_fatal_error     , $s_fail              , [\&a_terminate_client        ]                        ]  ,
+[$s_withdrawing       , $e_abort           , $s_done              , [                            ]                        ]  ,
+[$s_retrying_withdraw , $e_abort           , $s_done              , [\&a_delete_timer            ]                        ]  ,
 
 );
 
