@@ -171,6 +171,7 @@ subtest 'retry_registering_withdraw_path' => sub {
     _verify_calls($ci,
         'register_claim',
         'create_timer',
+        'delete_timer',
     );
 };
 
@@ -204,6 +205,7 @@ subtest 'retry_registering_abort_path' => sub {
     _verify_calls($ci,
         'register_claim',
         'create_timer',
+        'delete_timer',
     );
 };
 
