@@ -3,7 +3,8 @@ package Nessy::Daemon::CommandInterface;
 use strict;
 use warnings FATAL => 'all';
 
-use Nessy::Properties qw(event_generator resource _current_timer);
+use Nessy::Properties qw(event_generator resource submit_url ttl user_data
+    _current_timer _http_response_watcher);
 
 use AnyEvent;
 use AnyEvent::HTTP;
@@ -15,7 +16,7 @@ sub new {
     my %params = @_;
 
     return bless $class->_verify_params(\%params,
-        qw(event_generator resource)), $class;
+        qw(event_generator resource submit_url ttl)), $class;
 }
 
 
@@ -59,6 +60,7 @@ sub delete_timer {
 
 sub ignore_last_command {
     my $self = shift;
+    $self->_http_response_watcher(undef);
 }
 
 
@@ -79,6 +81,28 @@ sub notify_lock_released {
 
 sub register_claim {
     my $self = shift;
+
+    $self->_http_response_watcher(
+        AnyEvent::HTTP::http_request(
+            POST => $self->submit_url,
+            body => $self->_register_body,
+            cb => sub {
+                $self->event_generator->registration_callback(@_);
+            },
+        )
+    );
+}
+
+sub _register_body {
+    my $self = shift;
+
+    return $self->json_parser->encode(
+        {
+            'resource' => $self->resource,
+            'ttl' => $self->ttl,
+            'user_data' => $self->user_data,
+        }
+    );
 }
 
 
