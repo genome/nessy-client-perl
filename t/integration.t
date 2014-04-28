@@ -4,9 +4,7 @@ use strict;
 use warnings FATAL => qw(all);
 
 use Nessy::Client;
-use Test::Exception;
 use Test::More;
-use Time::HiRes qw(gettimeofday);
 
 unless ($ENV{NESSY_SERVER_URL}) {
     plan skip_all => 'Needs nessy-server for testing; '
