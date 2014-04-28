@@ -66,9 +66,14 @@ our $e_retryable_error = $factory->define_event('RETRYABLE_ERROR',
 
 
 # ---------------------------- Actions ---------------------------------------
-sub a_register_claim {
+sub a_abort_claim {
     my ($from, $event, $to) = @_;
-    $event->command_interface->register_claim();
+    $event->command_interface->abort_claim();
+}
+
+sub a_activate_claim {
+    my ($from, $event, $to) = @_;
+    $event->command_interface->activate_claim();
 }
 
 sub a_create_timer {
@@ -76,19 +81,24 @@ sub a_create_timer {
     $event->command_interface->create_timer(seconds => $event->timer_seconds);
 }
 
-sub a_notify_lock_active {
-    my ($from, $event, $to) = @_;
-    $event->command_interface->notify_lock_active();
-}
-
 sub a_delete_timer {
     my ($from, $event, $to) = @_;
     $event->command_interface->delete_timer();
 }
 
-sub a_release_claim {
+sub a_ignore_last_command {
     my ($from, $event, $to) = @_;
-    $event->command_interface->release_claim();
+    $event->command_interface->ignore_last_command();
+}
+
+sub a_notify_claim_withdrawn {
+    my ($from, $event, $to) = @_;
+    $event->command_interface->notify_claim_withdrawn();
+}
+
+sub a_notify_lock_active {
+    my ($from, $event, $to) = @_;
+    $event->command_interface->notify_lock_active();
 }
 
 sub a_notify_lock_released {
@@ -96,9 +106,19 @@ sub a_notify_lock_released {
     $event->command_interface->notify_lock_released();
 }
 
-sub a_activate_claim {
+sub a_register_claim {
     my ($from, $event, $to) = @_;
-    $event->command_interface->activate_claim();
+    $event->command_interface->register_claim();
+}
+
+sub a_renew_claim {
+    my ($from, $event, $to) = @_;
+    $event->command_interface->renew_claim();
+}
+
+sub a_release_claim {
+    my ($from, $event, $to) = @_;
+    $event->command_interface->release_claim();
 }
 
 sub a_terminate_client {
@@ -109,26 +129,6 @@ sub a_terminate_client {
 sub a_withdraw_claim {
     my ($from, $event, $to) = @_;
     $event->command_interface->withdraw_claim();
-}
-
-sub a_notify_claim_withdrawn {
-    my ($from, $event, $to) = @_;
-    $event->command_interface->notify_claim_withdrawn();
-}
-
-sub a_ignore_last_command {
-    my ($from, $event, $to) = @_;
-    $event->command_interface->ignore_last_command();
-}
-
-sub a_renew_claim {
-    my ($from, $event, $to) = @_;
-    $event->command_interface->renew_claim();
-}
-
-sub a_abort_claim {
-    my ($from, $event, $to) = @_;
-    $event->command_interface->abort_claim();
 }
 
 
