@@ -75,6 +75,8 @@ sub delete_timer {
 sub ignore_last_command {
     my $self = shift;
     $self->_http_response_watcher(undef);
+
+    1;
 }
 
 
@@ -144,7 +146,7 @@ sub terminate_client {
 
     $self->on_fatal_error->(@_);
 
-    return 1;
+    1;
 }
 
 
@@ -181,7 +183,7 @@ sub _http {
         )
     );
 
-    return 1;
+    1;
 }
 
 
