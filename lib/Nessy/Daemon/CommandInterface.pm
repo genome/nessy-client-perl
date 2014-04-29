@@ -11,6 +11,11 @@ use Nessy::Properties qw(
     update_url
     user_data
 
+    on_active
+    on_withdrawn
+    on_fatal_error
+    on_released
+
     _current_timer
     _http_response_watcher
 );
@@ -75,16 +80,28 @@ sub ignore_last_command {
 
 sub notify_claim_withdrawn {
     my $self = shift;
+
+    $self->on_withdrawn->(@_);
+
+    1;
 }
 
 
 sub notify_lock_active {
     my $self = shift;
+
+    $self->on_active->(@_);
+
+    1;
 }
 
 
 sub notify_lock_released {
     my $self = shift;
+
+    $self->on_released->(@_);
+
+    1;
 }
 
 
@@ -135,6 +152,10 @@ sub renew_claim {
 
 sub terminate_client {
     my $self = shift;
+
+    $self->on_fatal_error->(@_);
+
+    return 1;
 }
 
 

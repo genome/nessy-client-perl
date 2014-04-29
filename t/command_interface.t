@@ -228,6 +228,42 @@ subtest test_renew_claim => sub {
 };
 
 
+subtest test_terminate_client => sub {
+    plan tests => 1;
+    my $ci = _create_command_interface(undef,
+        on_fatal_error => sub { ok(1, 'on_fatal_error callback called'); });
+
+    $ci->terminate_client();
+};
+
+
+subtest test_notify_lock_active => sub {
+    plan tests => 1;
+    my $ci = _create_command_interface(undef,
+        on_active => sub { ok(1, 'on_active callback called'); });
+
+    $ci->notify_lock_active();
+};
+
+
+subtest test_notify_claim_withdrawn => sub {
+    plan tests => 1;
+    my $ci = _create_command_interface(undef,
+        on_withdrawn => sub { ok(1, 'on_withdrawn callback called'); });
+
+    $ci->notify_claim_withdrawn();
+};
+
+
+subtest test_notify_lock_released => sub {
+    plan tests => 1;
+    my $ci = _create_command_interface(undef,
+        on_released => sub { ok(1, 'on_released callback called'); });
+
+    $ci->notify_lock_released();
+};
+
+
 done_testing();
 
 
@@ -259,15 +295,15 @@ sub _mock_event_generator {
 
 sub _create_command_interface {
     my $eg = shift;
-    my $resource = shift || _get_resource();
 
     Nessy::Daemon::CommandInterface->new(event_generator => $eg,
-        resource => $resource,
+        resource => _get_resource(),
         submit_url => _submit_url(),
         ttl => 60,
         user_data => {
             sample => 'data',
         },
+        @_,
     );
 }
 
