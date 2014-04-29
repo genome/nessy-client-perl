@@ -37,14 +37,14 @@ sub new {
 sub abort_claim {
     my $self = shift;
 
-    $self->_patch_status('aborted', 'abort_callback');
+    $self->_patch_status('aborted');
 }
 
 
 sub activate_claim {
     my $self = shift;
 
-    $self->_patch_status('active', 'activate_callback');
+    $self->_patch_status('active');
 }
 
 
@@ -108,18 +108,8 @@ sub notify_lock_released {
 sub register_claim {
     my $self = shift;
 
-    $self->_http_response_watcher(
-        AnyEvent::HTTP::http_request(
-            POST => $self->submit_url,
-            body => $self->_register_body,
-            headers => $self->_standard_headers,
-            cb => sub {
-                $self->event_generator->registration_callback(@_);
-            },
-        )
-    );
+    $self->_http('POST', $self->submit_url, $self->_register_body);
 
-    1;
 }
 
 sub _register_body {
@@ -138,15 +128,14 @@ sub _register_body {
 sub release_claim {
     my $self = shift;
 
-    $self->_patch_status('released', 'release_callback');
+    $self->_patch_status('released');
 }
 
 
 sub renew_claim {
     my $self = shift;
 
-    $self->_patch('renew_callback', $self->json_parser->encode({
-                ttl => $self->ttl}));
+    $self->_patch($self->json_parser->encode({ttl => $self->ttl}));
 }
 
 
@@ -162,26 +151,32 @@ sub terminate_client {
 sub withdraw_claim {
     my $self = shift;
 
-    $self->_patch_status('withdrawn', 'withdraw_callback');
+    $self->_patch_status('withdrawn');
 }
 
 
 sub _patch_status {
-    my ($self, $status, $callback_name) = @_;
+    my ($self, $status) = @_;
 
-    $self->_patch($callback_name, $self->_status_body($status));
+    $self->_patch($self->_status_body($status));
 }
 
 sub _patch {
-    my ($self, $callback_name, $body) = @_;
+    my ($self, $body) = @_;
+
+    $self->_http('PATCH', $self->update_url, $body);
+}
+
+sub _http {
+    my ($self, $method, $url, $body) = @_;
 
     $self->_http_response_watcher(
         AnyEvent::HTTP::http_request(
-            PATCH => $self->update_url,
+            $method => $url,
             headers => $self->_standard_headers,
             body => $body,
             cb => sub {
-                $self->event_generator->$callback_name(@_);
+                $self->event_generator->http_response_callback(@_);
             },
         )
     );

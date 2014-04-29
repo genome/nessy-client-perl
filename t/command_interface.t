@@ -50,7 +50,7 @@ subtest test_register_claim => sub {
         $ci->register_claim;
     });
 
-    $eg->called_ok('registration_callback', 'register callback called');
+    $eg->called_ok('http_response_callback', 'register callback called');
 
     my ($env) = $server->join;
 
@@ -97,7 +97,7 @@ subtest test_activate_claim => sub {
         $ci->activate_claim;
     });
 
-    $eg->called_ok('activate_callback', 'activate callback called');
+    $eg->called_ok('http_response_callback', 'activate callback called');
 
     my ($env) = $server->join;
 
@@ -126,7 +126,7 @@ subtest test_abort_claim => sub {
         $ci->abort_claim;
     });
 
-    $eg->called_ok('abort_callback', 'abort callback called');
+    $eg->called_ok('http_response_callback', 'abort callback called');
 
     my ($env) = $server->join;
 
@@ -155,7 +155,7 @@ subtest test_release_claim => sub {
         $ci->release_claim;
     });
 
-    $eg->called_ok('release_callback', 'release callback called');
+    $eg->called_ok('http_response_callback', 'release callback called');
 
     my ($env) = $server->join;
 
@@ -184,7 +184,7 @@ subtest test_withdraw_claim => sub {
         $ci->withdraw_claim;
     });
 
-    $eg->called_ok('withdraw_callback', 'withdraw callback called');
+    $eg->called_ok('http_response_callback', 'withdraw callback called');
 
     my ($env) = $server->join;
 
@@ -213,7 +213,7 @@ subtest test_renew_claim => sub {
         $ci->renew_claim;
     });
 
-    $eg->called_ok('renew_callback', 'renew callback called');
+    $eg->called_ok('http_response_callback', 'renew callback called');
 
     my ($env) = $server->join;
 
@@ -281,13 +281,8 @@ sub _run_in_event_loop {
 sub _mock_event_generator {
     my $eg = Test::MockObject->new;
     $eg->set_true(
+        'http_response_callback',
         'timer_callback',
-        'registration_callback',
-        'activate_callback',
-        'abort_callback',
-        'release_callback',
-        'withdraw_callback',
-        'renew_callback',
     );
 
     return $eg;
