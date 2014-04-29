@@ -101,6 +101,8 @@ sub register_claim {
             },
         )
     );
+
+    1;
 }
 
 sub _register_body {
