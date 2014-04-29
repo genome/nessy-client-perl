@@ -144,7 +144,7 @@ sub _patch_status {
 
     $self->_http_response_watcher(
         AnyEvent::HTTP::http_request(
-            PATCH => $self->submit_url,
+            PATCH => $self->update_url,
             body => $self->_status_body($status),
             cb => sub {
                 $self->event_generator->$callback_name(@_);

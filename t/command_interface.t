@@ -6,10 +6,8 @@ use Test::MockObject;
 
 use AnyEvent;
 
-unless ($ENV{NESSY_SERVER_URL}) {
-    plan skip_all => 'Needs nessy-server for testing; '
-        .' set NESSY_SERVER_URL to something like http://127.0.0.1:5000';
-}
+use lib 't/lib';
+use Nessy::Client::TestWebServer;
 
 
 use_ok('Nessy::Daemon::CommandInterface');
@@ -40,7 +38,11 @@ subtest delete_timer_callback_triggered => sub {
 };
 
 
-subtest register_claim_callback_triggered => sub {
+subtest test_register_claim => sub {
+    my $server = Nessy::Client::TestWebServer->new(
+        [201, ['Location' => _update_url(1)], []]
+    );
+
     my $eg = _mock_event_generator();
     my $ci = _create_command_interface($eg);
 
@@ -49,6 +51,18 @@ subtest register_claim_callback_triggered => sub {
     });
 
     $eg->called_ok('registration_callback', 'register callback called');
+
+    my ($register_env) = $server->join;
+
+    is($register_env->{REQUEST_METHOD}, 'POST', 'register uses POST');
+    is($register_env->{PATH_INFO}, '/v1/claims/', 'POST path is correct');
+    is_deeply($register_env->{__BODY__},
+        {
+            resource => $ci->resource,
+            ttl => $ci->ttl,
+            user_data => $ci->user_data,
+        },
+        'body matches');
 };
 
 
@@ -65,19 +79,28 @@ subtest ignore_expected_response_triggers_no_callback => sub {
 };
 
 
-subtest activate_claim_callback_triggered => sub {
-    my $resource = _get_resource();
+subtest test_activate_claim_callback => sub {
+    my $server = Nessy::Client::TestWebServer->new(
+        [200, [], []]
+    );
 
     my $eg = _mock_event_generator();
     my $ci = _create_command_interface($eg);
 
-    $ci->update_url(_construct_update_url());
+    $ci->update_url(_update_url('1'));
 
     _run_in_event_loop(1, sub {
         $ci->activate_claim;
     });
 
     $eg->called_ok('activate_callback', 'activate callback called');
+
+    my ($activate_env) = $server->join;
+
+    is($activate_env->{REQUEST_METHOD}, 'PATCH', 'activate uses PATCH');
+    is($activate_env->{PATH_INFO}, '/v1/claims/1/', 'activate path matches');
+    is_deeply($activate_env->{__BODY__}, { status => 'active' },
+        'activate body matches');
 };
 
 
@@ -108,10 +131,11 @@ sub _mock_event_generator {
 
 sub _create_command_interface {
     my $eg = shift;
+    my $resource = shift || _get_resource();
 
     Nessy::Daemon::CommandInterface->new(event_generator => $eg,
-        resource => _get_resource(),
-        submit_url => $ENV{NESSY_SERVER_URL} . '/claims/v1/',
+        resource => $resource,
+        submit_url => _submit_url(),
         ttl => 60,
         user_data => {
             sample => 'data',
@@ -119,8 +143,16 @@ sub _create_command_interface {
     );
 }
 
-sub _construct_update_url {
-    return $ENV{NESSY_SERVER_URL} . '/claims/v1/' . '1'
+
+sub _submit_url {
+    my ($host, $port) = Nessy::Client::TestWebServer->get_connection_details;
+    return "http://$host:$port/v1/claims/"
+}
+
+sub _update_url {
+    my $id = shift;
+
+    return _submit_url() . $id . '/';
 }
 
 sub rndStr{ join'', @_[ map{ rand @_ } 1 .. shift ] }
