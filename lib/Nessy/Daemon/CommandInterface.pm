@@ -3,8 +3,17 @@ package Nessy::Daemon::CommandInterface;
 use strict;
 use warnings FATAL => 'all';
 
-use Nessy::Properties qw(event_generator resource submit_url ttl user_data
-    _current_timer _http_response_watcher);
+use Nessy::Properties qw(
+    event_generator
+    resource
+    submit_url
+    ttl
+    update_url
+    user_data
+
+    _current_timer
+    _http_response_watcher
+);
 
 use AnyEvent;
 use AnyEvent::HTTP;
@@ -30,7 +39,7 @@ sub abort_claim {
 sub activate_claim {
     my $self = shift;
 
-    $self->_patch_status('active');
+    $self->_patch_status('active', 'activate_callback');
 }
 
 
@@ -131,11 +140,25 @@ sub withdraw_claim {
 
 
 sub _patch_status {
-    my ($self, $status) = @_;
+    my ($self, $status, $callback_name) = @_;
+
+    $self->_http_response_watcher(
+        AnyEvent::HTTP::http_request(
+            PATCH => $self->submit_url,
+            body => $self->_status_body($status),
+            cb => sub {
+                $self->event_generator->$callback_name(@_);
+            },
+        )
+    );
 
     return 1;
 }
 
+sub _status_body {
+    my ($self, $status) = @_;
+    return $self->json_parser->encode({status => $status});
+}
 
 my $json_parser;
 sub json_parser {

@@ -15,7 +15,7 @@ unless ($ENV{NESSY_SERVER_URL}) {
 use_ok('Nessy::Daemon::CommandInterface');
 
 
-subtest test_create_timer => sub {
+subtest create_timer_callback_triggered => sub {
     my $eg = _mock_event_generator();
     my $ci = _create_command_interface($eg);
 
@@ -27,7 +27,7 @@ subtest test_create_timer => sub {
 };
 
 
-subtest test_delete_timer => sub {
+subtest delete_timer_callback_triggered => sub {
     my $eg = _mock_event_generator();
     my $ci = _create_command_interface($eg);
 
@@ -40,7 +40,7 @@ subtest test_delete_timer => sub {
 };
 
 
-subtest test_register_claim => sub {
+subtest register_claim_callback_triggered => sub {
     my $eg = _mock_event_generator();
     my $ci = _create_command_interface($eg);
 
@@ -52,7 +52,7 @@ subtest test_register_claim => sub {
 };
 
 
-subtest test_ignore_expected_response => sub {
+subtest ignore_expected_response_triggers_no_callback => sub {
     my $eg = _mock_event_generator();
     my $ci = _create_command_interface($eg);
 
@@ -62,6 +62,22 @@ subtest test_ignore_expected_response => sub {
     });
 
     ok(!defined($eg->next_call), 'register callback not called');
+};
+
+
+subtest activate_claim_callback_triggered => sub {
+    my $resource = _get_resource();
+
+    my $eg = _mock_event_generator();
+    my $ci = _create_command_interface($eg);
+
+    $ci->update_url(_construct_update_url());
+
+    _run_in_event_loop(1, sub {
+        $ci->activate_claim;
+    });
+
+    $eg->called_ok('activate_callback', 'activate callback called');
 };
 
 
@@ -84,6 +100,7 @@ sub _mock_event_generator {
     $eg->set_true(
         'timer_callback',
         'registration_callback',
+        'activate_callback',
     );
 
     return $eg;
@@ -100,6 +117,10 @@ sub _create_command_interface {
             sample => 'data',
         },
     );
+}
+
+sub _construct_update_url {
+    return $ENV{NESSY_SERVER_URL} . '/claims/v1/' . '1'
 }
 
 sub rndStr{ join'', @_[ map{ rand @_ } 1 .. shift ] }
