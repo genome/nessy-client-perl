@@ -199,6 +199,35 @@ subtest test_withdraw_claim => sub {
 };
 
 
+subtest test_renew_claim => sub {
+    my $server = Nessy::Client::TestWebServer->new(
+        [204, [], []]
+    );
+
+    my $eg = _mock_event_generator();
+    my $ci = _create_command_interface($eg);
+
+    $ci->update_url(_update_url('1'));
+
+    _run_in_event_loop(1, sub {
+        $ci->renew_claim;
+    });
+
+    $eg->called_ok('renew_callback', 'renew callback called');
+
+    my ($env) = $server->join;
+
+    is($env->{REQUEST_METHOD}, 'PATCH', 'renew uses PATCH');
+    is($env->{PATH_INFO}, '/v1/claims/1/', 'renew path matches');
+    is($env->{CONTENT_TYPE}, 'application/json',
+        'Content-Type header is correct');
+    is($env->{HTTP_ACCEPT}, 'application/json',
+        'Accept header is correct');
+    is_deeply($env->{__BODY__}, { ttl => 60 },
+        'renew body matches');
+};
+
+
 done_testing();
 
 
@@ -222,6 +251,7 @@ sub _mock_event_generator {
         'abort_callback',
         'release_callback',
         'withdraw_callback',
+        'renew_callback',
     );
 
     return $eg;

@@ -125,6 +125,9 @@ sub release_claim {
 
 sub renew_claim {
     my $self = shift;
+
+    $self->_patch('renew_callback', $self->json_parser->encode({
+                ttl => $self->ttl}));
 }
 
 
@@ -143,11 +146,17 @@ sub withdraw_claim {
 sub _patch_status {
     my ($self, $status, $callback_name) = @_;
 
+    $self->_patch($callback_name, $self->_status_body($status));
+}
+
+sub _patch {
+    my ($self, $callback_name, $body) = @_;
+
     $self->_http_response_watcher(
         AnyEvent::HTTP::http_request(
             PATCH => $self->update_url,
             headers => $self->_standard_headers,
-            body => $self->_status_body($status),
+            body => $body,
             cb => sub {
                 $self->event_generator->$callback_name(@_);
             },
@@ -156,6 +165,7 @@ sub _patch_status {
 
     return 1;
 }
+
 
 sub _status_body {
     my ($self, $status) = @_;
