@@ -83,7 +83,7 @@ subtest ignore_expected_response_triggers_no_callback => sub {
 };
 
 
-subtest test_activate_claim_callback => sub {
+subtest test_activate_claim => sub {
     my $server = Nessy::Client::TestWebServer->new(
         [200, [], []]
     );
@@ -112,6 +112,93 @@ subtest test_activate_claim_callback => sub {
 };
 
 
+subtest test_abort_claim => sub {
+    my $server = Nessy::Client::TestWebServer->new(
+        [204, [], []]
+    );
+
+    my $eg = _mock_event_generator();
+    my $ci = _create_command_interface($eg);
+
+    $ci->update_url(_update_url('1'));
+
+    _run_in_event_loop(1, sub {
+        $ci->abort_claim;
+    });
+
+    $eg->called_ok('abort_callback', 'abort callback called');
+
+    my ($env) = $server->join;
+
+    is($env->{REQUEST_METHOD}, 'PATCH', 'abort uses PATCH');
+    is($env->{PATH_INFO}, '/v1/claims/1/', 'abort path matches');
+    is($env->{CONTENT_TYPE}, 'application/json',
+        'Content-Type header is correct');
+    is($env->{HTTP_ACCEPT}, 'application/json',
+        'Accept header is correct');
+    is_deeply($env->{__BODY__}, { status => 'aborted' },
+        'abort body matches');
+};
+
+
+subtest test_release_claim => sub {
+    my $server = Nessy::Client::TestWebServer->new(
+        [204, [], []]
+    );
+
+    my $eg = _mock_event_generator();
+    my $ci = _create_command_interface($eg);
+
+    $ci->update_url(_update_url('1'));
+
+    _run_in_event_loop(1, sub {
+        $ci->release_claim;
+    });
+
+    $eg->called_ok('release_callback', 'release callback called');
+
+    my ($env) = $server->join;
+
+    is($env->{REQUEST_METHOD}, 'PATCH', 'release uses PATCH');
+    is($env->{PATH_INFO}, '/v1/claims/1/', 'release path matches');
+    is($env->{CONTENT_TYPE}, 'application/json',
+        'Content-Type header is correct');
+    is($env->{HTTP_ACCEPT}, 'application/json',
+        'Accept header is correct');
+    is_deeply($env->{__BODY__}, { status => 'released' },
+        'release body matches');
+};
+
+
+subtest test_withdraw_claim => sub {
+    my $server = Nessy::Client::TestWebServer->new(
+        [204, [], []]
+    );
+
+    my $eg = _mock_event_generator();
+    my $ci = _create_command_interface($eg);
+
+    $ci->update_url(_update_url('1'));
+
+    _run_in_event_loop(1, sub {
+        $ci->withdraw_claim;
+    });
+
+    $eg->called_ok('withdraw_callback', 'withdraw callback called');
+
+    my ($env) = $server->join;
+
+    is($env->{REQUEST_METHOD}, 'PATCH', 'withdraw uses PATCH');
+    is($env->{PATH_INFO}, '/v1/claims/1/', 'withdraw path matches');
+    is($env->{CONTENT_TYPE}, 'application/json',
+        'Content-Type header is correct');
+    is($env->{HTTP_ACCEPT}, 'application/json',
+        'Accept header is correct');
+    is_deeply($env->{__BODY__}, { status => 'withdrawn' },
+        'withdraw body matches');
+};
+
+
 done_testing();
 
 
@@ -132,6 +219,9 @@ sub _mock_event_generator {
         'timer_callback',
         'registration_callback',
         'activate_callback',
+        'abort_callback',
+        'release_callback',
+        'withdraw_callback',
     );
 
     return $eg;

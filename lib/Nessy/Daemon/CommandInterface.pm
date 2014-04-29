@@ -32,7 +32,7 @@ sub new {
 sub abort_claim {
     my $self = shift;
 
-    $self->_patch_status('aborted');
+    $self->_patch_status('aborted', 'abort_callback');
 }
 
 
@@ -119,7 +119,7 @@ sub _register_body {
 sub release_claim {
     my $self = shift;
 
-    $self->_patch_status('released');
+    $self->_patch_status('released', 'release_callback');
 }
 
 
@@ -136,7 +136,7 @@ sub terminate_client {
 sub withdraw_claim {
     my $self = shift;
 
-    $self->_patch_status('withdrawn');
+    $self->_patch_status('withdrawn', 'withdraw_callback');
 }
 
 
