@@ -95,6 +95,7 @@ sub register_claim {
         AnyEvent::HTTP::http_request(
             POST => $self->submit_url,
             body => $self->_register_body,
+            headers => $self->_standard_headers,
             cb => sub {
                 $self->event_generator->registration_callback(@_);
             },
@@ -145,6 +146,7 @@ sub _patch_status {
     $self->_http_response_watcher(
         AnyEvent::HTTP::http_request(
             PATCH => $self->update_url,
+            headers => $self->_standard_headers,
             body => $self->_status_body($status),
             cb => sub {
                 $self->event_generator->$callback_name(@_);
@@ -158,6 +160,11 @@ sub _patch_status {
 sub _status_body {
     my ($self, $status) = @_;
     return $self->json_parser->encode({status => $status});
+}
+
+sub _standard_headers {
+    return {'Content-Type' => 'application/json',
+        'Accept' => 'application/json'};
 }
 
 my $json_parser;

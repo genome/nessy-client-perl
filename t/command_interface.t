@@ -52,11 +52,15 @@ subtest test_register_claim => sub {
 
     $eg->called_ok('registration_callback', 'register callback called');
 
-    my ($register_env) = $server->join;
+    my ($env) = $server->join;
 
-    is($register_env->{REQUEST_METHOD}, 'POST', 'register uses POST');
-    is($register_env->{PATH_INFO}, '/v1/claims/', 'POST path is correct');
-    is_deeply($register_env->{__BODY__},
+    is($env->{REQUEST_METHOD}, 'POST', 'register uses POST');
+    is($env->{PATH_INFO}, '/v1/claims/', 'POST path is correct');
+    is($env->{CONTENT_TYPE}, 'application/json',
+        'Content-Type header is correct');
+    is($env->{HTTP_ACCEPT}, 'application/json',
+        'Accept header is correct');
+    is_deeply($env->{__BODY__},
         {
             resource => $ci->resource,
             ttl => $ci->ttl,
@@ -95,11 +99,15 @@ subtest test_activate_claim_callback => sub {
 
     $eg->called_ok('activate_callback', 'activate callback called');
 
-    my ($activate_env) = $server->join;
+    my ($env) = $server->join;
 
-    is($activate_env->{REQUEST_METHOD}, 'PATCH', 'activate uses PATCH');
-    is($activate_env->{PATH_INFO}, '/v1/claims/1/', 'activate path matches');
-    is_deeply($activate_env->{__BODY__}, { status => 'active' },
+    is($env->{REQUEST_METHOD}, 'PATCH', 'activate uses PATCH');
+    is($env->{PATH_INFO}, '/v1/claims/1/', 'activate path matches');
+    is($env->{CONTENT_TYPE}, 'application/json',
+        'Content-Type header is correct');
+    is($env->{HTTP_ACCEPT}, 'application/json',
+        'Accept header is correct');
+    is_deeply($env->{__BODY__}, { status => 'active' },
         'activate body matches');
 };
 
