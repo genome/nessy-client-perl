@@ -130,30 +130,32 @@ sub _call_success_fail_callback {
     $self->$cb(@args);
 }
 
-sub _claim_failure_generator {
-    my($class, $error) = @_;
+sub _format_failure_message {
+    my $self = shift;
+    my ($state_name, $response_code, $body) = @_;
+
+    $body = (defined($body) and length($body))
+        ? $body : '(no response body)';
+
+    my $resource_name = $self->resource_name;
+    return "Unexpected response in state '$state_name' "
+        ."on resource '$resource_name' (HTTP $response_code): $body";
+}
+
+sub _failure_generator {
+    my($class) = @_;
 
     return sub {
         my $self = shift;
         my ($body, $headers) = @_;
 
+        my $failure_message = $self->_format_failure_message(
+            $self->state, $headers->{Status}, $body);
+
         $self->_remove_all_watchers();
         $self->state(STATE_FAILED);
-        $self->_call_success_fail_callback('on_fail_cb',
-            join ': ', $headers->{Status}, $error);
+        $self->_call_success_fail_callback('on_fail_cb', $failure_message);
 
-        1;
-    };
-}
-
-sub _release_failure_generator {
-    my($class, $error) = @_;
-
-    return sub {
-        my $self = shift;
-        $self->_remove_all_watchers();
-        $self->state(STATE_FAILED);
-        $self->_call_success_fail_callback('on_fail_cb', $error);
         1;
     };
 }
@@ -303,9 +305,9 @@ sub recv_register_response_202 {
     $self->timer_watcher($w);
 }
 
-_install_sub('recv_register_response_TIMEOUT', __PACKAGE__->_claim_failure_generator('timeout expired'));
-_install_sub('recv_register_response_400', __PACKAGE__->_claim_failure_generator('bad request'));
-_install_sub('recv_register_response_5XX', __PACKAGE__->_claim_failure_generator('server error'));
+_install_sub('recv_register_response_TIMEOUT', __PACKAGE__->_failure_generator);
+_install_sub('recv_register_response_400',     __PACKAGE__->_failure_generator);
+_install_sub('recv_register_response_5XX',     __PACKAGE__->_failure_generator);
 
 sub send_activating {
     my $self = shift;
@@ -341,8 +343,8 @@ sub recv_activating_response_5XX {
     return 1;
 }
 
-_install_sub('recv_activating_response_400', __PACKAGE__->_claim_failure_generator('activating: bad request'));
-_install_sub('recv_activating_response_404', __PACKAGE__->_claim_failure_generator('activating: non-existent claim'));
+_install_sub('recv_activating_response_400', __PACKAGE__->_failure_generator);
+_install_sub('recv_activating_response_404', __PACKAGE__->_failure_generator);
 
 sub send_renewal {
     my $self = shift;
@@ -374,11 +376,12 @@ sub recv_renewal_response_200 {
 
 sub recv_renewal_response_4XX {
     my($self, $body, $headers) = @_;
-    $self->state(STATE_FAILED);
 
-    my $status = $headers->{Status};
-    $self->send_fatal_error(
-        'claim '.$self->resource_name." failed renewal with code $status");
+    my $failure_message = $self->_format_failure_message(
+        $self->state, $headers->{Status}, $body);
+
+    $self->state(STATE_FAILED);
+    $self->send_fatal_error($failure_message);
     return 1;
 }
 
@@ -464,10 +467,10 @@ sub recv_release_response_204 {
     1;
 }
 
-_install_sub('recv_release_response_400', __PACKAGE__->_release_failure_generator('release: bad request'));
-_install_sub('recv_release_response_404', __PACKAGE__->_release_failure_generator('release: non-existent claim'));
-_install_sub('recv_release_response_409', __PACKAGE__->_release_failure_generator('release: lost claim'));
-_install_sub('recv_release_response_5XX', __PACKAGE__->_release_failure_generator('release: server error'));
+_install_sub('recv_release_response_400', __PACKAGE__->_failure_generator);
+_install_sub('recv_release_response_404', __PACKAGE__->_failure_generator);
+_install_sub('recv_release_response_409', __PACKAGE__->_failure_generator);
+_install_sub('recv_release_response_5XX', __PACKAGE__->_failure_generator);
 
 sub _create_timer_event {
     my $self = shift;

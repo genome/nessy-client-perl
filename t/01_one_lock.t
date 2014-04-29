@@ -186,7 +186,7 @@ sub test_register_timeout {
     local $SIG{__WARN__} = sub { $warn_message = shift };
     my $lock = $client->claim($resource_name, ttl => 1, timeout => 0.1);
     ok(! $lock, 'attempting claim timed out');
-    like($warn_message, qr(claim foo .* failed: TIMEOUT: timeout expired), 'Got expected warning');
+    like($warn_message, qr/Unexpected response in state 'waiting' on resource 'foo' \(HTTP TIMEOUT\): \(no response body\)/, 'Got expected warning');
 
     $server_thread_register->join();
 }
@@ -258,7 +258,7 @@ sub test_revoked_while_activating {
     my $lock = $client->claim($resource_name, ttl => 1);
     ok(! $lock, 'lock was rejected');
     like($warning_message,
-        qr(claim $resource_name at $expected_file:$expected_line failed: 400: activating: bad request),
+        qr/Unexpected response in state 'activating' on resource 'foo' \(HTTP 400\): \(no response body\)/,
         'Got expected warning');
 
     my(@envs) = $server_thread_register->join();
@@ -384,7 +384,7 @@ sub test_server_error_while_registering {
     my $lock = $client->claim($resource_name, ttl => 1);
     ok(! $lock, 'lock was rejected');
     like($warning_message,
-        qr(claim $resource_name at $expected_file:$expected_line failed: 500: server error),
+        qr/Unexpected response in state 'registering' on resource 'foo' \(HTTP 500\): \(no response body\)/,
         'Got expected warning');
 
     $server_thread_register->join;
