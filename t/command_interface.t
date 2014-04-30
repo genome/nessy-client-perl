@@ -13,12 +13,61 @@ use Nessy::Client::TestWebServer;
 use_ok('Nessy::Daemon::CommandInterface');
 
 
-subtest create_timer_callback_triggered => sub {
+subtest create_timeout_triggers_callback => sub {
     my $eg = _mock_event_generator();
     my $ci = _create_command_interface($eg);
 
     _run_in_event_loop(0.5, sub {
-        $ci->create_timer(seconds => 0.1);
+        $ci->create_timeout();
+    });
+
+    $eg->called_ok('timeout_callback', 'timeout callback called');
+};
+
+
+subtest test_delete_timeout => sub {
+    my $eg = _mock_event_generator();
+    my $ci = _create_command_interface($eg);
+
+    _run_in_event_loop(0.5, sub {
+        $ci->create_timeout();
+        $ci->delete_timeout();
+    });
+
+    ok(!defined($eg->next_call), 'timeout callback not triggered');
+};
+
+
+subtest create_activate_timer_triggers_callback => sub {
+    my $eg = _mock_event_generator();
+    my $ci = _create_command_interface($eg);
+
+    _run_in_event_loop(0.5, sub {
+        $ci->create_activate_timer();
+    });
+
+    $eg->called_ok('timer_callback', 'timer callback called');
+};
+
+
+subtest create_renew_timer_triggers_callback => sub {
+    my $eg = _mock_event_generator();
+    my $ci = _create_command_interface($eg);
+
+    _run_in_event_loop(0.5, sub {
+        $ci->create_renew_timer();
+    });
+
+    $eg->called_ok('timer_callback', 'timer callback called');
+};
+
+
+subtest create_retry_timer_triggers_callback => sub {
+    my $eg = _mock_event_generator();
+    my $ci = _create_command_interface($eg);
+
+    _run_in_event_loop(0.5, sub {
+        $ci->create_retry_timer();
     });
 
     $eg->called_ok('timer_callback', 'timer callback called');
@@ -30,7 +79,7 @@ subtest delete_timer_callback_triggered => sub {
     my $ci = _create_command_interface($eg);
 
     _run_in_event_loop(0.5, sub {
-        $ci->create_timer(seconds => 0.1);
+        $ci->create_renew_timer();
         $ci->delete_timer();
     });
 
@@ -283,6 +332,7 @@ sub _mock_event_generator {
     $eg->set_true(
         'http_response_callback',
         'timer_callback',
+        'timeout_callback',
     );
 
     return $eg;
@@ -298,6 +348,19 @@ sub _create_command_interface {
         user_data => {
             sample => 'data',
         },
+
+        activate_seconds => 0.1,
+        renew_seconds => 0.1,
+        retry_seconds => 0.1,
+
+        timeout_seconds => 0.1,
+
+        # Default callbacks shouldn never be called
+        on_active => sub { ok(0, "on_active shouln't be called") },
+        on_fatal_error => sub { ok(0, "on_fatal_error shouln't be called") },
+        on_released => sub { ok(0, "on_released shouln't be called") },
+        on_withdrawn => sub { ok(0, "on_withdrawn shouln't be called") },
+
         @_,
     );
 }

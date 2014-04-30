@@ -16,8 +16,15 @@ use Nessy::Properties qw(
     on_fatal_error
     on_released
 
+    activate_seconds
+    renew_seconds
+    retry_seconds
+
+    timeout_seconds
+
     _current_timer
     _http_response_watcher
+    _timeout_watcher
 );
 
 use AnyEvent;
@@ -29,8 +36,23 @@ sub new {
     my $class = shift;
     my %params = @_;
 
-    return bless $class->_verify_params(\%params,
-        qw(event_generator resource submit_url ttl)), $class;
+    return bless $class->_verify_params(\%params, qw(
+        event_generator
+        resource
+        submit_url
+        ttl
+
+        on_active
+        on_withdrawn
+        on_fatal_error
+        on_released
+
+        activate_seconds
+        renew_seconds
+        retry_seconds
+
+        timeout_seconds
+    )), $class;
 }
 
 
@@ -48,10 +70,29 @@ sub activate_claim {
 }
 
 
-sub create_timer {
+sub create_activate_timer {
     my $self = shift;
-    my %params = @_;
-    my $seconds = $params{seconds};
+
+    $self->_create_timer($self->activate_seconds);
+}
+
+
+sub create_retry_timer {
+    my $self = shift;
+
+    $self->_create_timer($self->retry_seconds);
+}
+
+
+sub create_renew_timer {
+    my $self = shift;
+
+    $self->_create_timer($self->renew_seconds);
+}
+
+
+sub _create_timer {
+    my ($self, $seconds) = @_;
 
     $self->_current_timer(AnyEvent->timer(
         after => $seconds,
@@ -63,10 +104,31 @@ sub create_timer {
     1;
 }
 
+sub create_timeout {
+    my $self = shift;
+
+    $self->_timeout_watcher(AnyEvent->timer(
+        after => $self->timeout_seconds,
+        cb => sub {
+            $self->event_generator->timeout_callback()
+        },
+    ));
+
+    1;
+}
+
 
 sub delete_timer {
     my $self = shift;
     $self->_current_timer(undef);
+
+    1;
+}
+
+
+sub delete_timeout {
+    my $self = shift;
+    $self->_timeout_watcher(undef);
 
     1;
 }
