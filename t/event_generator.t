@@ -47,8 +47,11 @@ subtest test_http_201 => sub {
     is($call, 'handle_event', 'handle_event called');
 
     my ($self, $event) = @$args;
-    ok($event->isa($Nessy::Daemon::StateMachine::e_http_201),
-        'release event raised');
+    {
+        no warnings 'once';
+        ok($event->isa($Nessy::Daemon::StateMachine::e_http_201),
+            'release event raised');
+    }
     is($event->update_url, 'a', 'update_url set');
     is($event->command_interface, $ci, 'command_interface passed along');
 };
@@ -68,8 +71,11 @@ subtest test_http_202 => sub {
     is($call, 'handle_event', 'handle_event called');
 
     my ($self, $event) = @$args;
-    ok($event->isa($Nessy::Daemon::StateMachine::e_http_202),
-        'release event raised');
+    {
+        no warnings 'once';
+        ok($event->isa($Nessy::Daemon::StateMachine::e_http_202),
+            'release event raised');
+    }
     is($event->update_url, 'a', 'update_url set');
     is($event->command_interface, $ci, 'command_interface passed along');
 };
