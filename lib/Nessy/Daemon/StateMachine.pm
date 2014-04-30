@@ -148,6 +148,10 @@ sub a_reset_retry_backoff {
 
 sub a_set_update_url {
     my ($from, $event, $to) = @_;
+
+    if (!defined($event->update_url)) {
+        Carp::confess('update_url not provided in a_set_update_url');
+    }
     $event->command_interface->update_url($event->update_url);
 }
 
