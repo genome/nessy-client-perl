@@ -59,8 +59,6 @@ sub new {
 
         max_activate_backoff_factor
         max_retry_backoff_factor
-
-        timeout_seconds
     )), $class;
 
     $self->_current_activate_backoff_factor(1);
@@ -160,12 +158,14 @@ sub _create_timer {
 sub create_timeout {
     my $self = shift;
 
-    $self->_timeout_watcher(AnyEvent->timer(
-        after => $self->timeout_seconds,
-        cb => sub {
-            $self->event_generator->timeout_callback($self)
-        },
-    ));
+    if ($self->timeout_seconds) {
+        $self->_timeout_watcher(AnyEvent->timer(
+            after => $self->timeout_seconds,
+            cb => sub {
+                $self->event_generator->timeout_callback($self)
+            },
+        ));
+    }
 
     1;
 }
