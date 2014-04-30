@@ -48,7 +48,7 @@ sub http_response_callback {
         command_interface => $command_interface);
 
     if ($status_code == 201 || $status_code == 202) {
-        $event->update_url($headers->{Location});
+        $event->update_url($headers->{location});
     }
 
     $self->state_machine->handle_event($event);

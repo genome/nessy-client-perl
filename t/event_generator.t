@@ -39,7 +39,7 @@ subtest test_http_201 => sub {
 
     my $eg = Nessy::Daemon::EventGenerator->new(state_machine => $sm);
 
-    $eg->http_response_callback($ci, '', {Status => 201, Location => 'a'});
+    $eg->http_response_callback($ci, '', {Status => 201, location => 'a'});
 
     my ($call, $args) = $sm->next_call;
 
@@ -62,7 +62,7 @@ subtest test_http_202 => sub {
 
     my $eg = Nessy::Daemon::EventGenerator->new(state_machine => $sm);
 
-    $eg->http_response_callback($ci, '', {Status => 202, Location => 'a'});
+    $eg->http_response_callback($ci, '', {Status => 202, location => 'a'});
 
     my ($call, $args) = $sm->next_call;
 
