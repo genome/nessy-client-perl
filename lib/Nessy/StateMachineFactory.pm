@@ -7,7 +7,6 @@ use Data::UUID;
 use Nessy::StateMachineFactory::EventState;
 use Nessy::StateMachineFactory::Transition;
 use Nessy::StateMachine;
-use Scalar::Util;
 
 use Nessy::Properties qw(
     _transitions
