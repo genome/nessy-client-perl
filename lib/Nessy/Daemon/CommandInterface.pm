@@ -56,6 +56,14 @@ sub new {
 }
 
 
+sub abandon_last_request {
+    my $self = shift;
+    $self->_http_response_watcher(undef);
+
+    1;
+}
+
+
 sub abort_claim {
     my $self = shift;
 
@@ -129,14 +137,6 @@ sub delete_timer {
 sub delete_timeout {
     my $self = shift;
     $self->_timeout_watcher(undef);
-
-    1;
-}
-
-
-sub ignore_last_command {
-    my $self = shift;
-    $self->_http_response_watcher(undef);
 
     1;
 }

@@ -161,7 +161,7 @@ subtest 'registering_withdraw_path' => sub {
     _verify_calls($ci,
         'create_timeout',
         'register_claim',
-        'ignore_last_command',
+        'abandon_last_request',
         'notify_claim_withdrawn',
     );
 };
@@ -200,7 +200,7 @@ subtest 'registering_abort_path' => sub {
         'create_timeout',
         'register_claim',
         'delete_timeout',
-        'ignore_last_command',
+        'abandon_last_request',
     );
 };
 
@@ -316,7 +316,7 @@ subtest 'abort_during_withdraw_path' => sub {
         'create_activate_timer',
         'delete_timer',
         'withdraw_claim',
-        'ignore_last_command',
+        'abandon_last_request',
     );
 };
 
@@ -415,7 +415,7 @@ subtest 'withdraw_activating_path' => sub {
         'update_url',
         'create_activate_timer',
         'activate_claim',
-        'ignore_last_command',
+        'abandon_last_request',
         'withdraw_claim',
         'notify_claim_withdrawn',
     );
@@ -494,7 +494,7 @@ subtest 'abort_while_releasing_path' => sub {
         'notify_lock_active',
         'delete_timer',
         'release_claim',
-        'ignore_last_command',
+        'abandon_last_request',
     );
 };
 
@@ -627,7 +627,7 @@ subtest 'release_from_renewing' => sub {
         'create_renew_timer',
         'notify_lock_active',
         'renew_claim',
-        'ignore_last_command',
+        'abandon_last_request',
         'release_claim',
     );
 };
@@ -679,7 +679,7 @@ subtest 'abort_from_renewing' => sub {
         'create_renew_timer',
         'notify_lock_active',
         'renew_claim',
-        'ignore_last_command',
+        'abandon_last_request',
         'abort_claim',
     );
 };
@@ -757,7 +757,7 @@ subtest 'abort_from_activating' => sub {
         'create_activate_timer',
         'activate_claim',
         'delete_timeout',
-        'ignore_last_command',
+        'abandon_last_request',
         'abort_claim',
     );
 };
@@ -908,7 +908,7 @@ subtest 'abort_during_aborting_path' => sub {
         'notify_lock_active',
         'delete_timer',
         'abort_claim',
-        'ignore_last_command',
+        'abandon_last_request',
     );
 };
 
@@ -957,6 +957,7 @@ sub _execute_event {
 sub _mock_command_interface {
     my $ci = Test::MockObject->new();
     $ci->set_true(
+        'abandon_last_request',
         'abort_claim',
         'activate_claim',
         'create_activate_timer',
@@ -965,7 +966,6 @@ sub _mock_command_interface {
         'create_timeout',
         'delete_timeout',
         'delete_timer',
-        'ignore_last_command',
         'notify_claim_withdrawn',
         'notify_lock_active',
         'notify_lock_released',

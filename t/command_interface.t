@@ -125,7 +125,7 @@ subtest ignore_expected_response_triggers_no_callback => sub {
 
     _run_in_event_loop(1, sub {
         $ci->register_claim;
-        $ci->ignore_last_command;
+        $ci->abandon_last_request;
     });
 
     ok(!defined($eg->next_call), 'register callback not called');
