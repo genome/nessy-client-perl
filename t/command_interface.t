@@ -361,6 +361,9 @@ sub _create_command_interface {
         on_released => sub { ok(0, "on_released shouln't be called") },
         on_withdrawn => sub { ok(0, "on_withdrawn shouln't be called") },
 
+        max_activate_backoff_factor => 5,
+        max_retry_backoff_factor => 5,
+
         @_,
     );
 }

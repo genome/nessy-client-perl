@@ -20,8 +20,13 @@ use Nessy::Properties qw(
     renew_seconds
     retry_seconds
 
+    max_activate_backoff_factor
+    max_retry_backoff_factor
+
     timeout_seconds
 
+    _current_activate_backoff_factor
+    _current_retry_backoff_factor
     _current_timer
     _http_response_watcher
     _timeout_watcher
@@ -31,12 +36,13 @@ use AnyEvent;
 use AnyEvent::HTTP;
 use JSON;
 
+use List::Util qw(min);
 
 sub new {
     my $class = shift;
     my %params = @_;
 
-    return bless $class->_verify_params(\%params, qw(
+    my $self = bless $class->_verify_params(\%params, qw(
         event_generator
         resource
         submit_url
@@ -51,8 +57,16 @@ sub new {
         renew_seconds
         retry_seconds
 
+        max_activate_backoff_factor
+        max_retry_backoff_factor
+
         timeout_seconds
     )), $class;
+
+    $self->_current_activate_backoff_factor(1);
+    $self->_current_retry_backoff_factor(1);
+
+    return $self;
 }
 
 
@@ -81,14 +95,38 @@ sub activate_claim {
 sub create_activate_timer {
     my $self = shift;
 
-    $self->_create_timer($self->activate_seconds);
+    my $backoff = $self->_get_activate_backoff;
+    my $backed_off_seconds = $backoff * $self->activate_seconds;
+
+    $self->_create_timer($backed_off_seconds);
+}
+
+
+sub _get_activate_backoff {
+    my $self = shift;
+
+    my $backoff = $self->_current_activate_backoff_factor;
+    $self->_current_activate_backoff_factor(
+        min($backoff + 1, $self->max_activate_backoff_factor));
 }
 
 
 sub create_retry_timer {
     my $self = shift;
 
-    $self->_create_timer($self->retry_seconds);
+    my $backoff = $self->_get_retry_backoff;
+    my $backed_off_seconds = $backoff * $self->retry_seconds;
+
+    $self->_create_timer($backed_off_seconds);
+}
+
+
+sub _get_retry_backoff {
+    my $self = shift;
+
+    my $backoff = $self->_current_retry_backoff_factor;
+    $self->_current_retry_backoff_factor(
+        min($backoff + 1, $self->max_retry_backoff_factor));
 }
 
 
@@ -200,6 +238,15 @@ sub renew_claim {
     my $self = shift;
 
     $self->_patch($self->json_parser->encode({ttl => $self->ttl}));
+}
+
+
+sub reset_retry_backoff {
+    my $self = shift;
+
+    $self->_current_retry_backoff_factor(1);
+
+    1;
 }
 
 
