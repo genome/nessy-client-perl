@@ -27,7 +27,7 @@ use Nessy::Properties qw(
 
     _current_activate_backoff_factor
     _current_retry_backoff_factor
-    _current_timer
+    _current_timer_watcher
     _http_response_watcher
     _timeout_watcher
 );
@@ -140,7 +140,7 @@ sub create_renew_timer {
 sub _create_timer {
     my ($self, $seconds) = @_;
 
-    $self->_current_timer(AnyEvent->timer(
+    $self->_current_timer_watcher(AnyEvent->timer(
         after => $seconds,
         cb => sub {
             $self->event_generator->timer_callback()
@@ -166,7 +166,7 @@ sub create_timeout {
 
 sub delete_timer {
     my $self = shift;
-    $self->_current_timer(undef);
+    $self->_current_timer_watcher(undef);
 
     1;
 }
