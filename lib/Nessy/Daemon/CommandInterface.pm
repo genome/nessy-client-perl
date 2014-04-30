@@ -69,6 +69,13 @@ sub new {
     return $self;
 }
 
+sub is_active {
+    my $self = shift;
+
+    # XXX Implement this with a blocking http (retry) call to the update_url
+    1;
+}
+
 
 sub abandon_last_request {
     my $self = shift;
