@@ -143,7 +143,7 @@ sub _create_timer {
     $self->_current_timer_watcher(AnyEvent->timer(
         after => $seconds,
         cb => sub {
-            $self->event_generator->timer_callback()
+            $self->event_generator->timer_callback($self)
         },
     ));
 
@@ -156,7 +156,7 @@ sub create_timeout {
     $self->_timeout_watcher(AnyEvent->timer(
         after => $self->timeout_seconds,
         cb => sub {
-            $self->event_generator->timeout_callback()
+            $self->event_generator->timeout_callback($self)
         },
     ));
 
@@ -287,7 +287,7 @@ sub _http {
             headers => $self->_standard_headers,
             body => $body,
             cb => sub {
-                $self->event_generator->http_response_callback(@_);
+                $self->event_generator->http_response_callback($self, @_);
             },
         )
     );

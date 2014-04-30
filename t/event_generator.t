@@ -37,10 +37,9 @@ subtest test_http_201 => sub {
     my $sm = _create_state_machine();
     my $ci = _create_command_interface();
 
-    my $eg = Nessy::Daemon::EventGenerator->new(
-        command_interface => $ci, state_machine => $sm);
+    my $eg = Nessy::Daemon::EventGenerator->new(state_machine => $sm);
 
-    $eg->http_response_callback('', {Status => 201, Location => 'a'});
+    $eg->http_response_callback($ci, '', {Status => 201, Location => 'a'});
 
     my ($call, $args) = $sm->next_call;
 
@@ -61,10 +60,9 @@ subtest test_http_202 => sub {
     my $sm = _create_state_machine();
     my $ci = _create_command_interface();
 
-    my $eg = Nessy::Daemon::EventGenerator->new(
-        command_interface => $ci, state_machine => $sm);
+    my $eg = Nessy::Daemon::EventGenerator->new(state_machine => $sm);
 
-    $eg->http_response_callback('', {Status => 202, Location => 'a'});
+    $eg->http_response_callback($ci, '', {Status => 202, Location => 'a'});
 
     my ($call, $args) = $sm->next_call;
 
@@ -149,10 +147,9 @@ sub _test_generic_callback {
     my $sm = _create_state_machine();
     my $ci = _create_command_interface();
 
-    my $eg = Nessy::Daemon::EventGenerator->new(
-        command_interface => $ci, state_machine => $sm);
+    my $eg = Nessy::Daemon::EventGenerator->new(state_machine => $sm);
 
-    $eg->$callback_name();
+    $eg->$callback_name($ci);
 
     my ($call, $args) = $sm->next_call;
 
@@ -176,10 +173,9 @@ sub _test_http_callback {
     my $sm = _create_state_machine();
     my $ci = _create_command_interface();
 
-    my $eg = Nessy::Daemon::EventGenerator->new(
-        command_interface => $ci, state_machine => $sm);
+    my $eg = Nessy::Daemon::EventGenerator->new(state_machine => $sm);
 
-    $eg->http_response_callback('', {Status => $status});
+    $eg->http_response_callback($ci, '', {Status => $status});
 
     my ($call, $args) = $sm->next_call;
 

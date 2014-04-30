@@ -15,40 +15,38 @@ sub new {
     my %params = @_;
 
     return bless $class->_verify_params(\%params, qw(
-        command_interface
         state_machine
     ));
 }
 
 
 sub start {
-    my $self = shift;
-
-    $self->_trigger_event('start');
+    my ($self, $command_interface) = @_;
+    $self->_trigger_event('start', $command_interface);
 }
 
 
 sub signal {
-    my $self = shift;
-    $self->_trigger_event('signal');
+    my ($self, $command_interface) = @_;
+    $self->_trigger_event('signal', $command_interface);
 }
 
 
 sub release {
-    my $self = shift;
-    $self->_trigger_event('release');
+    my ($self, $command_interface) = @_;
+    $self->_trigger_event('release', $command_interface);
 }
 
 
 sub http_response_callback {
-    my ($self, $body, $headers) = @_;
+    my ($self, $command_interface, $body, $headers) = @_;
 
     my $status_code = $headers->{Status};
 
     print "hi!  $status_code\n";
     my $event_class = $self->_get_event_class($status_code);
     my $event = $event_class->new(
-        command_interface => $self->command_interface);
+        command_interface => $command_interface);
 
     if ($status_code == 201 || $status_code == 202) {
         $event->update_url($headers->{Location});
@@ -80,25 +78,23 @@ sub _get_event_class {
 
 
 sub timer_callback {
-    my $self = shift;
-
-    $self->_trigger_event('timer');
+    my ($self, $command_interface) = @_;
+    $self->_trigger_event('timer', $command_interface);
 }
 
 
 sub timeout_callback {
-    my $self = shift;
-
-    $self->_trigger_event('timeout');
+    my ($self, $command_interface) = @_;
+    $self->_trigger_event('timeout', $command_interface);
 }
 
 sub _trigger_event {
     my $self = shift;
     my $event_name = shift;
+    my $command_interface = shift;
 
     my $event_class = $self->_event_class($event_name);
-    my $event = $event_class->new(
-        command_interface => $self->command_interface, @_);
+    my $event = $event_class->new(command_interface => $command_interface, @_);
     $self->state_machine->handle_event($event);
 }
 
