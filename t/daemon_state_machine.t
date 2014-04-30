@@ -924,23 +924,23 @@ sub _execute_event {
 sub _mock_command_interface {
     my $ci = Test::MockObject->new();
     $ci->set_true(
-        'register_claim',
+        'abort_claim',
+        'activate_claim',
         'create_activate_timer',
         'create_renew_timer',
         'create_retry_timer',
         'create_timeout',
         'delete_timeout',
-        'notify_lock_active',
         'delete_timer',
-        'release_claim',
+        'ignore_last_command',
+        'notify_claim_withdrawn',
+        'notify_lock_active',
         'notify_lock_released',
-        'activate_claim',
+        'register_claim',
+        'release_claim',
+        'renew_claim',
         'terminate_client',
         'withdraw_claim',
-        'notify_claim_withdrawn',
-        'ignore_last_command',
-        'renew_claim',
-        'abort_claim',
     );
 
     return $ci;
