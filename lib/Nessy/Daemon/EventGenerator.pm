@@ -43,7 +43,6 @@ sub http_response_callback {
 
     my $status_code = $headers->{Status};
 
-    print "hi!  $status_code\n";
     my $event_class = $self->_get_event_class($status_code);
     my $event = $event_class->new(
         command_interface => $command_interface);
