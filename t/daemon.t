@@ -6,7 +6,7 @@ use warnings;
 use Nessy::Daemon;
 use Nessy::Client::Message;
 
-use Test::More tests => 93;
+use Test::More;
 use Carp;
 use JSON;
 use Socket;
@@ -15,23 +15,8 @@ use IO::Select;
 use IO::Handle;
 use AnyEvent;
 
-test_constructor();
-test_constructor_failures();
 
-test_start();
-
-test_add_remove_claim();
-
-test_make_claim();
-test_make_claim_timeout();
-test_make_claim_failure();
-test_release_claim_success_and_failure();
-
-test_validate_success_and_failure();
-
-test_daemon_exits_when_socket_closes();
-
-sub test_constructor_failures {
+subtest test_constructor_failures => sub {
     my $daemon;
 
     $daemon = eval { Nessy::Daemon->new() };
@@ -44,9 +29,9 @@ sub test_constructor_failures {
         $daemon = eval { Nessy::Daemon->new(%params) };
         like($@, qr($omit is a required param), "constructor throws exception when missing $omit param");
     }
-}
+};
 
-sub test_constructor {
+subtest test_constructor => sub {
     my $fake_socket = IO::Handle->new();
     my $daemon = Nessy::Daemon->new(
                     client_socket => $fake_socket,
@@ -55,9 +40,9 @@ sub test_constructor {
     ok($daemon, 'constructor');
 
     is_deeply($daemon->claims, {}, 'daemon claims() initialized to an empty hash');
-}
+};
 
-sub test_start {
+subtest test_start => sub {
     my ($test_handle,$not_needed) = IO::Socket->socketpair(
         AF_UNIX, SOCK_STREAM, PF_UNSPEC);
     my $daemon = Nessy::Daemon->new(
@@ -71,11 +56,11 @@ sub test_start {
     ok($daemon->start($cv), 'start() as an instance method method');
 
     ok($daemon->client_watcher, 'client watcher created');
-}
+};
 
 sub _unexpected_fatal_error { my($obj, $message) = @_; Carp::croak("unexpected fatal error: $message") };
 
-sub test_add_remove_claim {
+subtest test_add_remove_claim => sub {
     my $daemon = _new_test_daemon();
 
     my $test_claim_foo = Nessy::Daemon::FakeClaim->new(
@@ -126,9 +111,9 @@ sub test_add_remove_claim {
 
     is($daemon->lookup_claim('bar'), $test_claim_bar, 'lookup_claim()');
     is($daemon->lookup_claim('missing'), undef, 'lookup_claim() with non-existent resource_name');
-}
+};
 
-sub test_make_claim {
+subtest test_make_claim => sub {
     my $daemon = _new_test_daemon();
 
     my $user_data = 123;
@@ -176,9 +161,9 @@ sub test_make_claim {
 
     eval { _read_from_socket() };
     like($@, qr(No data read from socket), 'After destruction, daemon has no more messages for us');
-}
+};
 
-sub test_make_claim_failure {
+subtest test_make_claim_failure => sub {
     my $daemon = _new_test_daemon();
 
     my $message = Nessy::Client::Message->new(
@@ -216,9 +201,9 @@ sub test_make_claim_failure {
 
     eval { _read_from_socket() };
     like($@, qr(No data read from socket), 'After destruction, daemon has no more messages for us');
-}
+};
 
-sub test_make_claim_timeout {
+subtest test_make_claim_timeout => sub {
     my $daemon = _new_test_daemon();
 
     my $message = Nessy::Client::Message->new(
@@ -263,12 +248,12 @@ sub test_make_claim_timeout {
 
     eval { _read_from_socket() };
     like($@, qr(No data read from socket), 'After destruction, daemon has no more messages for us');
-}
+};
 
 
-sub test_validate_success_and_failure {
+subtest test_validate_success_and_failure => sub {
     _test_validate_success_and_failure($_) foreach ( 200, 400, 404, 409 );
-}
+};
 
 sub _test_validate_success_and_failure {
     my $response_code = shift;
@@ -307,9 +292,9 @@ sub _test_validate_success_and_failure {
 }
 
 
-sub test_release_claim_success_and_failure {
+subtest test_release_claim_success_and_failure => sub {
     _test_release_claim_success_and_failure($_) foreach ( 204, 400, 404, 409 );
-}
+};
 
 sub _test_release_claim_success_and_failure {
     my($response_code) = @_;
@@ -359,7 +344,7 @@ sub _test_release_claim_success_and_failure {
     is($fatal_error, 0, 'no fatal errors');
 }
 
-sub test_daemon_exits_when_socket_closes {
+subtest test_daemon_exits_when_socket_closes => sub {
     my $daemon = _new_test_daemon();
 
     _close_socket();
@@ -367,7 +352,7 @@ sub test_daemon_exits_when_socket_closes {
     _event_loop($daemon);
 
     is($daemon->exit_cleanly_was_called, 1, 'daemon calls exit_cleanly() when socket closes');
-}
+};
 
 sub _event_loop {
     my($daemon, $cv) = @_;
