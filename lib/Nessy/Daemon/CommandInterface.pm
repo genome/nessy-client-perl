@@ -28,6 +28,8 @@ use Nessy::Properties qw(
     _current_activate_backoff_factor
     _current_retry_backoff_factor
     _current_timer_watcher
+    _current_validate_callback
+    _current_validate_watcher
     _http_response_watcher
     _timeout_watcher
 );
@@ -68,10 +70,80 @@ sub new {
 }
 
 sub is_active {
+    my ($self, $callback) = @_;
+
+    if ($self->_current_validate_callback) {
+        $self->_current_validate_callback->(0);
+        $self->_current_validate_watcher(undef);
+    }
+
+    if ($self->update_url) {
+        $self->_current_validate_callback($callback);
+
+        $self->_make_validate_request();
+
+    } else {
+        $callback->(0);
+    }
+
+    1;
+}
+
+
+sub _make_validate_request {
     my $self = shift;
 
-    # XXX Implement this with a blocking http (retry) call to the update_url
-    1;
+    $self->_current_validate_watcher(
+        AnyEvent::HTTP::http_request(
+            GET => $self->update_url,
+            headers => $self->_standard_headers,
+            cb => sub {
+                $self->_validate_response_handler(@_);
+            },
+        )
+    );
+}
+
+sub _validate_response_handler {
+    my ($self, $body, $headers) = @_;
+
+    my $status_code = $headers->{Status};
+    my $status_code_category = int($status_code / 100);
+
+    if ($status_code == 200) {
+        $self->reset_retry_backoff;
+
+        my $claim_data = $self->_decode_json($body);
+
+        if ($claim_data) {
+            if ($claim_data->{status} eq 'active') {
+                $self->_current_validate_callback->(1);
+            } else {
+                $self->_current_validate_callback->(0);
+            }
+
+        } else {
+            $self->_current_validate_callback->(0);
+        }
+
+        $self->_current_validate_callback(undef);
+        $self->_current_validate_watcher(undef);
+
+    } elsif ($status_code_category == 5) {
+        $self->_current_validate_watcher(
+            AnyEvent->timer(
+                after => $self->_get_retry_backoff,
+                cb => sub {
+                    $self->_make_validate_request;
+                },
+            )
+        );
+
+    } else {
+        $self->_current_validate_callback->(0);
+        $self->_current_validate_callback(undef);
+        $self->_current_validate_watcher(undef);
+    }
 }
 
 
@@ -100,9 +172,7 @@ sub activate_claim {
 sub create_activate_timer {
     my $self = shift;
 
-    my $backoff = $self->_get_activate_backoff;
-    my $backed_off_seconds = $backoff * $self->activate_seconds;
-
+    my $backed_off_seconds = $self->_get_activate_backoff;
     $self->_create_timer($backed_off_seconds);
 }
 
@@ -113,15 +183,15 @@ sub _get_activate_backoff {
     my $backoff = $self->_current_activate_backoff_factor;
     $self->_current_activate_backoff_factor(
         min($backoff + 1, $self->max_activate_backoff_factor));
+
+    return $backoff * $self->activate_seconds;
 }
 
 
 sub create_retry_timer {
     my $self = shift;
 
-    my $backoff = $self->_get_retry_backoff;
-    my $backed_off_seconds = $backoff * $self->retry_seconds;
-
+    my $backed_off_seconds = $self->_get_retry_backoff;
     $self->_create_timer($backed_off_seconds);
 }
 
@@ -132,6 +202,8 @@ sub _get_retry_backoff {
     my $backoff = $self->_current_retry_backoff_factor;
     $self->_current_retry_backoff_factor(
         min($backoff + 1, $self->max_retry_backoff_factor));
+
+    return $backoff * $self->retry_seconds;
 }
 
 
@@ -316,6 +388,18 @@ sub _standard_headers {
 my $json_parser;
 sub json_parser {
     $json_parser ||= JSON->new();
+}
+
+sub _decode_json {
+    my ($self, $string) = @_;
+
+    my $data = eval {$self->json_parser->decode($string)};
+
+    if ($@) {
+        return;
+    } else {
+        return $data
+    }
 }
 
 

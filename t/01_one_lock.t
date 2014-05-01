@@ -137,18 +137,43 @@ subtest test_validate => sub {
 
 
     my $server_thread_validate = Nessy::Client::TestWebServer->new(
-        [200, [], [], ]);
+        [200, [], ['{"status": "active"}'], ]);
     $SIG{ALRM} = sub { ok(0, 'validate took too long'); exit };
     alarm(3);
     ok($lock->validate(), 'claim validates');
     my($env_renewal) = $server_thread_validate->join;
     alarm(0);
 
-    is($env_renewal->{REQUEST_METHOD}, 'PATCH', 'Claim validate uses PATCH method');
+    is($env_renewal->{REQUEST_METHOD}, 'GET', 'Claim validate uses GET method');
     is($env_renewal->{PATH_INFO}, '/v1/claims/abc', 'Claim validate path');
-    is_deeply($env_renewal->{__BODY__},
-        { ttl => 10 },
-        'Claim validate body');
+
+
+    my $server_thread_release = Nessy::Client::TestWebServer->new(
+        [204, [], [], ]);
+
+    ok($lock->release, 'Release lock');
+
+    my($env_release) = $server_thread_release->join;
+};
+
+subtest test_validate_fails => sub {
+    my $server_thread_register = Nessy::Client::TestWebServer->new(
+        [201, ['Location' => "$url/v1/claims/abc"], [], ]);
+
+    my $lock = $client->claim($resource_name, ttl => 10);
+    $server_thread_register->join();
+
+
+    my $server_thread_validate = Nessy::Client::TestWebServer->new(
+        [200, [], ['{"status": "revoked"}'], ]);
+    $SIG{ALRM} = sub { ok(0, 'validate took too long'); exit };
+    alarm(3);
+    ok(!$lock->validate(), 'claim fails to validate');
+    my($env_renewal) = $server_thread_validate->join;
+    alarm(0);
+
+    is($env_renewal->{REQUEST_METHOD}, 'GET', 'Claim validate uses GET method');
+    is($env_renewal->{PATH_INFO}, '/v1/claims/abc', 'Claim validate path');
 
 
     my $server_thread_release = Nessy::Client::TestWebServer->new(

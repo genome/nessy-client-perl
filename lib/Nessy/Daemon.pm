@@ -381,13 +381,18 @@ sub validate {
     my $resource_name = $message->resource_name;
     my $claim = $self->lookup_claim($resource_name);
 
-    if ($claim->validate) {
-        $message->succeed;
-    } else {
-        $message->failed;
-    }
+    my $responder = sub {
+        my $is_active = shift;
+        if ($is_active) {
+            $message->succeed;
+        } else {
+            $message->fail;
+        }
 
-    $self->_send_return_message($message);
+        $self->_send_return_message($message);
+    };
+
+    $claim->validate($responder);
 
     1;
 }

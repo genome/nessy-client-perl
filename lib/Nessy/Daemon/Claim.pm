@@ -48,9 +48,9 @@ sub resource_name {
 }
 
 sub validate {
-    my $self = shift;
+    my ($self, $is_active_callback) = @_;
 
-    return $self->command_interface->is_active;
+    return $self->command_interface->is_active($is_active_callback);
 }
 
 
