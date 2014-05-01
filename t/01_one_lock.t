@@ -389,45 +389,6 @@ sub _test_revoked_lock {
     is($got_sigpipe, 1, 'Expected SIGPIPE during destruction of defunct lock');
 }
 
-#subtest test_server_error_while_registering => sub {
-#    my $server_thread_register = Nessy::Client::TestWebServer->new(
-#        [ 500, [ Location => "$url/v1/claims/" ], [] ],
-#    );
-#
-#    my $warning_message = '';
-#    local $SIG{__WARN__} = sub { $warning_message = shift };
-#    my $expected_file = __FILE__;
-#    my $expected_line = __LINE__ + 1;
-#    my $lock = $client->claim($resource_name, ttl => 1);
-#    ok(! $lock, 'lock was rejected');
-#    like($warning_message,
-#        qr/Unexpected response in state 'registering' on resource 'foo' \(HTTP 500\): \(no response body\)/,
-#        'Got expected warning');
-#
-#    $server_thread_register->join;
-#};
-
-#subtest test_server_error_while_releasing => sub {
-#    my $server_thread_register = Nessy::Client::TestWebServer->new(
-#        [ 201, [ Location => "$url/v1/claims/abc" ], [] ],
-#        [ 500, [], [] ],
-#    );
-#
-#    my $expected_file = __FILE__;
-#    my $expected_line = __LINE__ + 1;
-#    my $lock = $client->claim($resource_name, ttl => 1);
-#
-#    my $warning_message = '';
-#    local $SIG{__WARN__} = sub { $warning_message = shift };
-#
-#    ok(! $lock->release, 'Expecting release to fail');
-#    like($warning_message,
-#        qr(release $resource_name failed. Claim originated at $expected_file:$expected_line),
-#        'Got expected warning');
-#
-#    $server_thread_register->join;
-#};
-
 subtest test_server_error_while_activating => sub {
     my $server_thread_register = Nessy::Client::TestWebServer->new(
         [ 202, [ Location => "$url/v1/claims/abc" ], [] ],
