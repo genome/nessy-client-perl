@@ -125,7 +125,7 @@ sub _get_request_body {
     my $body = '';
     while ($psgi_input->read($body, 1024, length($body))) {}
 
-    return JSON::decode_json($body);
+    return JSON::decode_json($body || '{}');
 }
 
 
