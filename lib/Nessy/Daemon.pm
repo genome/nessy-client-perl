@@ -256,24 +256,27 @@ sub claim {
     my($self, $message) = @_;
     my($resource_name, $args) = map { $message->$_ } qw(resource_name args);
 
-    my $claim = Nessy::Daemon::ClaimFactory->new(
+    my %params = (
         resource => $resource_name,
-        user_data => $args->{user_data},
-        submit_url => $self->submit_url,
-        ttl => $args->{ttl},
-        timeout_seconds => $args->{timeout},
 
         on_active => sub { $self->_claim_activated($resource_name) },
         on_withdrawn => sub { $self->_claim_timed_out($resource_name) },
         on_fatal_error => sub { $self->_claim_errored($resource_name) },
         on_released => sub { $self->_claim_released($resource_name) },
 
-        activate_seconds => 1,
+        submit_url => $self->submit_url,
+
+        activate_seconds => 60,
         renew_seconds => max(1, $args->{ttl} / 4),
-        retry_seconds => 5,
+        retry_seconds => 3,
 
         max_activate_backoff_factor => 60,  # 15 minutes max
         max_retry_backoff_factor => 60,     #  5 minutes max
+    );
+
+    my $claim = Nessy::Daemon::ClaimFactory->new(
+        %params,
+        %$args,
     );
 
 

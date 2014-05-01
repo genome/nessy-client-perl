@@ -204,7 +204,10 @@ subtest test_waiting_to_activate => sub {
         [ 200, [], [] ],
     );
 
-    my $lock = $client->claim($resource_name, ttl => 1);
+    my $lock = $client->claim($resource_name, ttl => 1,
+        activate_seconds => 1,
+        retry_seconds => 1,
+    );
 
     my(@envs) = $server_thread_register->join();
     is(scalar(@envs), 4, 'Server got 4 requests');
@@ -298,7 +301,10 @@ subtest test_http_timeout_while_activating => sub {
     );
 
     my $condvar = AnyEvent->condvar;
-    $client->claim($resource_name, ttl => 1, cb => $condvar);
+    $client->claim($resource_name, ttl => 1, cb => $condvar,
+        activate_seconds => 1,
+        retry_seconds => 1,
+    );
 
     my(@envs) = $server_thread_register_timeout->join();
 
@@ -396,7 +402,10 @@ subtest test_server_error_while_activating => sub {
         [ 200, [], [] ],
     );
 
-    my $lock = $client->claim($resource_name, ttl => 1);
+    my $lock = $client->claim($resource_name, ttl => 1,
+        activate_seconds => 1,
+        retry_seconds => 1,
+    );
 
     my(@envs) = $server_thread_register->join();
     is(scalar(@envs), 3, 'Server got 3 requests');
@@ -433,7 +442,10 @@ subtest test_server_error_while_renewing => sub {
         [ 201, ['Location' => "$url/v1/claims/abc"], [], ],
     );
 
-    my $lock = $client->claim($resource_name, ttl => 1);
+    my $lock = $client->claim($resource_name, ttl => 1,
+        activate_seconds => 1,
+        retry_seconds => 1,
+    );
 
     $server_thread_register->join();
 
