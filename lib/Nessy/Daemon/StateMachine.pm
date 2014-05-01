@@ -1,8 +1,7 @@
 package Nessy::Daemon::StateMachine;
 
 use strict;
-use warnings;
-#use warnings FATAL => 'all';
+use warnings FATAL => 'all';
 
 use Nessy::StateMachineFactory;
 
