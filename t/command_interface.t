@@ -279,39 +279,40 @@ subtest test_renew_claim => sub {
 };
 
 
-subtest test_terminate_client => sub {
+subtest test_notify_critical_error => sub {
     plan tests => 1;
     my $ci = _create_command_interface(undef,
-        on_fatal_error => sub { ok(1, 'on_fatal_error callback called'); });
+        on_critical_error => sub {
+            ok(1, 'on_critical_error callback called'); });
 
-    $ci->terminate_client();
+    $ci->notify_critical_error();
 };
 
 
-subtest test_notify_lock_active => sub {
+subtest test_notify_active => sub {
     plan tests => 1;
     my $ci = _create_command_interface(undef,
         on_active => sub { ok(1, 'on_active callback called'); });
 
-    $ci->notify_lock_active();
+    $ci->notify_active();
 };
 
 
-subtest test_notify_claim_withdrawn => sub {
+subtest test_notify_failure => sub {
     plan tests => 1;
     my $ci = _create_command_interface(undef,
-        on_withdrawn => sub { ok(1, 'on_withdrawn callback called'); });
+        on_failure => sub { ok(1, 'on_failure callback called'); });
 
-    $ci->notify_claim_withdrawn();
+    $ci->notify_failure();
 };
 
 
-subtest test_notify_lock_released => sub {
+subtest test_notify_released => sub {
     plan tests => 1;
     my $ci = _create_command_interface(undef,
         on_released => sub { ok(1, 'on_released callback called'); });
 
-    $ci->notify_lock_released();
+    $ci->notify_released();
 };
 
 
@@ -359,9 +360,10 @@ sub _create_command_interface {
 
         # Default callbacks should never be called
         on_active => sub { ok(0, "on_active shouln't be called") },
-        on_fatal_error => sub { ok(0, "on_fatal_error shouln't be called") },
+        on_critical_error => sub {
+            ok(0, "on_critical_error shouln't be called") },
         on_released => sub { ok(0, "on_released shouln't be called") },
-        on_withdrawn => sub { ok(0, "on_withdrawn shouln't be called") },
+        on_failure => sub { ok(0, "on_failure shouln't be called") },
 
         max_activate_backoff_factor => 5,
         max_retry_backoff_factor => 5,

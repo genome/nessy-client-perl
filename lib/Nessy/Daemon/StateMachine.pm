@@ -112,22 +112,22 @@ sub a_abandon_last_request {
 
 sub a_notify_active {
     my ($from, $event, $to) = @_;
-    $event->command_interface->notify_lock_active();
+    $event->command_interface->notify_active();
 }
 
 sub a_notify_critical_error {
     my ($from, $event, $to) = @_;
-    $event->command_interface->terminate_client();
+    $event->command_interface->notify_critical_error();
 }
 
 sub a_notify_failure {
     my ($from, $event, $to) = @_;
-    $event->command_interface->notify_claim_withdrawn();
+    $event->command_interface->notify_failure();
 }
 
 sub a_notify_released {
     my ($from, $event, $to) = @_;
-    $event->command_interface->notify_lock_released();
+    $event->command_interface->notify_released();
 }
 
 sub a_register_claim {

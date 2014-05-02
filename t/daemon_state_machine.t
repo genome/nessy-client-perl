@@ -24,9 +24,9 @@ subtest 'shortest_release_path' => sub {
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
-        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_active',
         'delete_timer', 'release_claim',
-        'notify_lock_released',
+        'notify_released',
     );
 };
 
@@ -47,11 +47,11 @@ subtest 'retry_release_path' => sub {
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
-        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_active',
         'delete_timer', 'release_claim',
         'create_retry_timer',
         'release_claim',
-        'notify_lock_released',
+        'notify_released',
     );
 };
 
@@ -73,7 +73,7 @@ subtest 'waiting_to_active_path' => sub {
         'create_timeout', 'register_claim',
         'reset_retry_backoff', 'update_url', 'create_activate_timer',
         'activate_claim',
-        'delete_timeout', 'reset_retry_backoff', 'create_renew_timer', 'notify_lock_active',
+        'delete_timeout', 'reset_retry_backoff', 'create_renew_timer', 'notify_active',
     );
 };
 
@@ -131,7 +131,7 @@ subtest 'register_fail_path' => sub {
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
-        'delete_timeout', 'terminate_client',
+        'delete_timeout', 'notify_critical_error',
     );
 };
 
@@ -147,7 +147,7 @@ subtest 'registering_withdraw_path' => sub {
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
-        'abandon_last_request', 'notify_claim_withdrawn',
+        'abandon_last_request', 'notify_failure',
     );
 };
 
@@ -165,7 +165,7 @@ subtest 'retry_registering_withdraw_path' => sub {
     _verify_calls($ci,
         'create_timeout', 'register_claim',
         'create_retry_timer',
-        'delete_timer', 'notify_claim_withdrawn',
+        'delete_timer', 'notify_failure',
     );
 };
 
@@ -220,7 +220,7 @@ subtest 'withdraw_from_waiting_path' => sub {
         'create_timeout', 'register_claim',
         'reset_retry_backoff', 'update_url', 'create_activate_timer',
         'delete_timer', 'withdraw_claim',
-        'notify_claim_withdrawn',
+        'notify_failure',
     );
 };
 
@@ -245,7 +245,7 @@ subtest 'retry_withdraw_path' => sub {
         'delete_timer', 'withdraw_claim',
         'create_retry_timer',
         'withdraw_claim',
-        'notify_claim_withdrawn',
+        'notify_failure',
     );
 };
 
@@ -266,7 +266,7 @@ subtest 'withdaw_fail_path' => sub {
         'create_timeout', 'register_claim',
         'reset_retry_backoff', 'update_url', 'create_activate_timer',
         'delete_timer', 'withdraw_claim',
-        'terminate_client',
+        'notify_critical_error',
     );
 };
 
@@ -331,7 +331,7 @@ subtest 'fail_during_activating_path' => sub {
         'create_timeout', 'register_claim',
         'reset_retry_backoff', 'update_url', 'create_activate_timer',
         'activate_claim',
-        'delete_timeout', 'terminate_client',
+        'delete_timeout', 'notify_critical_error',
     );
 };
 
@@ -356,7 +356,7 @@ subtest 'retrying_activate_path' => sub {
         'activate_claim',
         'create_retry_timer',
         'activate_claim',
-        'delete_timeout', 'reset_retry_backoff', 'create_renew_timer', 'notify_lock_active',
+        'delete_timeout', 'reset_retry_backoff', 'create_renew_timer', 'notify_active',
     );
 };
 
@@ -379,7 +379,7 @@ subtest 'withdraw_activating_path' => sub {
         'reset_retry_backoff', 'update_url', 'create_activate_timer',
         'activate_claim',
         'abandon_last_request', 'reset_retry_backoff', 'withdraw_claim',
-        'notify_claim_withdrawn',
+        'notify_failure',
     );
 };
 
@@ -404,7 +404,7 @@ subtest 'withdraw_retrying_activate_path' => sub {
         'activate_claim',
         'create_retry_timer',
         'delete_timer', 'withdraw_claim',
-        'notify_claim_withdrawn',
+        'notify_failure',
     );
 };
 
@@ -423,9 +423,9 @@ subtest 'release_failure_path' => sub {
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
-        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_active',
         'delete_timer', 'release_claim',
-        'terminate_client',
+        'notify_critical_error',
     );
 };
 
@@ -444,7 +444,7 @@ subtest 'abort_while_releasing_path' => sub {
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
-        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_active',
         'delete_timer', 'release_claim',
         'abandon_last_request',
     );
@@ -466,7 +466,7 @@ subtest 'abort_while_retrying_release_path' => sub {
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
-        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_active',
         'delete_timer', 'release_claim',
         'create_retry_timer',
         'delete_timer',
@@ -489,7 +489,7 @@ subtest 'normal_renew_path' => sub {
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
-        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_active',
         'renew_claim',
         'reset_retry_backoff', 'create_renew_timer',
         'delete_timer', 'release_claim',
@@ -514,7 +514,7 @@ subtest 'retry_renew_path' => sub {
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
-        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_active',
         'renew_claim',
         'create_retry_timer',
         'renew_claim',
@@ -538,9 +538,9 @@ subtest 'renewing_fail_path' => sub {
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
-        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_active',
         'renew_claim',
-        'terminate_client',
+        'notify_critical_error',
     );
 };
 
@@ -559,7 +559,7 @@ subtest 'release_from_renewing' => sub {
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
-        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_active',
         'renew_claim',
         'abandon_last_request', 'reset_retry_backoff', 'release_claim',
     );
@@ -581,7 +581,7 @@ subtest 'release_from_retrying_renew' => sub {
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
-        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_active',
         'renew_claim',
         'create_retry_timer',
         'delete_timer', 'release_claim',
@@ -603,7 +603,7 @@ subtest 'abort_from_renewing' => sub {
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
-        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_active',
         'renew_claim',
         'abandon_last_request', 'reset_retry_backoff', 'abort_claim',
     );
@@ -625,7 +625,7 @@ subtest 'abort_from_retrying_renew' => sub {
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
-        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_active',
         'renew_claim',
         'create_retry_timer',
         'delete_timer', 'abort_claim',
@@ -650,7 +650,7 @@ subtest 'abort_from_active' => sub {
         'create_timeout', 'register_claim',
         'reset_retry_backoff', 'update_url', 'create_activate_timer',
         'activate_claim',
-        'delete_timeout', 'reset_retry_backoff', 'create_renew_timer', 'notify_lock_active',
+        'delete_timeout', 'reset_retry_backoff', 'create_renew_timer', 'notify_active',
         'delete_timer', 'abort_claim',
     );
 };
@@ -733,7 +733,7 @@ subtest 'successful_abort_path' => sub {
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
-        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_active',
         'delete_timer', 'abort_claim',
         # No action for final event
     );
@@ -754,9 +754,9 @@ subtest 'failed_abort_path' => sub {
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
-        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_active',
         'delete_timer', 'abort_claim',
-        'terminate_client',
+        'notify_critical_error',
     );
 };
 
@@ -777,7 +777,7 @@ subtest 'retry_abort_path' => sub {
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
-        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_active',
         'delete_timer', 'abort_claim',
         'create_retry_timer',
         'abort_claim',
@@ -800,7 +800,7 @@ subtest 'abort_during_aborting_path' => sub {
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
-        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_active',
         'delete_timer', 'abort_claim',
         'abandon_last_request',
     );
@@ -822,7 +822,7 @@ subtest 'abort_during_retrying_abort_path' => sub {
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
-        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_active',
         'delete_timer', 'abort_claim',
         'create_retry_timer',
         'delete_timer',
@@ -856,14 +856,14 @@ sub _mock_command_interface {
         'create_timeout',
         'delete_timeout',
         'delete_timer',
-        'notify_claim_withdrawn',
-        'notify_lock_active',
-        'notify_lock_released',
+        'notify_active',
+        'notify_critical_error',
+        'notify_failure',
+        'notify_released',
         'register_claim',
         'release_claim',
         'renew_claim',
         'reset_retry_backoff',
-        'terminate_client',
         'update_url',
         'withdraw_claim',
     );

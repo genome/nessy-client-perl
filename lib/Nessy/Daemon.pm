@@ -260,8 +260,8 @@ sub claim {
         resource => $resource_name,
 
         on_active => sub { $self->_claim_activated($resource_name) },
-        on_withdrawn => sub { $self->_claim_timed_out($resource_name) },
-        on_fatal_error => sub { $self->_claim_errored($resource_name) },
+        on_critical_error => sub { $self->_claim_errored($resource_name) },
+        on_failure => sub { $self->_claim_timed_out($resource_name) },
         on_released => sub { $self->_claim_released($resource_name) },
 
         submit_url => $self->submit_url,

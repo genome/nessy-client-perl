@@ -12,8 +12,8 @@ use Nessy::Properties qw(
     user_data
 
     on_active
-    on_withdrawn
-    on_fatal_error
+    on_critical_error
+    on_failure
     on_released
 
     activate_seconds
@@ -51,8 +51,8 @@ sub new {
         ttl
 
         on_active
-        on_withdrawn
-        on_fatal_error
+        on_critical_error
+        on_failure
         on_released
 
         activate_seconds
@@ -259,16 +259,7 @@ sub delete_timeout {
 }
 
 
-sub notify_claim_withdrawn {
-    my $self = shift;
-
-    $self->on_withdrawn->(@_);
-
-    1;
-}
-
-
-sub notify_lock_active {
+sub notify_active {
     my $self = shift;
 
     $self->on_active->(@_);
@@ -277,7 +268,25 @@ sub notify_lock_active {
 }
 
 
-sub notify_lock_released {
+sub notify_critical_error {
+    my $self = shift;
+
+    $self->on_critical_error->(@_);
+
+    1;
+}
+
+
+sub notify_failure {
+    my $self = shift;
+
+    $self->on_failure->(@_);
+
+    1;
+}
+
+
+sub notify_released {
     my $self = shift;
 
     $self->on_released->(@_);
@@ -324,15 +333,6 @@ sub reset_retry_backoff {
     my $self = shift;
 
     $self->_current_retry_backoff_factor(1);
-
-    1;
-}
-
-
-sub terminate_client {
-    my $self = shift;
-
-    $self->on_fatal_error->(@_);
 
     1;
 }
