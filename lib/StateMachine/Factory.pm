@@ -8,25 +8,18 @@ use StateMachine::Factory::EventState;
 use StateMachine::Factory::Transition;
 use StateMachine::Definition;
 
-use Nessy::Properties qw(
-    _transitions
-    _initial_state_type
-    _random_id
-    _is_concrete
-);
-
 my $_ID_GEN = new Data::UUID;
 
 
 sub new {
     my $class = shift;
 
-    my $self = {
+    return bless {
         _transitions => {},
         _initial_state_type => undef,
         _random_id => $_ID_GEN->create_b64,
-    };
-    return bless $self, $class;
+        _is_concrete => 0
+    }, $class;
 }
 
 sub define_state {
@@ -51,7 +44,7 @@ sub _uniquify_name {
     my $self = shift;
     my $original_name = shift;
 
-    return sprintf("%s:%s", $self->_random_id, $original_name);
+    return sprintf("%s:%s", $self->{_random_id}, $original_name);
 }
 
 sub define_transitions {
@@ -65,7 +58,7 @@ sub define_transitions {
 sub _verify_not_concrete {
     my $self = shift;
 
-    if ($self->_is_concrete) {
+    if ($self->{_is_concrete}) {
         Carp::croak("Cannot modify a " . ref($self)
             . " after producing a state machine");
     }
@@ -82,7 +75,7 @@ sub define_transition {
         event => $event, to => $to, action_list => $action_list);
     my $lookup_key = $trans->lookup_key();
 
-    my $transitions = $self->_transitions();
+    my $transitions = $self->{_transitions};
     if ($transitions->{$lookup_key}) {
         Carp::croak("Tried to create a conflicting transition "
             . $trans->as_string
@@ -97,26 +90,26 @@ sub define_transition {
 
 sub define_start_state {
     my $self = shift;
-    if ($self->_initial_state_type) {
-        Carp::croak("Initial state is already " . $self->_initial_state_type);
+    if ($self->{_initial_state_type}) {
+        Carp::croak("Initial state is already " . $self->{_initial_state_type});
     }
 
     my $initial_state_type = $self->define_state(@_);
-    $self->_initial_state_type( $initial_state_type );
+    $self->{_initial_state_type} = $initial_state_type;
     return $initial_state_type;
 }
 
 sub produce_state_machine {
     my $self = shift;
 
-    $self->_is_concrete(1);
+    $self->{_is_concrete} = 1;
 
-    unless ($self->_initial_state_type) {
+    unless ($self->{_initial_state_type}) {
         Carp::croak("define_start_state() was not called");
     }
 
-    my $initial_state = $self->_initial_state_type->new(@_);
-    my $transitions = $self->_transitions;
+    my $initial_state = $self->{_initial_state_type}->new(@_);
+    my $transitions = $self->{_transitions};
     my $sm = StateMachine::Definition->new($initial_state, $transitions);
     return $sm;
 }
