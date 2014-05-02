@@ -391,8 +391,14 @@ sub _test_revoked_lock {
 
     my $got_sigpipe = 0;
     local $SIG{PIPE} = sub { $got_sigpipe++ };
-    undef $lock;
-    is($got_sigpipe, 1, 'Expected SIGPIPE during destruction of defunct lock');
+
+    {
+        use warnings NONFATAL => 'all';
+        undef $lock;
+
+        is($got_sigpipe, 1,
+            'Expected SIGPIPE during destruction of defunct lock');
+    }
 }
 
 subtest test_server_error_while_activating => sub {
