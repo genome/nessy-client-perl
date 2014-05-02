@@ -76,6 +76,27 @@ subtest failed_claim_does_not_block_new_claims => sub {
 };
 
 
+subtest validate_active_claim_succeeds => sub {
+    my $resource = _get_resource();
+    my $client = _get_client();
+
+    my $claim = $client->claim($resource);
+
+    ok($claim->validate, 'active claim validates');
+};
+
+
+subtest validate_released_claim_fails => sub {
+    my $resource = _get_resource();
+    my $client = _get_client();
+
+    my $claim = $client->claim($resource);
+
+    $claim->release;
+    ok(!$claim->validate, 'released claim fails to validate');
+};
+
+
 done_testing();
 
 
