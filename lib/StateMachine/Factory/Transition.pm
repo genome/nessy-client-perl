@@ -1,4 +1,4 @@
-package Nessy::StateMachineFactory::Transition;
+package StateMachine::Factory::Transition;
 
 use strict;
 use warnings;

@@ -1,12 +1,12 @@
-package Nessy::StateMachineFactory;
+package StateMachine::Factory;
 
 use strict;
 use warnings;
 
 use Data::UUID;
-use Nessy::StateMachineFactory::EventState;
-use Nessy::StateMachineFactory::Transition;
-use Nessy::StateMachine;
+use StateMachine::Factory::EventState;
+use StateMachine::Factory::Transition;
+use StateMachine::Definition;
 
 use Nessy::Properties qw(
     _transitions
@@ -34,7 +34,7 @@ sub define_state {
     my $state_name = shift;
 
     $self->_verify_not_concrete;
-    return Nessy::StateMachineFactory::State->define_state(
+    return StateMachine::Factory::State->define_state(
         $self->_uniquify_name($state_name), @_);
 }
 
@@ -43,7 +43,7 @@ sub define_event {
     my $event_name = shift;
 
     $self->_verify_not_concrete;
-    return Nessy::StateMachineFactory::Event->define_event(
+    return StateMachine::Factory::Event->define_event(
         $self->_uniquify_name($event_name), @_);
 }
 
@@ -102,8 +102,6 @@ sub define_start_state {
     return $initial_state_type;
 }
 
-sub _state_machine_class { 'Nessy::StateMachine' }
-
 sub produce_state_machine {
     my $self = shift;
 
@@ -115,7 +113,7 @@ sub produce_state_machine {
 
     my $initial_state = $self->_initial_state_type->new(@_);
     my $transitions = $self->_transitions;
-    my $sm = $self->_state_machine_class->new($initial_state, $transitions);
+    my $sm = StateMachine::Definition->new($initial_state, $transitions);
     return $sm;
 }
 

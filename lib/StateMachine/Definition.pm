@@ -1,4 +1,4 @@
-package Nessy::StateMachine;
+package StateMachine::Definition;
 
 use strict;
 use warnings;

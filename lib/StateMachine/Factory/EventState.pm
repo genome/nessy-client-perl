@@ -1,4 +1,4 @@
-package Nessy::StateMachineFactory::EventState;
+package StateMachine::Factory::EventState;
 
 use strict;
 use warnings;
@@ -22,7 +22,7 @@ sub _define_eventstate {
     return $event_class;
 }
 
-package Nessy::StateMachineFactory::EventStateBase;
+package StateMachine::Factory::EventStateBase;
 
 sub new {
     my $class = shift;
@@ -35,27 +35,27 @@ sub new {
     return $self;
 }
 
-package Nessy::StateMachineFactory::Event;
-BEGIN { our @ISA = qw(Nessy::StateMachineFactory::EventState) }
-sub _base_class { 'Nessy::StateMachineFactory::EventBase' }
+package StateMachine::Factory::Event;
+BEGIN { our @ISA = qw(StateMachine::Factory::EventState) }
+sub _base_class { 'StateMachine::Factory::EventBase' }
 sub define_event {
     my $class = shift;
     $class->_define_eventstate(@_);
 }
 
-package Nessy::StateMachineFactory::EventBase;
-BEGIN { our @ISA = qw(Nessy::StateMachineFactory::EventStateBase) }
+package StateMachine::Factory::EventBase;
+BEGIN { our @ISA = qw(StateMachine::Factory::EventStateBase) }
 
-package Nessy::StateMachineFactory::State;
-BEGIN { our @ISA = qw(Nessy::StateMachineFactory::EventState) }
-sub _base_class { 'Nessy::StateMachineFactory::StateBase' }
+package StateMachine::Factory::State;
+BEGIN { our @ISA = qw(StateMachine::Factory::EventState) }
+sub _base_class { 'StateMachine::Factory::StateBase' }
 sub define_state {
     my $class = shift;
     $class->_define_eventstate(@_);
 }
 
-package Nessy::StateMachineFactory::StateBase;
-BEGIN { our @ISA = qw(Nessy::StateMachineFactory::EventStateBase) }
+package StateMachine::Factory::StateBase;
+BEGIN { our @ISA = qw(StateMachine::Factory::EventStateBase) }
 
 sub lookup_key {
     my($self, $event) = @_;
