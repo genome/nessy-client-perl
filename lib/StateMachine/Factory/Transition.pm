@@ -23,7 +23,8 @@ sub execute {
     my $actions = $self->action_list;
     for (my $i = 0; $i < @$actions; $i++) {
         unless ($actions->[$i]->($from_state, $event, $next_state)) {
-            Carp::croak("Action $i returned false during transition ".$self->as_string);
+            Carp::croak("Action $i returned false during transition "
+                . $self->as_string);
         }
     }
 

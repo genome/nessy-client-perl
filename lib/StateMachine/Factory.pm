@@ -66,7 +66,8 @@ sub _verify_not_concrete {
     my $self = shift;
 
     if ($self->_is_concrete) {
-        Carp::croak("Cannot modify a " . ref($self) . " after producing a state machine");
+        Carp::croak("Cannot modify a " . ref($self)
+            . " after producing a state machine");
     }
     return 1;
 }
@@ -77,13 +78,16 @@ sub define_transition {
 
     $self->_verify_not_concrete;
 
-    my $trans = Nessy::StateMachineFactory::Transition->new(from => $from, event => $event, to => $to, action_list => $action_list);
+    my $trans = StateMachine::Factory::Transition->new(from => $from,
+        event => $event, to => $to, action_list => $action_list);
     my $lookup_key = $trans->lookup_key();
 
     my $transitions = $self->_transitions();
     if ($transitions->{$lookup_key}) {
-        Carp::croak("Tried to create a conflicting transition " . $trans->as_string
-                    . "\n    existing transition: " . $transitions->{$lookup_key}->as_string());
+        Carp::croak("Tried to create a conflicting transition "
+            . $trans->as_string
+            . "\n    existing transition: "
+            . $transitions->{$lookup_key}->as_string());
     }
 
     $transitions->{$lookup_key} = $trans;

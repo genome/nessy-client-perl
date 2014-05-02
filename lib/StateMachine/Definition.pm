@@ -13,7 +13,7 @@ sub new {
     my $transitions = shift;
 
     my $self = bless {}, $class;
-    
+
     $self->_transitions($transitions);
 
     $self->state( $initial_state );
