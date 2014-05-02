@@ -1,7 +1,7 @@
 package StateMachine::Factory::Transition;
 
 use strict;
-use warnings;
+use warnings FATAL => 'all';
 
 
 sub new {

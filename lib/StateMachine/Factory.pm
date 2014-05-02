@@ -1,7 +1,7 @@
 package StateMachine::Factory;
 
 use strict;
-use warnings;
+use warnings FATAL => 'all';
 
 use Data::UUID;
 use StateMachine::Factory::EventState;

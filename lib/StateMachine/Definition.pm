@@ -1,7 +1,7 @@
 package StateMachine::Definition;
 
 use strict;
-use warnings;
+use warnings FATAL => 'all';
 
 use Carp;
 

@@ -1,7 +1,7 @@
 package StateMachine::Factory::EventState;
 
 use strict;
-use warnings;
+use warnings FATAL => 'all';
 
 use Nessy::Properties qw();
 
