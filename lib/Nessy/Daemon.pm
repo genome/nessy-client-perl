@@ -433,7 +433,10 @@ sub all_claims {
 sub fatal_error {
     my($self, $message) = @_;
 
-    _log_error("Fatal error: $message");
+    unless ($ENV{NESSY_TEST}) {
+        _log_error("Fatal error: $message");
+    }
+
     $self->_try_kill_parent('TERM');
     sleep($self->fatal_error_delay_time);
     $self->_exit_if_parent_dead(1);
