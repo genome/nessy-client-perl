@@ -110,17 +110,22 @@ sub a_abandon_last_request {
     $event->command_interface->abandon_last_request();
 }
 
-sub a_notify_claim_withdrawn {
-    my ($from, $event, $to) = @_;
-    $event->command_interface->notify_claim_withdrawn();
-}
-
-sub a_notify_lock_active {
+sub a_notify_active {
     my ($from, $event, $to) = @_;
     $event->command_interface->notify_lock_active();
 }
 
-sub a_notify_lock_released {
+sub a_notify_critical_error {
+    my ($from, $event, $to) = @_;
+    $event->command_interface->terminate_client();
+}
+
+sub a_notify_failure {
+    my ($from, $event, $to) = @_;
+    $event->command_interface->notify_claim_withdrawn();
+}
+
+sub a_notify_released {
     my ($from, $event, $to) = @_;
     $event->command_interface->notify_lock_released();
 }
@@ -154,11 +159,6 @@ sub a_set_update_url {
     $event->command_interface->update_url($event->update_url);
 }
 
-sub a_terminate_client {
-    my ($from, $event, $to) = @_;
-    $event->command_interface->terminate_client();
-}
-
 sub a_withdraw_claim {
     my ($from, $event, $to) = @_;
     $event->command_interface->withdraw_claim();
@@ -168,81 +168,81 @@ sub a_withdraw_claim {
 # ---------------------------- Transitions -----------------------------------
 $factory->define_transitions(
 
-[ $s_new               , $e_start    , $s_registering       ,  [ \&a_create_timeout         , \&a_register_claim         ]                           ]                        ,
+[ $s_new               , $e_start    , $s_registering       ,  [ \&a_create_timeout        , \&a_register_claim        ]                           ]                        ,
 
-[ $s_aborting          , $e_signal   , $s_done              ,  [ \&a_abandon_last_request   ]                            ]                           ,
-[ $s_aborting          , $e_release  , $s_done              ,  [ \&a_abandon_last_request   ]                            ]                           ,
-[ $s_aborting          , $e_http_409 , $s_fail              ,  [ \&a_terminate_client       ]                            ]                           ,
-[ $s_aborting          , $e_http_4xx , $s_fail              ,  [ \&a_terminate_client       ]                            ]                           ,
-[ $s_aborting          , $e_http_5xx , $s_retrying_abort    ,  [ \&a_create_retry_timer     ]                            ]                           ,
-[ $s_aborting          , $e_http_2xx , $s_aborted           ,  [                            ]                            ]                           ,
+[ $s_aborting          , $e_signal   , $s_done              ,  [ \&a_abandon_last_request  ]                           ]                           ,
+[ $s_aborting          , $e_release  , $s_done              ,  [ \&a_abandon_last_request  ]                           ]                           ,
+[ $s_aborting          , $e_http_409 , $s_fail              ,  [ \&a_notify_critical_error ]                           ]                           ,
+[ $s_aborting          , $e_http_4xx , $s_fail              ,  [ \&a_notify_critical_error ]                           ]                           ,
+[ $s_aborting          , $e_http_5xx , $s_retrying_abort    ,  [ \&a_create_retry_timer    ]                           ]                           ,
+[ $s_aborting          , $e_http_2xx , $s_aborted           ,  [                           ]                           ]                           ,
 
-[ $s_activating        , $e_signal   , $s_aborting          ,  [ \&a_delete_timeout         , \&a_abandon_last_request   , \&a_reset_retry_backoff   , \&a_abort_claim        ]                        ]  ,
-[ $s_activating        , $e_http_2xx , $s_active            ,  [ \&a_delete_timeout         , \&a_reset_retry_backoff    , \&a_create_renew_timer    , \&a_notify_lock_active ]                        ]  ,
-[ $s_activating        , $e_http_4xx , $s_fail              ,  [ \&a_delete_timeout         , \&a_terminate_client       ]                           ]                        ,
-[ $s_activating        , $e_http_5xx , $s_retrying_activate ,  [ \&a_create_retry_timer     ]                            ]                           ,
-[ $s_activating        , $e_http_409 , $s_waiting           ,  [ \&a_create_activate_timer  ]                            ]                           ,
-[ $s_activating        , $e_timeout  , $s_withdrawing       ,  [ \&a_abandon_last_request   , \&a_reset_retry_backoff    , \&a_withdraw_claim        ]                        ]                        ,
+[ $s_activating        , $e_signal   , $s_aborting          ,  [ \&a_delete_timeout        , \&a_abandon_last_request  , \&a_reset_retry_backoff   , \&a_abort_claim        ]                   ]  ,
+[ $s_activating        , $e_http_2xx , $s_active            ,  [ \&a_delete_timeout        , \&a_reset_retry_backoff   , \&a_create_renew_timer    , \&a_notify_active      ]                   ]  ,
+[ $s_activating        , $e_http_4xx , $s_fail              ,  [ \&a_delete_timeout        , \&a_notify_critical_error ]                           ]                        ,
+[ $s_activating        , $e_http_5xx , $s_retrying_activate ,  [ \&a_create_retry_timer    ]                           ]                           ,
+[ $s_activating        , $e_http_409 , $s_waiting           ,  [ \&a_create_activate_timer ]                           ]                           ,
+[ $s_activating        , $e_timeout  , $s_withdrawing       ,  [ \&a_abandon_last_request  , \&a_reset_retry_backoff   , \&a_withdraw_claim        ]                        ]                   ,
 
-[ $s_active            , $e_signal   , $s_aborting          ,  [ \&a_delete_timer           , \&a_abort_claim            ]                           ]                        ,
-[ $s_active            , $e_release  , $s_releasing         ,  [ \&a_delete_timer           , \&a_release_claim          ]                           ]                        ,
-[ $s_active            , $e_timer    , $s_renewing          ,  [ \&a_renew_claim            ]                            ]                           ,
+[ $s_active            , $e_signal   , $s_aborting          ,  [ \&a_delete_timer          , \&a_abort_claim           ]                           ]                        ,
+[ $s_active            , $e_release  , $s_releasing         ,  [ \&a_delete_timer          , \&a_release_claim         ]                           ]                        ,
+[ $s_active            , $e_timer    , $s_renewing          ,  [ \&a_renew_claim           ]                           ]                           ,
 
-[ $s_registering       , $e_signal   , $s_done              ,  [ \&a_delete_timeout         , \&a_abandon_last_request   ]                           ]                        ,
-[ $s_registering       , $e_timeout  , $s_done              ,  [ \&a_abandon_last_request   , \&a_notify_claim_withdrawn ]                           ]                        ,
-[ $s_registering       , $e_release  , $s_done              ,  [ \&a_delete_timeout         , \&a_notify_claim_withdrawn ]                           ]                        ,
-[ $s_registering       , $e_http_201 , $s_active            ,  [ \&a_delete_timeout         , \&a_reset_retry_backoff    , \&a_set_update_url        , \&a_create_renew_timer , \&a_notify_lock_active ]  ]  ,
-[ $s_registering       , $e_http_409 , $s_fail              ,  [ \&a_delete_timeout         , \&a_terminate_client       ]                           ]                        ,
-[ $s_registering       , $e_http_4xx , $s_fail              ,  [ \&a_delete_timeout         , \&a_terminate_client       ]                           ]                        ,
-[ $s_registering       , $e_http_5xx , $s_retrying_register ,  [ \&a_create_retry_timer     ]                            ]                           ,
-[ $s_registering       , $e_http_202 , $s_waiting           ,  [ \&a_reset_retry_backoff    , \&a_set_update_url         , \&a_create_activate_timer ]                        ]                        ,
+[ $s_registering       , $e_signal   , $s_done              ,  [ \&a_delete_timeout        , \&a_abandon_last_request  ]                           ]                        ,
+[ $s_registering       , $e_timeout  , $s_done              ,  [ \&a_abandon_last_request  , \&a_notify_failure        ]                           ]                        ,
+[ $s_registering       , $e_release  , $s_done              ,  [ \&a_delete_timeout        , \&a_notify_failure        ]                           ]                        ,
+[ $s_registering       , $e_http_201 , $s_active            ,  [ \&a_delete_timeout        , \&a_reset_retry_backoff   , \&a_set_update_url        , \&a_create_renew_timer , \&a_notify_active ]  ]  ,
+[ $s_registering       , $e_http_409 , $s_fail              ,  [ \&a_delete_timeout        , \&a_notify_critical_error ]                           ]                        ,
+[ $s_registering       , $e_http_4xx , $s_fail              ,  [ \&a_delete_timeout        , \&a_notify_critical_error ]                           ]                        ,
+[ $s_registering       , $e_http_5xx , $s_retrying_register ,  [ \&a_create_retry_timer    ]                           ]                           ,
+[ $s_registering       , $e_http_202 , $s_waiting           ,  [ \&a_reset_retry_backoff   , \&a_set_update_url        , \&a_create_activate_timer ]                        ]                   ,
 
-[ $s_releasing         , $e_signal   , $s_done              ,  [ \&a_abandon_last_request   ]                            ]                           ,
-[ $s_releasing         , $e_http_4xx , $s_fail              ,  [ \&a_terminate_client       ]                            ]                           ,
-[ $s_releasing         , $e_http_5xx , $s_retrying_release  ,  [ \&a_create_retry_timer     ]                            ]                           ,
-[ $s_releasing         , $e_http_2xx , $s_released          ,  [ \&a_notify_lock_released   ]                            ]                           ,
+[ $s_releasing         , $e_signal   , $s_done              ,  [ \&a_abandon_last_request  ]                           ]                           ,
+[ $s_releasing         , $e_http_4xx , $s_fail              ,  [ \&a_notify_critical_error ]                           ]                           ,
+[ $s_releasing         , $e_http_5xx , $s_retrying_release  ,  [ \&a_create_retry_timer    ]                           ]                           ,
+[ $s_releasing         , $e_http_2xx , $s_released          ,  [ \&a_notify_released       ]                           ]                           ,
 
-[ $s_renewing          , $e_signal   , $s_aborting          ,  [ \&a_abandon_last_request   , \&a_reset_retry_backoff    , \&a_abort_claim           ]                        ]                        ,
-[ $s_renewing          , $e_http_2xx , $s_active            ,  [ \&a_reset_retry_backoff    , \&a_create_renew_timer     ]                           ]                        ,
-[ $s_renewing          , $e_http_409 , $s_fail              ,  [ \&a_terminate_client       ]                            ]                           ,
-[ $s_renewing          , $e_http_4xx , $s_fail              ,  [ \&a_terminate_client       ]                            ]                           ,
-[ $s_renewing          , $e_release  , $s_releasing         ,  [ \&a_abandon_last_request   , \&a_reset_retry_backoff    , \&a_release_claim         ]                        ]                        ,
-[ $s_renewing          , $e_http_5xx , $s_retrying_renew    ,  [ \&a_create_retry_timer     ]                            ]                           ,
+[ $s_renewing          , $e_signal   , $s_aborting          ,  [ \&a_abandon_last_request  , \&a_reset_retry_backoff   , \&a_abort_claim           ]                        ]                   ,
+[ $s_renewing          , $e_http_2xx , $s_active            ,  [ \&a_reset_retry_backoff   , \&a_create_renew_timer    ]                           ]                        ,
+[ $s_renewing          , $e_http_409 , $s_fail              ,  [ \&a_notify_critical_error ]                           ]                           ,
+[ $s_renewing          , $e_http_4xx , $s_fail              ,  [ \&a_notify_critical_error ]                           ]                           ,
+[ $s_renewing          , $e_release  , $s_releasing         ,  [ \&a_abandon_last_request  , \&a_reset_retry_backoff   , \&a_release_claim         ]                        ]                   ,
+[ $s_renewing          , $e_http_5xx , $s_retrying_renew    ,  [ \&a_create_retry_timer    ]                           ]                           ,
 
-[ $s_retrying_abort    , $e_signal   , $s_done              ,  [ \&a_delete_timer           ]                            ]                           ,
-[ $s_retrying_abort    , $e_release  , $s_done              ,  [ \&a_delete_timer           ]                            ]                           ,
-[ $s_retrying_abort    , $e_timer    , $s_aborting          ,  [ \&a_abort_claim            ]                            ]                           ,
+[ $s_retrying_abort    , $e_signal   , $s_done              ,  [ \&a_delete_timer          ]                           ]                           ,
+[ $s_retrying_abort    , $e_release  , $s_done              ,  [ \&a_delete_timer          ]                           ]                           ,
+[ $s_retrying_abort    , $e_timer    , $s_aborting          ,  [ \&a_abort_claim           ]                           ]                           ,
 
-[ $s_retrying_activate , $e_signal   , $s_aborting          ,  [ \&a_delete_timer           , \&a_reset_retry_backoff    , \&a_delete_timeout        , \&a_abort_claim        ]                        ]  ,
-[ $s_retrying_activate , $e_timer    , $s_activating        ,  [ \&a_activate_claim         ]                            ]                           ,
-[ $s_retrying_activate , $e_timeout  , $s_withdrawing       ,  [ \&a_delete_timer           , \&a_withdraw_claim         ]                           ]                        ,
+[ $s_retrying_activate , $e_signal   , $s_aborting          ,  [ \&a_delete_timer          , \&a_reset_retry_backoff   , \&a_delete_timeout        , \&a_abort_claim        ]                   ]  ,
+[ $s_retrying_activate , $e_timer    , $s_activating        ,  [ \&a_activate_claim        ]                           ]                           ,
+[ $s_retrying_activate , $e_timeout  , $s_withdrawing       ,  [ \&a_delete_timer          , \&a_withdraw_claim        ]                           ]                        ,
 
-[ $s_retrying_register , $e_signal   , $s_done              ,  [ \&a_delete_timer           , \&a_delete_timeout         ]                           ]                        ,
-[ $s_retrying_register , $e_timer    , $s_registering       ,  [ \&a_register_claim         ]                            ]                           ,
-[ $s_retrying_register , $e_timeout  , $s_done              ,  [ \&a_delete_timer           , \&a_notify_claim_withdrawn ]                           ]                        ,
+[ $s_retrying_register , $e_signal   , $s_done              ,  [ \&a_delete_timer          , \&a_delete_timeout        ]                           ]                        ,
+[ $s_retrying_register , $e_timer    , $s_registering       ,  [ \&a_register_claim        ]                           ]                           ,
+[ $s_retrying_register , $e_timeout  , $s_done              ,  [ \&a_delete_timer          , \&a_notify_failure        ]                           ]                        ,
 
-[ $s_retrying_release  , $e_signal   , $s_done              ,  [ \&a_delete_timer           ]                            ]                           ,
-[ $s_retrying_release  , $e_release  , $s_done              ,  [ \&a_delete_timer           ]                            ]                           ,
-[ $s_retrying_release  , $e_timer    , $s_releasing         ,  [ \&a_release_claim          ]                            ]                           ,
+[ $s_retrying_release  , $e_signal   , $s_done              ,  [ \&a_delete_timer          ]                           ]                           ,
+[ $s_retrying_release  , $e_release  , $s_done              ,  [ \&a_delete_timer          ]                           ]                           ,
+[ $s_retrying_release  , $e_timer    , $s_releasing         ,  [ \&a_release_claim         ]                           ]                           ,
 
-[ $s_retrying_renew    , $e_signal   , $s_aborting          ,  [ \&a_delete_timer           , \&a_abort_claim            ]                           ]                        ,
-[ $s_retrying_renew    , $e_release  , $s_releasing         ,  [ \&a_delete_timer           , \&a_release_claim          ]                           ]                        ,
-[ $s_retrying_renew    , $e_timer    , $s_renewing          ,  [ \&a_renew_claim            ]                            ]                           ,
+[ $s_retrying_renew    , $e_signal   , $s_aborting          ,  [ \&a_delete_timer          , \&a_abort_claim           ]                           ]                        ,
+[ $s_retrying_renew    , $e_release  , $s_releasing         ,  [ \&a_delete_timer          , \&a_release_claim         ]                           ]                        ,
+[ $s_retrying_renew    , $e_timer    , $s_renewing          ,  [ \&a_renew_claim           ]                           ]                           ,
 
-[ $s_retrying_withdraw , $e_signal   , $s_done              ,  [ \&a_delete_timer           ]                            ]                           ,
-[ $s_retrying_withdraw , $e_release  , $s_done              ,  [ \&a_delete_timer           ]                            ]                           ,
-[ $s_retrying_withdraw , $e_timer    , $s_withdrawing       ,  [ \&a_withdraw_claim         ]                            ]                           ,
+[ $s_retrying_withdraw , $e_signal   , $s_done              ,  [ \&a_delete_timer          ]                           ]                           ,
+[ $s_retrying_withdraw , $e_release  , $s_done              ,  [ \&a_delete_timer          ]                           ]                           ,
+[ $s_retrying_withdraw , $e_timer    , $s_withdrawing       ,  [ \&a_withdraw_claim        ]                           ]                           ,
 
-[ $s_waiting           , $e_signal   , $s_aborting          ,  [ \&a_delete_timer           , \&a_delete_timeout         , \&a_abort_claim           ]                        ]                        ,
-[ $s_waiting           , $e_release  , $s_aborting          ,  [ \&a_delete_timer           , \&a_abort_claim            ]                           ]                        ,
-[ $s_waiting           , $e_timer    , $s_activating        ,  [ \&a_activate_claim         ]                            ]                           ,
-[ $s_waiting           , $e_timeout  , $s_withdrawing       ,  [ \&a_delete_timer           , \&a_withdraw_claim         ]                           ]                        ,
+[ $s_waiting           , $e_signal   , $s_aborting          ,  [ \&a_delete_timer          , \&a_delete_timeout        , \&a_abort_claim           ]                        ]                   ,
+[ $s_waiting           , $e_release  , $s_aborting          ,  [ \&a_delete_timer          , \&a_abort_claim           ]                           ]                        ,
+[ $s_waiting           , $e_timer    , $s_activating        ,  [ \&a_activate_claim        ]                           ]                           ,
+[ $s_waiting           , $e_timeout  , $s_withdrawing       ,  [ \&a_delete_timer          , \&a_withdraw_claim        ]                           ]                        ,
 
-[ $s_withdrawing       , $e_signal   , $s_done              ,  [ \&a_abandon_last_request   ]                            ]                           ,
-[ $s_withdrawing       , $e_http_409 , $s_fail              ,  [ \&a_terminate_client       ]                            ]                           ,
-[ $s_withdrawing       , $e_http_4xx , $s_fail              ,  [ \&a_terminate_client       ]                            ]                           ,
-[ $s_withdrawing       , $e_http_5xx , $s_retrying_withdraw ,  [ \&a_create_retry_timer     ]                            ]                           ,
-[ $s_withdrawing       , $e_http_2xx , $s_withdrawn         ,  [ \&a_notify_claim_withdrawn ]                            ]                           ,
+[ $s_withdrawing       , $e_signal   , $s_done              ,  [ \&a_abandon_last_request  ]                           ]                           ,
+[ $s_withdrawing       , $e_http_409 , $s_fail              ,  [ \&a_notify_critical_error ]                           ]                           ,
+[ $s_withdrawing       , $e_http_4xx , $s_fail              ,  [ \&a_notify_critical_error ]                           ]                           ,
+[ $s_withdrawing       , $e_http_5xx , $s_retrying_withdraw ,  [ \&a_create_retry_timer    ]                           ]                           ,
+[ $s_withdrawing       , $e_http_2xx , $s_withdrawn         ,  [ \&a_notify_failure        ]                           ]                           ,
 
 );
 
