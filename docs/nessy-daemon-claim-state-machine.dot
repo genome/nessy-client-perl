@@ -52,7 +52,7 @@ digraph "nessy-daemon-claim-state-machine" {
     a_register -> active     [color=black label="201"]
     a_register -> waiting    [color=black label="202"]
 
-    a_register -> r_register [color=black label="404,5xx"]
+    a_register -> r_register [color=black label="5xx"]
     r_register -> a_register [color=black]
 
     a_register -> f_register [color=red   label="4xx"]
