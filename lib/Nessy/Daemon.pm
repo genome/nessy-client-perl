@@ -152,7 +152,7 @@ sub _exit_cleanly {
 }
 
 sub _exit {
-    # XXX Isn't this exitting with $self as the exit code?
+    shift;
     exit shift;
 }
 
