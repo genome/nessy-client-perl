@@ -3,7 +3,9 @@ package StateMachine::Factory::EventState;
 use strict;
 use warnings FATAL => 'all';
 
-use Nessy::Properties qw();
+use Sub::Install;
+use Sub::Name;
+
 
 sub _define_eventstate {
     my($class, $event_name, @property_list) = @_;
@@ -17,7 +19,8 @@ sub _define_eventstate {
         my $base_class = $class->_base_class;
         @$isa = ($base_class);
     }
-    Nessy::Properties::import_properties($event_class, @property_list);
+
+    $event_class->_install_properties(@property_list);
 
     return $event_class;
 }
@@ -29,10 +32,37 @@ sub new {
     my %props = @_;
 
     my $self = bless {}, $class;
-    foreach my $prop ( keys %props ) {
-        $self->$prop( $props{$prop} );
+    foreach my $prop ($class->_property_names) {
+        if (!exists $props{$prop}) {
+            Carp::confess("property '$prop' not specified for event");
+        }
+        $self->{$prop} = $props{$prop};
     }
     return $self;
+}
+
+sub _install_properties {
+    my $class = shift;
+    my @property_names = @_;
+
+    Sub::Install::install_sub({
+        code => sub {
+            return @property_names;
+        },
+        into => $class,
+        as => '_property_names',
+    });
+
+    for my $property_name (@property_names) {
+        Sub::Install::install_sub({
+            code => sub {
+                my $self = shift;
+                return $self->{$property_name};
+            },
+            into => $class,
+            as => $property_name,
+        });
+    }
 }
 
 package StateMachine::Factory::Event;

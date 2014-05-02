@@ -1,12 +1,13 @@
 use strict;
 use warnings;
 
-use Test::More tests => 32;
+use Test::More tests => 36;
 use Test::Exception;
 
 use StateMachine::Factory;
 
 basic_state_machine();
+event_with_data();
 conflict_state_machine();
 loop_state_machine();
 
@@ -64,6 +65,27 @@ sub basic_state_machine {
 
     $sm->handle_event($go_event);
     $sm->handle_event($go_event);
+}
+
+
+sub event_with_data {
+    my $f = StateMachine::Factory->new();
+
+    my $start_state = $f->define_start_state('start');
+    my $end_state = $f->define_state('end');
+
+    my $event_type = $f->define_event('e', 'prop1', 'prop2');
+    ok($event_type, 'event with properties defined');
+
+    $f->define_transitions(
+        [ $start_state, $event_type, $end_state, [ sub { ok(1, 'Event fired') } ] ],
+    );
+
+    my $sm = $f->produce_state_machine;
+    my $e = $event_type->new(prop1 => 'a', prop2 => 'b');
+    is($e->prop1, 'a', 'prop1 matches');
+    is($e->prop2, 'b', 'prop2 matches');
+    $sm->handle_event($e);
 }
 
 sub conflict_state_machine {
