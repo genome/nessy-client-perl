@@ -190,7 +190,6 @@ $factory->define_transitions(
 
 [ $s_registering       , $e_signal   , $s_done              ,  [ \&a_delete_timeout        , \&a_abandon_last_request  ]                           ]                        ,
 [ $s_registering       , $e_timeout  , $s_done              ,  [ \&a_abandon_last_request  , \&a_notify_failure        ]                           ]                        ,
-[ $s_registering       , $e_release  , $s_done              ,  [ \&a_delete_timeout        , \&a_notify_failure        ]                           ]                        ,
 [ $s_registering       , $e_http_201 , $s_active            ,  [ \&a_delete_timeout        , \&a_reset_retry_backoff   , \&a_set_update_url        , \&a_create_renew_timer , \&a_notify_active ]  ]  ,
 [ $s_registering       , $e_http_409 , $s_fail              ,  [ \&a_delete_timeout        , \&a_notify_critical_error ]                           ]                        ,
 [ $s_registering       , $e_http_4xx , $s_fail              ,  [ \&a_delete_timeout        , \&a_notify_critical_error ]                           ]                        ,
@@ -234,7 +233,6 @@ $factory->define_transitions(
 [ $s_retrying_withdraw , $e_timer    , $s_withdrawing       ,  [ \&a_withdraw_claim        ]                           ]                           ,
 
 [ $s_waiting           , $e_signal   , $s_aborting          ,  [ \&a_delete_timer          , \&a_delete_timeout        , \&a_abort_claim           ]                        ]                   ,
-[ $s_waiting           , $e_release  , $s_aborting          ,  [ \&a_delete_timer          , \&a_abort_claim           ]                           ]                        ,
 [ $s_waiting           , $e_timer    , $s_activating        ,  [ \&a_activate_claim        ]                           ]                           ,
 [ $s_waiting           , $e_timeout  , $s_withdrawing       ,  [ \&a_delete_timer          , \&a_withdraw_claim        ]                           ]                        ,
 
