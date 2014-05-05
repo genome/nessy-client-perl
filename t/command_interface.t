@@ -355,7 +355,7 @@ sub _create_command_interface {
 
         timeout_seconds => 0.1,
 
-        # Default callbacks shouldn never be called
+        # Default callbacks should never be called
         on_active => sub { ok(0, "on_active shouln't be called") },
         on_fatal_error => sub { ok(0, "on_fatal_error shouln't be called") },
         on_released => sub { ok(0, "on_released shouln't be called") },
