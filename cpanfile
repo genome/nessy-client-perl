@@ -1,5 +1,6 @@
 requires 'AnyEvent', '5.33';
 requires 'AnyEvent::HTTP', '2.15';
+requires 'Data::UUID';
 requires 'JSON';
 requires 'Sub::Install';
 requires 'Sub::Name';

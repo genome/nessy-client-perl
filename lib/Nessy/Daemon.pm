@@ -2,9 +2,9 @@ package Nessy::Daemon;
 
 use strict;
 use warnings;
-use Nessy::Properties qw( url claims client_socket client_watcher server_watcher ppid event_loop_cv api_version);
+use Nessy::Properties qw( url claims client_socket client_watcher server_watcher ppid event_loop_cv api_version _serial_lookup);
 
-use Nessy::Daemon::Claim;
+use Nessy::Daemon::ClaimFactory;
 use Nessy::Client::Message;
 
 use AnyEvent;
@@ -15,6 +15,8 @@ use Scalar::Util qw();
 use Getopt::Long;
 use File::Basename;
 use Fcntl;
+use List::Util qw(max);
+
 
 sub start {
     my $self = shift;
@@ -80,13 +82,9 @@ sub shutdown {
 sub _release_all_claims_in_shutdown {
     my $self = shift;
     foreach my $claim ( $self->all_claims ) {
-        $claim->release(
-                on_success => sub { 1 },
-                on_fail => sub {
-                        my ($claim, $error) = @_;
-                        _log_error($error);
-                },
-            );
+        if (defined($claim)) {
+            $claim->terminate;
+        }
     }
 }
 
@@ -98,7 +96,7 @@ sub new {
     bless $self, $class;
 
     $self->ppid(getppid);
-
+    $self->_serial_lookup({});
     $self->claims({});
 
     return $self;
@@ -154,6 +152,7 @@ sub _exit_cleanly {
 }
 
 sub _exit {
+    shift;
     exit shift;
 }
 
@@ -172,7 +171,10 @@ sub _construct_message {
 sub client_read_event {
     my $self = shift;
     my $watcher = shift;
+
     my $message = _construct_message(shift);
+
+    $self->_save_message_serial($message);
 
     my $result = eval {
         $self->dispatch_command( $message )
@@ -191,35 +193,16 @@ sub client_read_event {
     return $result
 }
 
-sub claim_failed {
-    my($self, $claim, $message, $error_message) = @_;
+sub _save_message_serial {
+    my ($self, $message) = @_;
 
-    $message->error_message($error_message);
-    $self->remove_claim($claim);
-    $message->fail;
-    $self->_send_return_message($message);
+    $self->_serial_lookup->{$message->command}->{$message->resource_name} = $message->serial;
 }
 
-sub claim_succeeded {
-    my($self, $claim, $message) = @_;
+sub _get_message_serial {
+    my ($self, $command, $resource_name) = @_;
 
-    $message->succeed();
-    $self->_send_return_message($message);
-}
-
-sub release_failed {
-    my($self, $claim, $message, $error_message) = @_;
-
-    $message->error_message($error_message);
-    $message->fail;
-    $self->_send_return_message($message);
-}
-
-sub release_succeeded {
-    my($self, $claim, $message) = @_;
-
-    $message->succeed;
-    $self->_send_return_message($message);
+    return $self->_serial_lookup->{$command}->{$resource_name};
 }
 
 sub _send_return_message {
@@ -271,34 +254,106 @@ sub shutdown_cmd {
 
 sub claim {
     my($self, $message) = @_;
-
     my($resource_name, $args) = map { $message->$_ } qw(resource_name args);
-    my $claim_class = $self->_claim_class;
 
-    my $self_copy = $self;
-    Scalar::Util::weaken($self_copy);
+    my %params = (
+        resource => $resource_name,
 
-    my $claim = $claim_class->new(
-                    resource_name => $resource_name,
-                    user_data => $args->{user_data},
-                    url => $self->url,
-                    ttl => $args->{ttl},
-                    timeout => $args->{timeout},
-                    api_version => $self->api_version,
-                    on_fatal_error => sub { $self_copy->_on_fatal_error(@_) },
-                );
+        on_active => sub { $self->_claim_activated($resource_name) },
+        on_withdrawn => sub { $self->_claim_timed_out($resource_name) },
+        on_fatal_error => sub { $self->_claim_errored($resource_name) },
+        on_released => sub { $self->_claim_released($resource_name) },
+
+        submit_url => $self->submit_url,
+
+        activate_seconds => 60,
+        renew_seconds => max(1, $args->{ttl} / 4),
+        retry_seconds => 3,
+
+        max_activate_backoff_factor => 60,  # 15 minutes max
+        max_retry_backoff_factor => 60,     #  5 minutes max
+    );
+
+    my $claim = Nessy::Daemon::ClaimFactory->new(
+        %params,
+        %$args,
+    );
+
+
     if ($claim) {
         $self->add_claim($claim);
-        $claim->start(
-            on_success => sub { $self->claim_succeeded($claim, $message) },
-            on_fail => sub {
-                            my(undef, $error_message) = @_;
-                            $self->claim_failed($claim, $message, $error_message);
-                        },
-        );
+        $claim->start;
     }
     return $claim;
 }
+
+sub submit_url {
+    my $self = shift;
+
+    return sprintf('%s/%s/claims/', $self->url, $self->api_version);
+}
+
+sub _claim_activated {
+    my ($self, $resource_name) = @_;
+
+    my $serial = $self->_get_message_serial('claim', $resource_name);
+    my $message = Nessy::Client::Message->new(
+        command => 'claim',
+        resource_name => $resource_name,
+        serial => $serial,
+    );
+
+    $message->succeed;
+
+    $self->_send_return_message($message);
+}
+
+sub _claim_errored {
+    my ($self, $resource_name) = @_;
+
+    my $claim = $self->lookup_claim($resource_name);
+    $self->remove_claim($claim);
+
+    $self->fatal_error("Fatal error from claim: '$resource_name'");
+}
+
+sub _claim_released {
+    my ($self, $resource_name) = @_;
+
+    my $claim = $self->lookup_claim($resource_name);
+    $self->remove_claim($claim);
+
+    my $serial = $self->_get_message_serial('release', $resource_name);
+    my $message = Nessy::Client::Message->new(
+        command => 'release',
+        resource_name => $resource_name,
+        serial => $serial,
+    );
+
+    $message->succeed;
+
+    $self->_send_return_message($message);
+}
+
+sub _claim_timed_out {
+    my ($self, $resource_name) = @_;
+
+    my $claim = $self->lookup_claim($resource_name);
+    $self->remove_claim($claim);
+
+    my $serial = $self->_get_message_serial('claim', $resource_name);
+    my $message = Nessy::Client::Message->new(
+        command => 'claim',
+        resource_name => $resource_name,
+        serial => $serial,
+    );
+
+    $message->error_message("Claim timed out for resource: '$resource_name'");
+    $message->fail;
+
+    $self->_send_return_message($message);
+}
+
 
 sub _on_fatal_error {
     my($self, $fatal_claim, $message) = @_;
@@ -308,25 +363,18 @@ sub _on_fatal_error {
     $self->fatal_error($message);
 }
 
-sub _claim_class {
-    return 'Nessy::Daemon::Claim';
-}
-
 sub release {
     my($self, $message) = @_;
 
+    $self->_save_message_serial($message);
+
     my $resource_name = $message->resource_name;
     my $claim = $self->lookup_claim($resource_name);
+    # XXX Should this be done inside the lookup function?
     $claim || Carp::croak("No claim with resource $resource_name");
-    $self->remove_claim($claim);
 
-    $claim->release(
-            on_success => sub { $self->release_succeeded($claim, $message) },
-            on_fail => sub {
-                            my(undef, $error_message) = @_;
-                            $self->release_failed($claim, $message, $error_message);
-                        },
-        );
+    $claim->release;
+
     1;
 }
 
@@ -337,15 +385,18 @@ sub validate {
     my $claim = $self->lookup_claim($resource_name);
 
     my $responder = sub {
-        my $result = shift;
-        if ($result) {
+        my $is_active = shift;
+        if ($is_active) {
             $message->succeed;
         } else {
-            $message->failed;
+            $message->fail;
         }
+
         $self->_send_return_message($message);
     };
+
     $claim->validate($responder);
+
     1;
 }
 
@@ -382,7 +433,10 @@ sub all_claims {
 sub fatal_error {
     my($self, $message) = @_;
 
-    _log_error("Fatal error: $message");
+    unless ($ENV{NESSY_TEST}) {
+        _log_error("Fatal error: $message");
+    }
+
     $self->_try_kill_parent('TERM');
     sleep($self->fatal_error_delay_time);
     $self->_exit_if_parent_dead(1);

@@ -1,497 +1,61 @@
 package Nessy::Daemon::Claim;
 
 use strict;
-use warnings;
+use warnings FATAL => 'all';
 
-use Nessy::Properties qw(
-            _release_queue resource_name user_data state url claim_location_url timer_watcher ttl api_version
-            on_success_cb on_fail_cb on_fatal_error timeout registration_timeout_watcher);
+use Nessy::Properties qw(command_interface event_generator);
 
-use AnyEvent;
-use AnyEvent::HTTP;
-use JSON;
-use Data::Dumper;
-use Scalar::Util qw();
-use Sub::Name;
-use Sub::Install;
-
-use constant STATE_NEW          => 'new';
-use constant STATE_REGISTERING  => 'registering';
-use constant STATE_WAITING      => 'waiting';
-use constant STATE_ACTIVATING   => 'activating';
-use constant STATE_ACTIVE       => 'active';
-use constant STATE_RENEWING     => 'renewing';
-use constant STATE_RELEASED     => 'released';
-use constant STATE_RELEASING    => 'releasing';
-use constant STATE_FAILED       => 'failed';
-
-my %STATE = (
-    STATE_NEW()         => [ STATE_REGISTERING, STATE_RELEASED ],
-    STATE_REGISTERING() => [ STATE_WAITING, STATE_ACTIVE ],
-    STATE_WAITING()     => [ STATE_ACTIVATING ],
-    STATE_ACTIVATING()  => [ STATE_ACTIVE, STATE_WAITING ],
-    STATE_ACTIVE()      => [ STATE_RENEWING, STATE_RELEASING ],
-    STATE_RELEASING()   => [ STATE_RELEASED ],
-    STATE_RENEWING()    => [ STATE_ACTIVE ],
-    STATE_FAILED()      => [],
-    STATE_RELEASED()    => [],
-);
-
-sub can_release {
-    my $self = shift;
-    return $self->can_transition(STATE_RELEASING());
-}
-
-my $json_parser;
-sub json_parser {
-    $json_parser ||= JSON->new();
-}
 
 sub new {
-    my($class, %params) = @_;
-
-    $class->_set_proxy();
-
-    my $self = $class->_verify_params(\%params, qw(url resource_name ttl on_fatal_error api_version));
-
-    if (defined($self->{timeout}) and $self->{timeout} <= 0) {
-        Carp::croak("timeout must be undef or a positive number");
-    }
-
-    bless $self, $class;
-
-    $self->_release_queue([]);
-    $self->state(STATE_NEW);
-
-    return $self;
-}
-
-my $proxy_already_set = 0;
-sub _set_proxy {
-    return if $proxy_already_set;
-
-    $proxy_already_set = 1;
-    if ($ENV{NESSY_CLIENT_PROXY}) {
-        AnyEvent::HTTP::set_proxy($ENV{NESSY_CLIENT_PROXY});
-    }
-}
-
-sub start {
-    my $self = shift;
-    my(%params) = @_;
-
-    $self->on_success_cb($params{on_success}) || Carp::croak('on_success is required');
-    $self->on_fail_cb($params{on_fail}) || Carp::croak('on_fail is required');
-
-    $self->send_register();
-}
-
-sub can_transition {
-    my ($self, $to) = @_;
-
-    my @allowed_next = @{ $STATE{ $self->state } };
-    foreach my $allowed_next ( @allowed_next ) {
-        if ($allowed_next eq $to) {
-            return 1;
-        }
-    }
-
-    return;
-}
-
-sub _process_release_queue {
-    my $self = shift;
-    while (my $sub = shift @{$self->_release_queue}) {
-        $sub->();
-    }
-}
-
-sub transition {
-    my($self, $new_state) = @_;
-
-    if ($self->can_transition($new_state)) {
-        $self->state($new_state);
-        if ($self->can_release) {
-            $self->_process_release_queue();
-        }
-        return 1;
-    }
-    $self->send_fatal_error(Carp::shortmess("Illegal transition from ".$self->state." to $new_state"));
-}
-
-sub _call_success_fail_callback {
-    my($self, $callback_name, @args) = @_;
-
-    my $cb = $self->$callback_name;
-
-    $self->on_fail_cb(undef);
-    $self->on_success_cb(undef);
-
-    $self->$cb(@args);
-}
-
-sub _format_failure_message {
-    my $self = shift;
-    my ($state_name, $response_code, $body) = @_;
-
-    $body = (defined($body) and length($body))
-        ? $body : '(no response body)';
-
-    my $resource_name = $self->resource_name;
-    return "Unexpected response in state '$state_name' "
-        ."on resource '$resource_name' (HTTP $response_code): $body";
-}
-
-sub _failure_generator {
-    my($class) = @_;
-
-    return sub {
-        my $self = shift;
-        my ($body, $headers) = @_;
-
-        my $failure_message = $self->_format_failure_message(
-            $self->state, $headers->{Status}, $body);
-
-        $self->_remove_all_watchers();
-        $self->state(STATE_FAILED);
-        $self->_call_success_fail_callback('on_fail_cb', $failure_message);
-
-        1;
-    };
-}
-
-sub send_register {
-    my $self = shift;
-    $self->transition(STATE_REGISTERING);
-
-    my $responder = $self->_make_response_generator(
-                        'claim',
-                        'recv_register_response');
-
-    my $request_body = {
-        resource => $self->resource_name,
-        ttl => $self->ttl};
-
-    $request_body->{user_data} = $self->user_data
-        if defined $self->user_data;
-
-
-    if ($self->timeout) {
-        my $request_watcher = $self->_send_http_request(
-                POST => $self->url . '/' . $self->api_version . '/claims/',
-                headers => {'Content-Type' => 'application/json'},
-                body => $self->json_parser->encode($request_body),
-                $responder,
-            );
-
-        my $timed_out_registering = $self->_registration_timeout_handler($responder, $request_watcher);
-        my $timer_watcher = $self->_create_timer_event(
-                                    after => $self->timeout,
-                                    cb => $timed_out_registering,
-                            );
-        $self->registration_timeout_watcher($timer_watcher);
-    } else {
-        $self->_send_http_request(
-            POST => $self->url . '/' . $self->api_version . '/claims/',
-            headers => {'Content-Type' => 'application/json'},
-            body => $self->json_parser->encode($request_body),
-            $responder,
-        );
-    }
-}
-
-sub _registration_timeout_handler {
-    my($self, $responder, $request_watcher) = @_;
-    return sub {
-        undef $request_watcher;
-        $responder->('', { Status => 'TIMEOUT' });
-        1;
-    };
-}
-
-sub _send_http_request {
-    my $self = shift;
-    my $method = shift;
-    my $url = shift;
-
-    AnyEvent::HTTP::http_request(
-        $method => $url,
-        timeout => $self->_default_http_timeout_seconds, @_);
-}
-
-sub _response_status {
-    my($self, $headers) = @_;
-    return $headers->{Status};
-}
-
-sub _make_response_generator {
-    my ($self, $command, $prefix) = @_;
-
-    my $sub = sub {
-        my($body, $headers) = @_;
-
-        my $status = $self->_response_status($headers);
-        my $status_class = substr($status,0,1);
-
-        my $coderef = $self->can("${prefix}_${status}")
-            || $self->can("${prefix}_${status_class}XX");
-
-        unless (my $rv = eval { $coderef && $self->$coderef($body, $headers); }) {
-            unless (defined $rv) {
-                $rv = '(undef)';
-            }
-            $self->send_fatal_error(
-                "Error when handling status $status"
-                    ." in ${prefix} for $command. returned: $rv\n\texception: $@\n"
-                    . "Headers: " . Data::Dumper::Dumper($headers) ."\n"
-                    . "Body: " . Data::Dumper::Dumper($body));
-            return 0;
-        }
-        return 1;
-    };
-    return $sub;
-}
-
-sub _install_sub {
-    my($name, $sub) = @_;
-    Sub::Name::subname $name, $sub;
-    Sub::Install::install_sub({
-        code => $sub,
-        as => $name,
-        into => __PACKAGE__
-    });
-}
-
-sub recv_register_response_201 {
-    my($self, $body, $headers) = @_;
-    $self->claim_location_url( $headers->{location} );
-    $self->_successfully_activated();
-}
-
-sub _successfully_activated {
-    my $self = shift;
-
-    $self->registration_timeout_watcher(undef);
-
-    $self->transition(STATE_ACTIVE);
-
-    my $ttl = $self->_ttl_timer_value;
-    my %params = (
-        after => $ttl,
-        cb => sub { $self->send_renewal() });
-
-    if ($ttl > 0) {
-        $params{interval} = $ttl;
-    }
-
-    my $w = $self->_create_timer_event(%params);
-    $self->timer_watcher($w);
-    $self->_call_success_fail_callback('on_success_cb');
-    1;
-}
-
-sub recv_register_response_202 {
-    my($self, $body, $headers) = @_;
-
-    $self->transition(STATE_WAITING);
-
-    $self->claim_location_url( $headers->{location} );
-    my $ttl = $self->_ttl_timer_value;
-    my $w = $self->_create_timer_event(
-                after => $ttl,
-                interval => $ttl,
-                cb => sub { $self->send_activating() }
-            );
-    $self->timer_watcher($w);
-}
-
-_install_sub('recv_register_response_TIMEOUT', __PACKAGE__->_failure_generator);
-_install_sub('recv_register_response_400',     __PACKAGE__->_failure_generator);
-_install_sub('recv_register_response_5XX',     __PACKAGE__->_failure_generator);
-
-sub send_activating {
-    my $self = shift;
-    $self->transition(STATE_ACTIVATING);
-
-    my $responder = $self->_make_response_generator(
-                        'claim',
-                        'recv_activating_response');
-    $self->_send_http_request(
-        PATCH => $self->claim_location_url,
-        headers => {'Content-Type' => 'application/json'},
-        timeout => ($self->_ttl_timer_value / 2),
-        body => $self->json_parser->encode({ status => 'active' }),
-        $responder,
-    );
-}
-
-sub recv_activating_response_409 {
-    my($self, $body, $headers) = @_;
-
-    $self->transition(STATE_WAITING);
-}
-
-sub recv_activating_response_200 {
-    my($self, $body, $headers) = @_;
-
-    $self->_successfully_activated();
-}
-
-sub recv_activating_response_5XX {
-    my($self, $body, $headers) = @_;
-    $self->transition(STATE_WAITING);
-    return 1;
-}
-
-_install_sub('recv_activating_response_400', __PACKAGE__->_failure_generator);
-_install_sub('recv_activating_response_404', __PACKAGE__->_failure_generator);
-
-sub send_renewal {
-    my $self = shift;
-    $self->transition(STATE_RENEWING);
-
-    my $responder = $self->_make_response_generator(
-                        'renew',
-                        'recv_renewal_response');
-    $self->_send_renewal_request($responder);
-}
-
-
-sub _send_renewal_request {
-    my($self, $responder) = @_;
-
-    $self->_send_http_request(
-        PATCH => $self->claim_location_url,
-        headers => {'Content-Type' => 'application/json'},
-        timeout => ($self->_ttl_timer_value / 2),
-        body => $self->json_parser->encode({ ttl => $self->ttl }),
-        $responder);
-}
-
-sub recv_renewal_response_200 {
-    my($self, $body, $headers) = @_;
-    $self->transition(STATE_ACTIVE);
-    return 1;
-}
-
-sub recv_renewal_response_4XX {
-    my($self, $body, $headers) = @_;
-
-    my $failure_message = $self->_format_failure_message(
-        $self->state, $headers->{Status}, $body);
-
-    $self->state(STATE_FAILED);
-    $self->send_fatal_error($failure_message);
-    return 1;
-}
-
-sub recv_renewal_response_5XX {
-    my($self, $body, $headers) = @_;
-    $self->transition(STATE_ACTIVE);
-    return 1;
-}
-
-sub send_fatal_error {
-    my($self, $message) = @_;
-    $self->state(STATE_FAILED);
-    $self->_remove_all_watchers();
-    $self->on_fatal_error->($self,$message);
-}
-
-sub validate {
-    my $self = shift;
-    my $cb = shift;
-
-    if ($self->state ne STATE_ACTIVE
-        and
-        $self->state ne STATE_RENEWING
-    ) {
-        $cb->(0);
-        return;
-    }
-
-    my $responder = sub {
-        my($body, $headers) = @_;
-
-        my $status = $self->_response_status($headers);
-        my $status_class = substr($status,0,1);
-        $cb->($status_class == 2);
-    };
-
-    $self->_send_renewal_request($responder);
+    my $class = shift;
+    my %params = @_;
+
+    return bless $class->_verify_params(\%params, qw(
+        command_interface
+        event_generator
+    )), $class;
 }
 
 
 sub release {
     my $self = shift;
-    my(%params) = @_;
-    for my $name (qw(on_success on_fail)) {
-        unless (exists $params{$name}) {
-            Carp::croak("$name is required")
-        }
-    }
-    unless ($self->can_release) {
-        push @{$self->_release_queue}, sub { $self->release(%params) };
-        return;
-    }
 
+    $self->event_generator->release($self->command_interface);
 
-    $self->on_success_cb($params{on_success});
-    $self->on_fail_cb($params{on_fail});
-
-    if ($self->state eq STATE_NEW) {
-        $self->transition(STATE_RELEASED);
-        $self->_call_success_fail_callback('on_success_cb');
-        return 1;
-    }
-
-    $self->transition(STATE_RELEASING);
-
-    $self->_remove_all_watchers();
-
-    my $responder = $self->_make_response_generator(
-                        'release',
-                        'recv_release_response');
-    $self->_send_http_request(
-        PATCH => $self->claim_location_url,
-        headers => {'Content-Type' => 'application/json'},
-        body => $self->json_parser->encode({ status => 'released' }),
-        $responder,
-    );
-}
-
-sub recv_release_response_204 {
-    my $self = shift;
-    $self->state(STATE_RELEASED);
-    $self->_call_success_fail_callback('on_success_cb');
     1;
 }
 
-_install_sub('recv_release_response_400', __PACKAGE__->_failure_generator);
-_install_sub('recv_release_response_404', __PACKAGE__->_failure_generator);
-_install_sub('recv_release_response_409', __PACKAGE__->_failure_generator);
-_install_sub('recv_release_response_5XX', __PACKAGE__->_failure_generator);
-
-sub _create_timer_event {
+sub start {
     my $self = shift;
 
-    AnyEvent->timer(@_);
+    $self->event_generator->start($self->command_interface);
+
+    1;
 }
 
-sub _ttl_timer_value {
+sub terminate {
     my $self = shift;
-    return $self->ttl / 4;
+
+    $self->event_generator->signal($self->command_interface);
+
+    1;
 }
 
-sub _remove_all_watchers {
+
+sub resource_name {
     my $self = shift;
-    $self->timer_watcher(undef);
-    $self->registration_timeout_watcher(undef);
+    return $self->command_interface->resource;
 }
 
-sub _default_http_timeout_seconds { 5 }
+sub validate {
+    my ($self, $is_active_callback) = @_;
+
+    return $self->command_interface->is_active($is_active_callback);
+}
+
 
 1;
+
 
 =pod
 

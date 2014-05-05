@@ -111,7 +111,7 @@ sub claim {
 
     $resource_name || Carp::croak('resource_name is a required param');
 
-    my($user_data, $cb, $ttl, $timeout) = @params{'user_data','cb','ttl','timeout'};
+    my($user_data, $cb, $ttl, $timeout) = delete @params{'user_data','cb','ttl','timeout'};
 
     my $is_blocking = !$cb;
     $cb ||= AnyEvent->condvar;
@@ -143,7 +143,12 @@ sub claim {
         $report_response,
         command => 'claim',
         resource_name => $resource_name,
-        args => { user_data => $user_data, ttl => $ttl, timeout => $timeout },
+        args => {
+            user_data => $user_data,
+            ttl => $ttl,
+            timeout_seconds => $timeout,
+            %params,
+        },
     );
 
     if ($is_blocking) {

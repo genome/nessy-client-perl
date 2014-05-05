@@ -3,17 +3,29 @@ package Nessy::StateMachineFactory;
 use strict;
 use warnings;
 
+use Data::UUID;
 use Nessy::StateMachineFactory::EventState;
 use Nessy::StateMachineFactory::Transition;
 use Nessy::StateMachine;
-use Scalar::Util;
 
-use Nessy::Properties qw(_transitions _initial_state_type _is_concrete);
+use Nessy::Properties qw(
+    _transitions
+    _initial_state_type
+    _random_id
+    _is_concrete
+);
+
+my $_ID_GEN = new Data::UUID;
+
 
 sub new {
     my $class = shift;
 
-    my $self = { _transitions => {}, _initial_state_type => undef};
+    my $self = {
+        _transitions => {},
+        _initial_state_type => undef,
+        _random_id => $_ID_GEN->create_b64,
+    };
     return bless $self, $class;
 }
 
@@ -21,21 +33,25 @@ sub define_state {
     my $self = shift;
     my $state_name = shift;
 
-    $state_name .= "_" . Scalar::Util::refaddr($self);
-
     $self->_verify_not_concrete;
-    return Nessy::StateMachineFactory::State->define_state($state_name, @_);
+    return Nessy::StateMachineFactory::State->define_state(
+        $self->_uniquify_name($state_name), @_);
 }
 
 sub define_event {
     my $self = shift;
     my $event_name = shift;
 
-    $event_name .= "_" . Scalar::Util::refaddr($self);
-
     $self->_verify_not_concrete;
-    return Nessy::StateMachineFactory::Event->define_event($event_name, @_);
+    return Nessy::StateMachineFactory::Event->define_event(
+        $self->_uniquify_name($event_name), @_);
+}
 
+sub _uniquify_name {
+    my $self = shift;
+    my $original_name = shift;
+
+    return sprintf("%s:%s", $self->_random_id, $original_name);
 }
 
 sub define_transitions {
