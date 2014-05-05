@@ -279,13 +279,13 @@ subtest test_renew_claim => sub {
 };
 
 
-subtest test_notify_critical_error => sub {
+subtest test_notify_renew_error => sub {
     plan tests => 1;
     my $ci = _create_command_interface(undef,
-        on_critical_error => sub {
-            ok(1, 'on_critical_error callback called'); });
+        on_renew_error => sub {
+            ok(1, 'on_renew_error callback called'); });
 
-    $ci->notify_critical_error();
+    $ci->notify_renew_error();
 };
 
 
@@ -298,12 +298,12 @@ subtest test_notify_active => sub {
 };
 
 
-subtest test_notify_failure => sub {
+subtest test_notify_withdrawn => sub {
     plan tests => 1;
     my $ci = _create_command_interface(undef,
-        on_failure => sub { ok(1, 'on_failure callback called'); });
+        on_withdrawn => sub { ok(1, 'on_withdrawn callback called'); });
 
-    $ci->notify_failure();
+    $ci->notify_withdrawn();
 };
 
 
@@ -359,11 +359,7 @@ sub _create_command_interface {
         timeout_seconds => 0.1,
 
         # Default callbacks should never be called
-        on_active => sub { ok(0, "on_active shouln't be called") },
-        on_critical_error => sub {
-            ok(0, "on_critical_error shouln't be called") },
-        on_released => sub { ok(0, "on_released shouln't be called") },
-        on_failure => sub { ok(0, "on_failure shouln't be called") },
+        _default_callbacks(),
 
         max_activate_backoff_factor => 5,
         max_retry_backoff_factor => 5,
@@ -372,6 +368,33 @@ sub _create_command_interface {
     );
 }
 
+sub _default_callbacks {
+    my @CB_NAMES = qw(
+        on_abort_error
+        on_abort_signal
+        on_aborted
+        on_activate_error
+        on_active
+        on_register_error
+        on_register_signal
+        on_register_timeout
+        on_release_error
+        on_release_signal
+        on_released
+        on_renew_error
+        on_withdraw_error
+        on_withdraw_signal
+        on_withdrawn
+    );
+
+    my %callbacks;
+    for my $name (@CB_NAMES) {
+        $callbacks{$name} = sub {
+            ok(0, "$name shouldn't be called");
+        };
+    }
+    return %callbacks;
+}
 
 sub _submit_url {
     my ($host, $port) = Nessy::Client::TestWebServer->get_connection_details;

@@ -11,10 +11,20 @@ use Nessy::Properties qw(
     update_url
     user_data
 
+    on_abort_error
+    on_abort_signal
+    on_aborted
     on_active
-    on_critical_error
-    on_failure
+    on_register_error
+    on_register_signal
+    on_register_timeout
+    on_release_error
+    on_release_signal
     on_released
+    on_renew_error
+    on_withdraw_error
+    on_withdraw_signal
+    on_withdrawn
 
     activate_seconds
     renew_seconds
@@ -37,31 +47,75 @@ use Nessy::Properties qw(
 use AnyEvent;
 use AnyEvent::HTTP;
 use JSON;
+use Sub::Install;
 
 use List::Util qw(min);
+
+
+my @NOTIFICATIONS = qw(
+    abort_error
+    abort_signal
+    aborted
+    activate_error
+    active
+    register_error
+    register_signal
+    register_timeout
+    release_error
+    release_signal
+    released
+    renew_error
+    withdraw_error
+    withdraw_signal
+    withdrawn
+);
+
+sub _callback_name {
+    my $base_name = shift;
+    return 'on_' . $base_name;
+}
+
+sub _method_name {
+    my $base_name = shift;
+    return 'notify_' . $base_name;
+}
+
+for my $notification (@NOTIFICATIONS) {
+    my $cb_name = _callback_name($notification);
+    Sub::Install::install_sub({
+        code => sub {
+            my $self = shift;
+
+            $self->$cb_name->();
+
+            1;
+        },
+        into => __PACKAGE__,
+        as => _method_name($notification),
+    });
+}
+
 
 sub new {
     my $class = shift;
     my %params = @_;
 
-    my $self = bless $class->_verify_params(\%params, qw(
-        event_generator
-        resource
-        submit_url
-        ttl
+    my $self = bless $class->_verify_params(\%params,
+        map {_callback_name($_)} @NOTIFICATIONS,
+        qw(
+            event_generator
+            resource
+            submit_url
+            ttl
 
-        on_active
-        on_critical_error
-        on_failure
-        on_released
+            activate_seconds
+            renew_seconds
+            retry_seconds
 
-        activate_seconds
-        renew_seconds
-        retry_seconds
-
-        max_activate_backoff_factor
-        max_retry_backoff_factor
-    )), $class;
+            max_activate_backoff_factor
+            max_retry_backoff_factor
+        )
+    ), $class;
 
     $self->_current_activate_backoff_factor(1);
     $self->_current_retry_backoff_factor(1);
@@ -254,42 +308,6 @@ sub delete_timer {
 sub delete_timeout {
     my $self = shift;
     $self->_timeout_watcher(undef);
-
-    1;
-}
-
-
-sub notify_active {
-    my $self = shift;
-
-    $self->on_active->(@_);
-
-    1;
-}
-
-
-sub notify_critical_error {
-    my $self = shift;
-
-    $self->on_critical_error->(@_);
-
-    1;
-}
-
-
-sub notify_failure {
-    my $self = shift;
-
-    $self->on_failure->(@_);
-
-    1;
-}
-
-
-sub notify_released {
-    my $self = shift;
-
-    $self->on_released->(@_);
 
     1;
 }

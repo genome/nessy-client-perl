@@ -257,13 +257,9 @@ sub claim {
     my($resource_name, $args) = map { $message->$_ } qw(resource_name args);
 
     my %params = (
+        $self->_construct_callbacks($resource_name),
+
         resource => $resource_name,
-
-        on_active => sub { $self->_claim_activated($resource_name) },
-        on_critical_error => sub { $self->_claim_errored($resource_name) },
-        on_failure => sub { $self->_claim_timed_out($resource_name) },
-        on_released => sub { $self->_claim_released($resource_name) },
-
         submit_url => $self->submit_url,
 
         activate_seconds => 60,
@@ -287,6 +283,73 @@ sub claim {
     return $claim;
 }
 
+sub _construct_callbacks {
+    my $self = shift;
+    my $resource_name = shift;
+
+    return (
+        # Success callbacks
+        on_active => sub { $self->_claim_activated($resource_name) },
+        on_released => sub { $self->_claim_released($resource_name) },
+
+        # Clean failures (server is consistent)
+        on_withdrawn => sub { $self->_claim_withdrawn($resource_name) },
+        on_aborted => sub { $self->_log_claim_failure($resource_name,
+                "Successfully aborted claim for '%s'");
+        },
+
+        # Dirty failures
+        on_register_timeout => sub {
+            $self->_log_claim_failure($resource_name,
+                "Timed out while attempting to register claim for '%s'");
+        },
+        on_register_signal => sub {
+            $self->_log_claim_failure($resource_name,
+                "Got signal while attempting to register claim for '%s'");
+        },
+        on_withdraw_signal => sub {
+            $self->_log_claim_failure($resource_name,
+                "Got signal while withdrawing claim for '%s'");
+        },
+        on_abort_signal => sub {
+            $self->_log_claim_failure($resource_name,
+                "Got signal while aborting claim for '%s'");
+        },
+        on_release_signal => sub {
+            $self->_log_claim_failure($resource_name,
+                "Got signal while releasing claim for '%s'");
+        },
+        on_register_error => sub {
+            $self->_log_claim_failure($resource_name,
+                "Got error while registering claim for '%s'");
+        },
+        on_activate_error => sub {
+            $self->_log_claim_failure($resource_name,
+                "Got error while activating claim for '%s'");
+        },
+        on_withdraw_error => sub {
+            $self->_log_claim_failure($resource_name,
+                "Got error while withdrawing claim for '%s'");
+        },
+        on_abort_error => sub {
+            $self->_log_claim_failure($resource_name,
+                "Got error while aborting claim for '%s'");
+        },
+
+        # Severe failure
+        on_release_error => sub {
+            $self->_claim_release_failure($resource_name);
+        },
+
+        # Critical failure (terminate the parent process)
+        on_renew_error => sub {
+            $self->_claim_critical_error($resource_name,
+                "Error while renewing claim for '%s'");
+        },
+
+    );
+}
+
 sub submit_url {
     my $self = shift;
 
@@ -308,13 +371,24 @@ sub _claim_activated {
     $self->_send_return_message($message);
 }
 
-sub _claim_errored {
-    my ($self, $resource_name) = @_;
+
+sub _log_claim_failure {
+    my ($self, $resource_name, $message) = @_;
 
     my $claim = $self->lookup_claim($resource_name);
     $self->remove_claim($claim);
 
-    $self->fatal_error("Fatal error from claim: '$resource_name'");
+    _log_error(sprintf($message, $resource_name));
+}
+
+
+sub _claim_critical_error {
+    my ($self, $resource_name, $message) = @_;
+
+    my $claim = $self->lookup_claim($resource_name);
+    $self->remove_claim($claim);
+
+    $self->fatal_error(sprintf($message, $resource_name));
 }
 
 sub _claim_released {
@@ -335,7 +409,26 @@ sub _claim_released {
     $self->_send_return_message($message);
 }
 
-sub _claim_timed_out {
+sub _claim_release_failure {
+    my ($self, $resource_name) = @_;
+
+    my $claim = $self->lookup_claim($resource_name);
+    $self->remove_claim($claim);
+
+    my $serial = $self->_get_message_serial('release', $resource_name);
+    my $message = Nessy::Client::Message->new(
+        command => 'release',
+        resource_name => $resource_name,
+        serial => $serial,
+    );
+
+    $message->error_message("Error received when releasing: '$resource_name'");
+    $message->fail;
+
+    $self->_send_return_message($message);
+}
+
+sub _claim_withdrawn {
     my ($self, $resource_name) = @_;
 
     my $claim = $self->lookup_claim($resource_name);

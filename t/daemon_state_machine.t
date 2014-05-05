@@ -131,7 +131,7 @@ subtest 'register_fail_path' => sub {
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
-        'delete_timeout', 'notify_critical_error',
+        'delete_timeout', 'notify_register_error',
     );
 };
 
@@ -147,7 +147,7 @@ subtest 'registering_withdraw_path' => sub {
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
-        'abandon_last_request', 'notify_failure',
+        'abandon_last_request', 'notify_register_timeout',
     );
 };
 
@@ -165,7 +165,7 @@ subtest 'retry_registering_withdraw_path' => sub {
     _verify_calls($ci,
         'create_timeout', 'register_claim',
         'create_retry_timer',
-        'delete_timer', 'notify_failure',
+        'delete_timer', 'notify_register_timeout',
     );
 };
 
@@ -181,7 +181,7 @@ subtest 'registering_abort_path' => sub {
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
-        'delete_timeout', 'abandon_last_request',
+        'delete_timeout', 'abandon_last_request', 'notify_register_signal',
     );
 };
 
@@ -220,7 +220,7 @@ subtest 'withdraw_from_waiting_path' => sub {
         'create_timeout', 'register_claim',
         'reset_retry_backoff', 'update_url', 'create_activate_timer',
         'delete_timer', 'withdraw_claim',
-        'notify_failure',
+        'notify_withdrawn',
     );
 };
 
@@ -245,7 +245,7 @@ subtest 'retry_withdraw_path' => sub {
         'delete_timer', 'withdraw_claim',
         'create_retry_timer',
         'withdraw_claim',
-        'notify_failure',
+        'notify_withdrawn',
     );
 };
 
@@ -266,7 +266,7 @@ subtest 'withdaw_fail_path' => sub {
         'create_timeout', 'register_claim',
         'reset_retry_backoff', 'update_url', 'create_activate_timer',
         'delete_timer', 'withdraw_claim',
-        'notify_critical_error',
+        'notify_withdraw_error',
     );
 };
 
@@ -331,7 +331,7 @@ subtest 'fail_during_activating_path' => sub {
         'create_timeout', 'register_claim',
         'reset_retry_backoff', 'update_url', 'create_activate_timer',
         'activate_claim',
-        'delete_timeout', 'notify_critical_error',
+        'delete_timeout', 'withdraw_claim',
     );
 };
 
@@ -379,7 +379,7 @@ subtest 'withdraw_activating_path' => sub {
         'reset_retry_backoff', 'update_url', 'create_activate_timer',
         'activate_claim',
         'abandon_last_request', 'reset_retry_backoff', 'withdraw_claim',
-        'notify_failure',
+        'notify_withdrawn',
     );
 };
 
@@ -404,7 +404,7 @@ subtest 'withdraw_retrying_activate_path' => sub {
         'activate_claim',
         'create_retry_timer',
         'delete_timer', 'withdraw_claim',
-        'notify_failure',
+        'notify_withdrawn',
     );
 };
 
@@ -425,7 +425,7 @@ subtest 'release_failure_path' => sub {
         'create_timeout', 'register_claim',
         'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_active',
         'delete_timer', 'release_claim',
-        'notify_critical_error',
+        'notify_release_error',
     );
 };
 
@@ -540,7 +540,7 @@ subtest 'renewing_fail_path' => sub {
         'create_timeout', 'register_claim',
         'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_active',
         'renew_claim',
-        'notify_critical_error',
+        'notify_renew_error',
     );
 };
 
@@ -756,7 +756,7 @@ subtest 'failed_abort_path' => sub {
         'create_timeout', 'register_claim',
         'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_active',
         'delete_timer', 'abort_claim',
-        'notify_critical_error',
+        'notify_abort_error',
     );
 };
 
@@ -802,7 +802,7 @@ subtest 'abort_during_aborting_path' => sub {
         'create_timeout', 'register_claim',
         'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_active',
         'delete_timer', 'abort_claim',
-        'abandon_last_request',
+        'abandon_last_request', 'notify_abort_signal',
     );
 };
 
@@ -856,10 +856,21 @@ sub _mock_command_interface {
         'create_timeout',
         'delete_timeout',
         'delete_timer',
+        'notify_abort_error',
+        'notify_abort_signal',
+        'notify_aborted',
+        'notify_activate_error',
         'notify_active',
-        'notify_critical_error',
-        'notify_failure',
+        'notify_register_error',
+        'notify_register_signal',
+        'notify_register_timeout',
+        'notify_release_error',
+        'notify_release_signal',
         'notify_released',
+        'notify_renew_error',
+        'notify_withdraw_error',
+        'notify_withdraw_signal',
+        'notify_withdrawn',
         'register_claim',
         'release_claim',
         'renew_claim',

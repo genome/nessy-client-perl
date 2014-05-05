@@ -27,7 +27,7 @@ sub _get_tid {
 
 sub release {
     my $self = shift;
-    return if $self->_is_released();
+    return 1 if $self->_is_released();
     $self->_is_released(1);
 
     $self->on_release->(@_);
@@ -41,7 +41,10 @@ sub validate {
 sub DESTROY {
     my $self = shift;
     if (($self->_pid == $$) and ($self->_tid == $self->_get_tid)) {
-        $self->release;
+        if (!defined($self->release())) {
+            die "Failed to release claim for resource '"
+                . $self->resource_name . "'";
+        }
     }
 }
 
