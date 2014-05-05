@@ -22,19 +22,22 @@ sub new {
 
 sub start {
     my ($self, $command_interface) = @_;
-    $self->_trigger_event('start', $command_interface);
+    $self->_trigger_event($Nessy::Daemon::StateMachine::e_start,
+        $command_interface);
 }
 
 
 sub signal {
     my ($self, $command_interface) = @_;
-    $self->_trigger_event('signal', $command_interface);
+    $self->_trigger_event($Nessy::Daemon::StateMachine::e_signal,
+        $command_interface);
 }
 
 
 sub release {
     my ($self, $command_interface) = @_;
-    $self->_trigger_event('release', $command_interface);
+    $self->_trigger_event($Nessy::Daemon::StateMachine::e_release,
+        $command_interface);
 }
 
 
@@ -78,34 +81,24 @@ sub _get_event_class {
 
 sub timer_callback {
     my ($self, $command_interface) = @_;
-    $self->_trigger_event('timer', $command_interface);
+    $self->_trigger_event($Nessy::Daemon::StateMachine::e_timer,
+        $command_interface);
 }
 
 
 sub timeout_callback {
     my ($self, $command_interface) = @_;
-    $self->_trigger_event('timeout', $command_interface);
+    $self->_trigger_event($Nessy::Daemon::StateMachine::e_timeout,
+        $command_interface);
 }
 
 sub _trigger_event {
     my $self = shift;
-    my $event_name = shift;
+    my $event_class = shift;
     my $command_interface = shift;
 
-    my $event_class = $self->_event_class($event_name);
     my $event = $event_class->new(command_interface => $command_interface, @_);
     $self->state_machine->handle_event($event);
-}
-
-sub _event_class {
-    my ($self, $event_name) = @_;
-
-    my $event_class_name = 'Nessy::Daemon::StateMachine::e_' . $event_name;
-
-    {
-        no strict;
-        return $$event_class_name;
-    }
 }
 
 
