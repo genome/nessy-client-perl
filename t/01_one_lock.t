@@ -256,43 +256,6 @@ sub _envs_are_as_expected {
 }
 
 
-
-#subtest test_revoked_while_activating => sub {
-#    my $server_thread_register = Nessy::Client::TestWebServer->new(
-#        [ 202, [ Location => "$url/v1/claims/abc" ], [] ],
-#        [ 400, [], [] ],
-#    );
-#
-#    my $got_sigterm = 0;
-#    local $ENV{'NESSY_TEST'} = 1;
-#    local $SIG{TERM} = sub { $got_sigterm++ };
-#
-##    my $warning_message = '';
-##    local $SIG{__WARN__} = sub { $warning_message = shift };
-#    my $lock = $client->claim($resource_name, ttl => 1);
-#    is($got_sigterm, 2, 'got two SIGTERMs');
-##    ok(! $lock, 'lock was rejected');
-##    like($warning_message,
-##        qr/Unexpected response in state 'activating' on resource 'foo' \(HTTP 400\): \(no response body\)/,
-##        'Got expected warning');
-#
-#    my(@envs) = $server_thread_register->join();
-#    is(scalar(@envs), 2, 'Server got 2 requests');
-#
-#    my @expected = (
-#        {   REQUEST_METHOD => 'POST',
-#            PATH_INFO => '/v1/claims/',
-#            __BODY__ => { resource => $resource_name, ttl => 1 }
-#        },
-#        {   REQUEST_METHOD => 'PATCH',
-#            PATH_INFO => '/v1/claims/abc',
-#            __BODY__ => { status => 'active' },
-#        },
-#    );
-#
-#    _envs_are_as_expected(\@envs, \@expected);
-#};
-
 subtest test_http_timeout_while_activating => sub {
     my $server_thread_register_timeout = Nessy::Client::TestWebServer->new(
         [ 202, [ Location => "$url/v1/claims/abc" ], [] ],
