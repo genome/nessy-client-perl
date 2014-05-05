@@ -46,15 +46,13 @@ sub http_response_callback {
 
     my $status_code = $headers->{Status};
 
-    my $event_class = $self->_get_event_class($status_code);
-    my $event = $event_class->new(
-        command_interface => $command_interface);
-
+    my %params;
     if ($status_code == 201 || $status_code == 202) {
-        $event->update_url($headers->{location});
+        $params{update_url} = $headers->{location};
     }
 
-    $self->state_machine->handle_event($event);
+    my $event_class = $self->_get_event_class($status_code);
+    $self->_trigger_event($event_class, $command_interface, %params);
 }
 
 my %_SPECIFIC_EVENT_CLASSES = (
