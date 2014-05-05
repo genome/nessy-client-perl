@@ -21,15 +21,9 @@ subtest 'shortest_release_path' => sub {
     _execute_event($sm, 'e_http_2xx', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'delete_timeout',
-        'reset_retry_backoff',
-        'update_url',
-        'create_renew_timer',
-        'notify_lock_active',
-        'delete_timer',
-        'release_claim',
+        'create_timeout', 'register_claim',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timer', 'release_claim',
         'notify_lock_released',
     );
 };
@@ -50,15 +44,9 @@ subtest 'retry_release_path' => sub {
     _execute_event($sm, 'e_http_2xx', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'delete_timeout',
-        'reset_retry_backoff',
-        'update_url',
-        'create_renew_timer',
-        'notify_lock_active',
-        'delete_timer',
-        'release_claim',
+        'create_timeout', 'register_claim',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timer', 'release_claim',
         'create_retry_timer',
         'release_claim',
         'notify_lock_released',
@@ -80,16 +68,10 @@ subtest 'waiting_to_active_path' => sub {
     _execute_event($sm, 'e_http_2xx', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'reset_retry_backoff',
-        'update_url',
-        'create_activate_timer',
+        'create_timeout', 'register_claim',
+        'reset_retry_backoff', 'update_url', 'create_activate_timer',
         'activate_claim',
-        'delete_timeout',
-        'reset_retry_backoff',
-        'create_renew_timer',
-        'notify_lock_active',
+        'delete_timeout', 'reset_retry_backoff', 'create_renew_timer', 'notify_lock_active',
     );
 };
 
@@ -107,11 +89,8 @@ subtest 'keep_waiting_path' => sub {
     _execute_event($sm, 'e_http_409', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'reset_retry_backoff',
-        'update_url',
-        'create_activate_timer',
+        'create_timeout', 'register_claim',
+        'reset_retry_backoff', 'update_url', 'create_activate_timer',
         'activate_claim',
         'create_activate_timer',
     );
@@ -131,13 +110,10 @@ subtest 'retry_register_path' => sub {
         update_url => 'a');
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
+        'create_timeout', 'register_claim',
         'create_retry_timer',
         'register_claim',
-        'reset_retry_backoff',
-        'update_url',
-        'create_activate_timer',
+        'reset_retry_backoff', 'update_url', 'create_activate_timer',
     );
 };
 
@@ -152,10 +128,8 @@ subtest 'register_fail_path' => sub {
     _execute_event($sm, 'e_http_4xx', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'delete_timeout',
-        'terminate_client',
+        'create_timeout', 'register_claim',
+        'delete_timeout', 'terminate_client',
     );
 };
 
@@ -170,10 +144,8 @@ subtest 'registering_withdraw_path' => sub {
     _execute_event($sm, 'e_timeout', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'abandon_last_request',
-        'notify_claim_withdrawn',
+        'create_timeout', 'register_claim',
+        'abandon_last_request', 'notify_claim_withdrawn',
     );
 };
 
@@ -189,11 +161,9 @@ subtest 'retry_registering_withdraw_path' => sub {
     _execute_event($sm, 'e_timeout', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
+        'create_timeout', 'register_claim',
         'create_retry_timer',
-        'delete_timer',
-        'notify_claim_withdrawn',
+        'delete_timer', 'notify_claim_withdrawn',
     );
 };
 
@@ -208,10 +178,8 @@ subtest 'registering_abort_path' => sub {
     _execute_event($sm, 'e_signal', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'delete_timeout',
-        'abandon_last_request',
+        'create_timeout', 'register_claim',
+        'delete_timeout', 'abandon_last_request',
     );
 };
 
@@ -227,11 +195,9 @@ subtest 'retry_registering_abort_path' => sub {
     _execute_event($sm, 'e_signal', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
+        'create_timeout', 'register_claim',
         'create_retry_timer',
-        'delete_timer',
-        'delete_timeout',
+        'delete_timer', 'delete_timeout',
     );
 };
 
@@ -249,13 +215,9 @@ subtest 'withdraw_from_waiting_path' => sub {
     _execute_event($sm, 'e_http_2xx', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'reset_retry_backoff',
-        'update_url',
-        'create_activate_timer',
-        'delete_timer',
-        'withdraw_claim',
+        'create_timeout', 'register_claim',
+        'reset_retry_backoff', 'update_url', 'create_activate_timer',
+        'delete_timer', 'withdraw_claim',
         'notify_claim_withdrawn',
     );
 };
@@ -276,13 +238,9 @@ subtest 'retry_withdraw_path' => sub {
     _execute_event($sm, 'e_http_2xx', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'reset_retry_backoff',
-        'update_url',
-        'create_activate_timer',
-        'delete_timer',
-        'withdraw_claim',
+        'create_timeout', 'register_claim',
+        'reset_retry_backoff', 'update_url', 'create_activate_timer',
+        'delete_timer', 'withdraw_claim',
         'create_retry_timer',
         'withdraw_claim',
         'notify_claim_withdrawn',
@@ -303,13 +261,9 @@ subtest 'withdaw_fail_path' => sub {
     _execute_event($sm, 'e_http_4xx', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'reset_retry_backoff',
-        'update_url',
-        'create_activate_timer',
-        'delete_timer',
-        'withdraw_claim',
+        'create_timeout', 'register_claim',
+        'reset_retry_backoff', 'update_url', 'create_activate_timer',
+        'delete_timer', 'withdraw_claim',
         'terminate_client',
     );
 };
@@ -328,13 +282,9 @@ subtest 'abort_during_withdraw_path' => sub {
     _execute_event($sm, 'e_signal', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'reset_retry_backoff',
-        'update_url',
-        'create_activate_timer',
-        'delete_timer',
-        'withdraw_claim',
+        'create_timeout', 'register_claim',
+        'reset_retry_backoff', 'update_url', 'create_activate_timer',
+        'delete_timer', 'withdraw_claim',
         'abandon_last_request',
     );
 };
@@ -354,13 +304,9 @@ subtest 'abort_during_withdraw_retry_path' => sub {
     _execute_event($sm, 'e_signal', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'reset_retry_backoff',
-        'update_url',
-        'create_activate_timer',
-        'delete_timer',
-        'withdraw_claim',
+        'create_timeout', 'register_claim',
+        'reset_retry_backoff', 'update_url', 'create_activate_timer',
+        'delete_timer', 'withdraw_claim',
         'create_retry_timer',
         'delete_timer',
     );
@@ -380,14 +326,10 @@ subtest 'fail_during_activating_path' => sub {
     _execute_event($sm, 'e_http_4xx', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'reset_retry_backoff',
-        'update_url',
-        'create_activate_timer',
+        'create_timeout', 'register_claim',
+        'reset_retry_backoff', 'update_url', 'create_activate_timer',
         'activate_claim',
-        'delete_timeout',
-        'terminate_client',
+        'delete_timeout', 'terminate_client',
     );
 };
 
@@ -407,18 +349,12 @@ subtest 'retrying_activate_path' => sub {
     _execute_event($sm, 'e_http_2xx', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'reset_retry_backoff',
-        'update_url',
-        'create_activate_timer',
+        'create_timeout', 'register_claim',
+        'reset_retry_backoff', 'update_url', 'create_activate_timer',
         'activate_claim',
         'create_retry_timer',
         'activate_claim',
-        'delete_timeout',
-        'reset_retry_backoff',
-        'create_renew_timer',
-        'notify_lock_active',
+        'delete_timeout', 'reset_retry_backoff', 'create_renew_timer', 'notify_lock_active',
     );
 };
 
@@ -437,15 +373,10 @@ subtest 'withdraw_activating_path' => sub {
     _execute_event($sm, 'e_http_2xx', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'reset_retry_backoff',
-        'update_url',
-        'create_activate_timer',
+        'create_timeout', 'register_claim',
+        'reset_retry_backoff', 'update_url', 'create_activate_timer',
         'activate_claim',
-        'abandon_last_request',
-        'reset_retry_backoff',
-        'withdraw_claim',
+        'abandon_last_request', 'reset_retry_backoff', 'withdraw_claim',
         'notify_claim_withdrawn',
     );
 };
@@ -466,15 +397,11 @@ subtest 'withdraw_retrying_activate_path' => sub {
     _execute_event($sm, 'e_http_2xx', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'reset_retry_backoff',
-        'update_url',
-        'create_activate_timer',
+        'create_timeout', 'register_claim',
+        'reset_retry_backoff', 'update_url', 'create_activate_timer',
         'activate_claim',
         'create_retry_timer',
-        'delete_timer',
-        'withdraw_claim',
+        'delete_timer', 'withdraw_claim',
         'notify_claim_withdrawn',
     );
 };
@@ -493,15 +420,9 @@ subtest 'release_failure_path' => sub {
     _execute_event($sm, 'e_http_4xx', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'delete_timeout',
-        'reset_retry_backoff',
-        'update_url',
-        'create_renew_timer',
-        'notify_lock_active',
-        'delete_timer',
-        'release_claim',
+        'create_timeout', 'register_claim',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timer', 'release_claim',
         'terminate_client',
     );
 };
@@ -520,15 +441,9 @@ subtest 'abort_while_releasing_path' => sub {
     _execute_event($sm, 'e_signal', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'delete_timeout',
-        'reset_retry_backoff',
-        'update_url',
-        'create_renew_timer',
-        'notify_lock_active',
-        'delete_timer',
-        'release_claim',
+        'create_timeout', 'register_claim',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timer', 'release_claim',
         'abandon_last_request',
     );
 };
@@ -548,15 +463,9 @@ subtest 'abort_while_retrying_release_path' => sub {
     _execute_event($sm, 'e_signal', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'delete_timeout',
-        'reset_retry_backoff',
-        'update_url',
-        'create_renew_timer',
-        'notify_lock_active',
-        'delete_timer',
-        'release_claim',
+        'create_timeout', 'register_claim',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timer', 'release_claim',
         'create_retry_timer',
         'delete_timer',
     );
@@ -577,18 +486,11 @@ subtest 'normal_renew_path' => sub {
     _execute_event($sm, 'e_release', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'delete_timeout',
-        'reset_retry_backoff',
-        'update_url',
-        'create_renew_timer',
-        'notify_lock_active',
+        'create_timeout', 'register_claim',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
         'renew_claim',
-        'reset_retry_backoff',
-        'create_renew_timer',
-        'delete_timer',
-        'release_claim',
+        'reset_retry_backoff', 'create_renew_timer',
+        'delete_timer', 'release_claim',
     );
 };
 
@@ -609,20 +511,13 @@ subtest 'retry_renew_path' => sub {
     _execute_event($sm, 'e_release', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'delete_timeout',
-        'reset_retry_backoff',
-        'update_url',
-        'create_renew_timer',
-        'notify_lock_active',
+        'create_timeout', 'register_claim',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
         'renew_claim',
         'create_retry_timer',
         'renew_claim',
-        'reset_retry_backoff',
-        'create_renew_timer',
-        'delete_timer',
-        'release_claim',
+        'reset_retry_backoff', 'create_renew_timer',
+        'delete_timer', 'release_claim',
     );
 };
 
@@ -640,13 +535,8 @@ subtest 'renewing_fail_path' => sub {
     _execute_event($sm, 'e_http_4xx', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'delete_timeout',
-        'reset_retry_backoff',
-        'update_url',
-        'create_renew_timer',
-        'notify_lock_active',
+        'create_timeout', 'register_claim',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
         'renew_claim',
         'terminate_client',
     );
@@ -666,17 +556,10 @@ subtest 'release_from_renewing' => sub {
     _execute_event($sm, 'e_release', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'delete_timeout',
-        'reset_retry_backoff',
-        'update_url',
-        'create_renew_timer',
-        'notify_lock_active',
+        'create_timeout', 'register_claim',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
         'renew_claim',
-        'abandon_last_request',
-        'reset_retry_backoff',
-        'release_claim',
+        'abandon_last_request', 'reset_retry_backoff', 'release_claim',
     );
 };
 
@@ -695,17 +578,11 @@ subtest 'release_from_retrying_renew' => sub {
     _execute_event($sm, 'e_release', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'delete_timeout',
-        'reset_retry_backoff',
-        'update_url',
-        'create_renew_timer',
-        'notify_lock_active',
+        'create_timeout', 'register_claim',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
         'renew_claim',
         'create_retry_timer',
-        'delete_timer',
-        'release_claim',
+        'delete_timer', 'release_claim',
     );
 };
 
@@ -723,17 +600,10 @@ subtest 'abort_from_renewing' => sub {
     _execute_event($sm, 'e_signal', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'delete_timeout',
-        'reset_retry_backoff',
-        'update_url',
-        'create_renew_timer',
-        'notify_lock_active',
+        'create_timeout', 'register_claim',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
         'renew_claim',
-        'abandon_last_request',
-        'reset_retry_backoff',
-        'abort_claim',
+        'abandon_last_request', 'reset_retry_backoff', 'abort_claim',
     );
 };
 
@@ -752,17 +622,11 @@ subtest 'abort_from_retrying_renew' => sub {
     _execute_event($sm, 'e_signal', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'delete_timeout',
-        'reset_retry_backoff',
-        'update_url',
-        'create_renew_timer',
-        'notify_lock_active',
+        'create_timeout', 'register_claim',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
         'renew_claim',
         'create_retry_timer',
-        'delete_timer',
-        'abort_claim',
+        'delete_timer', 'abort_claim',
     );
 };
 
@@ -781,18 +645,11 @@ subtest 'abort_from_active' => sub {
     _execute_event($sm, 'e_signal', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'reset_retry_backoff',
-        'update_url',
-        'create_activate_timer',
+        'create_timeout', 'register_claim',
+        'reset_retry_backoff', 'update_url', 'create_activate_timer',
         'activate_claim',
-        'delete_timeout',
-        'reset_retry_backoff',
-        'create_renew_timer',
-        'notify_lock_active',
-        'delete_timer',
-        'abort_claim',
+        'delete_timeout', 'reset_retry_backoff', 'create_renew_timer', 'notify_lock_active',
+        'delete_timer', 'abort_claim',
     );
 };
 
@@ -810,16 +667,10 @@ subtest 'abort_from_activating' => sub {
     _execute_event($sm, 'e_signal', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'reset_retry_backoff',
-        'update_url',
-        'create_activate_timer',
+        'create_timeout', 'register_claim',
+        'reset_retry_backoff', 'update_url', 'create_activate_timer',
         'activate_claim',
-        'delete_timeout',
-        'abandon_last_request',
-        'reset_retry_backoff',
-        'abort_claim',
+        'delete_timeout', 'abandon_last_request', 'reset_retry_backoff', 'abort_claim',
     );
 };
 
@@ -836,14 +687,9 @@ subtest 'abort_from_waiting' => sub {
     _execute_event($sm, 'e_signal', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'reset_retry_backoff',
-        'update_url',
-        'create_activate_timer',
-        'delete_timer',
-        'delete_timeout',
-        'abort_claim',
+        'create_timeout', 'register_claim',
+        'reset_retry_backoff', 'update_url', 'create_activate_timer',
+        'delete_timer', 'delete_timeout', 'abort_claim',
     );
 };
 
@@ -862,17 +708,11 @@ subtest 'abort_from_retrying_activating' => sub {
     _execute_event($sm, 'e_signal', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'reset_retry_backoff',
-        'update_url',
-        'create_activate_timer',
+        'create_timeout', 'register_claim',
+        'reset_retry_backoff', 'update_url', 'create_activate_timer',
         'activate_claim',
-        'create_retry_timer',
-        'delete_timer',
-        'reset_retry_backoff',
-        'delete_timeout',
-        'abort_claim',
+        'create_retry_timer', 'delete_timer', 'reset_retry_backoff',
+        'delete_timeout', 'abort_claim',
     );
 };
 
@@ -890,15 +730,10 @@ subtest 'successful_abort_path' => sub {
     _execute_event($sm, 'e_http_2xx', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'delete_timeout',
-        'reset_retry_backoff',
-        'update_url',
-        'create_renew_timer',
-        'notify_lock_active',
-        'delete_timer',
-        'abort_claim',
+        'create_timeout', 'register_claim',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timer', 'abort_claim',
+        # No action for final event
     );
 };
 
@@ -916,15 +751,9 @@ subtest 'failed_abort_path' => sub {
     _execute_event($sm, 'e_http_4xx', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'delete_timeout',
-        'reset_retry_backoff',
-        'update_url',
-        'create_renew_timer',
-        'notify_lock_active',
-        'delete_timer',
-        'abort_claim',
+        'create_timeout', 'register_claim',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timer', 'abort_claim',
         'terminate_client',
     );
 };
@@ -945,17 +774,12 @@ subtest 'retry_abort_path' => sub {
     _execute_event($sm, 'e_http_2xx', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'delete_timeout',
-        'reset_retry_backoff',
-        'update_url',
-        'create_renew_timer',
-        'notify_lock_active',
-        'delete_timer',
-        'abort_claim',
+        'create_timeout', 'register_claim',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timer', 'abort_claim',
         'create_retry_timer',
         'abort_claim',
+        # No action for final event
     );
 };
 
@@ -973,15 +797,9 @@ subtest 'abort_during_aborting_path' => sub {
     _execute_event($sm, 'e_signal', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'delete_timeout',
-        'reset_retry_backoff',
-        'update_url',
-        'create_renew_timer',
-        'notify_lock_active',
-        'delete_timer',
-        'abort_claim',
+        'create_timeout', 'register_claim',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timer', 'abort_claim',
         'abandon_last_request',
     );
 };
@@ -1001,15 +819,9 @@ subtest 'abort_during_retrying_abort_path' => sub {
     _execute_event($sm, 'e_signal', command_interface => $ci);
 
     _verify_calls($ci,
-        'create_timeout',
-        'register_claim',
-        'delete_timeout',
-        'reset_retry_backoff',
-        'update_url',
-        'create_renew_timer',
-        'notify_lock_active',
-        'delete_timer',
-        'abort_claim',
+        'create_timeout', 'register_claim',
+        'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_lock_active',
+        'delete_timer', 'abort_claim',
         'create_retry_timer',
         'delete_timer',
     );
