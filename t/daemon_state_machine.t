@@ -5,7 +5,9 @@ use Test::More;
 use Test::MockObject;
 
 
-use_ok('Nessy::Daemon::StateMachine');
+BEGIN {
+    use_ok('Nessy::Daemon::StateMachine');
+}
 
 
 subtest 'shortest_release_path' => sub {

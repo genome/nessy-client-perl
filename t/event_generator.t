@@ -6,7 +6,9 @@ use Test::MockObject;
 
 use AnyEvent;
 
-use_ok('Nessy::Daemon::EventGenerator');
+BEGIN {
+    use_ok('Nessy::Daemon::EventGenerator');
+}
 
 subtest test_timeout_callback => sub {
     _test_generic_callback('timeout_callback', 'timeout');

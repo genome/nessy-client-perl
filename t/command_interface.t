@@ -10,7 +10,9 @@ use lib 't/lib';
 use Nessy::Client::TestWebServer;
 
 
-use_ok('Nessy::Daemon::CommandInterface');
+BEGIN {
+    use_ok('Nessy::Daemon::CommandInterface');
+}
 
 
 subtest create_timeout_triggers_callback => sub {
