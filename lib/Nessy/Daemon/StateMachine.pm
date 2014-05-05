@@ -221,7 +221,6 @@ $factory->define_transitions(
 [ $s_retrying_register , $e_timeout  , $s_done              ,  [ \&a_delete_timer          , \&a_notify_failure        ]                           ]                        ,
 
 [ $s_retrying_release  , $e_signal   , $s_done              ,  [ \&a_delete_timer          ]                           ]                           ,
-[ $s_retrying_release  , $e_release  , $s_done              ,  [ \&a_delete_timer          ]                           ]                           ,
 [ $s_retrying_release  , $e_timer    , $s_releasing         ,  [ \&a_release_claim         ]                           ]                           ,
 
 [ $s_retrying_renew    , $e_signal   , $s_aborting          ,  [ \&a_delete_timer          , \&a_abort_claim           ]                           ]                        ,
