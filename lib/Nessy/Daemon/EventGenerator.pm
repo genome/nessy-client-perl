@@ -80,7 +80,7 @@ sub _log_http_response {
     my ($self, $body, $headers) = @_;
 
     my $status_code = $headers->{Status};
-    $self->_log("HTTP Response (%d) %s:  %s", $status_code,
+    $self->_log("Unexpected HTTP Response (%d) %s:  '%s'", $status_code,
         $self->_json_parser->encode($headers), $body || '');
 }
 
