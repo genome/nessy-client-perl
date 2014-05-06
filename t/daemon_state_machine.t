@@ -177,7 +177,7 @@ subtest 'registering_abort_path' => sub {
     my $ci = _mock_command_interface();
 
     _execute_event($sm, 'e_start', command_interface => $ci);
-    _execute_event($sm, 'e_signal', command_interface => $ci);
+    _execute_event($sm, 'e_shutdown', command_interface => $ci);
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
@@ -194,7 +194,7 @@ subtest 'retry_registering_abort_path' => sub {
 
     _execute_event($sm, 'e_start', command_interface => $ci);
     _execute_event($sm, 'e_http_5xx', command_interface => $ci);
-    _execute_event($sm, 'e_signal', command_interface => $ci);
+    _execute_event($sm, 'e_shutdown', command_interface => $ci);
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
@@ -281,13 +281,13 @@ subtest 'abort_during_withdraw_path' => sub {
     _execute_event($sm, 'e_http_202', command_interface => $ci,
         update_url => 'a');
     _execute_event($sm, 'e_timeout', command_interface => $ci);
-    _execute_event($sm, 'e_signal', command_interface => $ci);
+    _execute_event($sm, 'e_shutdown', command_interface => $ci);
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
         'reset_retry_backoff', 'update_url', 'create_activate_timer',
         'delete_timer', 'withdraw_claim',
-        'abandon_last_request',
+        'abandon_last_request', 'notify_withdraw_signal',
     );
 };
 
@@ -303,7 +303,7 @@ subtest 'abort_during_withdraw_retry_path' => sub {
         update_url => 'a');
     _execute_event($sm, 'e_timeout', command_interface => $ci);
     _execute_event($sm, 'e_http_5xx', command_interface => $ci);
-    _execute_event($sm, 'e_signal', command_interface => $ci);
+    _execute_event($sm, 'e_shutdown', command_interface => $ci);
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
@@ -440,13 +440,13 @@ subtest 'abort_while_releasing_path' => sub {
     _execute_event($sm, 'e_http_201', command_interface => $ci,
         update_url => 'a');
     _execute_event($sm, 'e_release', command_interface => $ci);
-    _execute_event($sm, 'e_signal', command_interface => $ci);
+    _execute_event($sm, 'e_shutdown', command_interface => $ci);
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
         'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_active',
         'delete_timer', 'release_claim',
-        'abandon_last_request',
+        'abandon_last_request', 'notify_release_signal',
     );
 };
 
@@ -462,7 +462,7 @@ subtest 'abort_while_retrying_release_path' => sub {
         update_url => 'a');
     _execute_event($sm, 'e_release', command_interface => $ci);
     _execute_event($sm, 'e_http_5xx', command_interface => $ci);
-    _execute_event($sm, 'e_signal', command_interface => $ci);
+    _execute_event($sm, 'e_shutdown', command_interface => $ci);
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
@@ -599,7 +599,7 @@ subtest 'abort_from_renewing' => sub {
     _execute_event($sm, 'e_http_201', command_interface => $ci,
         update_url => 'a');
     _execute_event($sm, 'e_timer', command_interface => $ci);
-    _execute_event($sm, 'e_signal', command_interface => $ci);
+    _execute_event($sm, 'e_shutdown', command_interface => $ci);
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
@@ -621,7 +621,7 @@ subtest 'abort_from_retrying_renew' => sub {
         update_url => 'a');
     _execute_event($sm, 'e_timer', command_interface => $ci);
     _execute_event($sm, 'e_http_5xx', command_interface => $ci);
-    _execute_event($sm, 'e_signal', command_interface => $ci);
+    _execute_event($sm, 'e_shutdown', command_interface => $ci);
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
@@ -644,7 +644,7 @@ subtest 'abort_from_active' => sub {
         update_url => 'a');
     _execute_event($sm, 'e_timer', command_interface => $ci);
     _execute_event($sm, 'e_http_2xx', command_interface => $ci);
-    _execute_event($sm, 'e_signal', command_interface => $ci);
+    _execute_event($sm, 'e_shutdown', command_interface => $ci);
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
@@ -666,7 +666,7 @@ subtest 'abort_from_activating' => sub {
     _execute_event($sm, 'e_http_202', command_interface => $ci,
         update_url => 'a');
     _execute_event($sm, 'e_timer', command_interface => $ci);
-    _execute_event($sm, 'e_signal', command_interface => $ci);
+    _execute_event($sm, 'e_shutdown', command_interface => $ci);
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
@@ -686,7 +686,7 @@ subtest 'abort_from_waiting' => sub {
     _execute_event($sm, 'e_start', command_interface => $ci);
     _execute_event($sm, 'e_http_202', command_interface => $ci,
         update_url => 'a');
-    _execute_event($sm, 'e_signal', command_interface => $ci);
+    _execute_event($sm, 'e_shutdown', command_interface => $ci);
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
@@ -707,7 +707,7 @@ subtest 'abort_from_retrying_activating' => sub {
         update_url => 'a');
     _execute_event($sm, 'e_timer', command_interface => $ci);
     _execute_event($sm, 'e_http_5xx', command_interface => $ci);
-    _execute_event($sm, 'e_signal', command_interface => $ci);
+    _execute_event($sm, 'e_shutdown', command_interface => $ci);
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
@@ -728,7 +728,7 @@ subtest 'successful_abort_path' => sub {
     _execute_event($sm, 'e_start', command_interface => $ci);
     _execute_event($sm, 'e_http_201', command_interface => $ci,
         update_url => 'a');
-    _execute_event($sm, 'e_signal', command_interface => $ci);
+    _execute_event($sm, 'e_shutdown', command_interface => $ci);
     _execute_event($sm, 'e_http_2xx', command_interface => $ci);
 
     _verify_calls($ci,
@@ -749,7 +749,7 @@ subtest 'failed_abort_path' => sub {
     _execute_event($sm, 'e_start', command_interface => $ci);
     _execute_event($sm, 'e_http_201', command_interface => $ci,
         update_url => 'a');
-    _execute_event($sm, 'e_signal', command_interface => $ci);
+    _execute_event($sm, 'e_shutdown', command_interface => $ci);
     _execute_event($sm, 'e_http_4xx', command_interface => $ci);
 
     _verify_calls($ci,
@@ -770,7 +770,7 @@ subtest 'retry_abort_path' => sub {
     _execute_event($sm, 'e_start', command_interface => $ci);
     _execute_event($sm, 'e_http_201', command_interface => $ci,
         update_url => 'a');
-    _execute_event($sm, 'e_signal', command_interface => $ci);
+    _execute_event($sm, 'e_shutdown', command_interface => $ci);
     _execute_event($sm, 'e_http_5xx', command_interface => $ci);
     _execute_event($sm, 'e_timer', command_interface => $ci);
     _execute_event($sm, 'e_http_2xx', command_interface => $ci);
@@ -795,8 +795,8 @@ subtest 'abort_during_aborting_path' => sub {
     _execute_event($sm, 'e_start', command_interface => $ci);
     _execute_event($sm, 'e_http_201', command_interface => $ci,
         update_url => 'a');
-    _execute_event($sm, 'e_signal', command_interface => $ci);
-    _execute_event($sm, 'e_signal', command_interface => $ci);
+    _execute_event($sm, 'e_shutdown', command_interface => $ci);
+    _execute_event($sm, 'e_shutdown', command_interface => $ci);
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
@@ -816,9 +816,9 @@ subtest 'abort_during_retrying_abort_path' => sub {
     _execute_event($sm, 'e_start', command_interface => $ci);
     _execute_event($sm, 'e_http_201', command_interface => $ci,
         update_url => 'a');
-    _execute_event($sm, 'e_signal', command_interface => $ci);
+    _execute_event($sm, 'e_shutdown', command_interface => $ci);
     _execute_event($sm, 'e_http_5xx', command_interface => $ci);
-    _execute_event($sm, 'e_signal', command_interface => $ci);
+    _execute_event($sm, 'e_shutdown', command_interface => $ci);
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
