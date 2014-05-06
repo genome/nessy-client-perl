@@ -188,7 +188,7 @@ $factory->define_transitions(
 [ $s_aborting          , $e_http_409 , $s_fail              ,  [ \&a_notify_abort_error    ]                              ]                              ,
 [ $s_aborting          , $e_http_4xx , $s_fail              ,  [ \&a_notify_abort_error    ]                              ]                              ,
 [ $s_aborting          , $e_http_5xx , $s_retrying_abort    ,  [ \&a_create_retry_timer    ]                              ]                              ,
-[ $s_aborting          , $e_http_2xx , $s_aborted           ,  [                           ]                              ]                              ,
+[ $s_aborting          , $e_http_2xx , $s_aborted           ,  [ \&a_notify_aborted        ]                              ]                              ,
 
 [ $s_activating        , $e_shutdown , $s_aborting          ,  [ \&a_delete_timeout        , \&a_abandon_last_request     , \&a_reset_retry_backoff      , \&a_abort_claim        ]                   ]  ,
 [ $s_activating        , $e_http_2xx , $s_active            ,  [ \&a_delete_timeout        , \&a_reset_retry_backoff      , \&a_create_renew_timer       , \&a_notify_active      ]                   ]  ,

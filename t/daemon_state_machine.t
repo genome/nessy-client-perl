@@ -735,7 +735,7 @@ subtest 'successful_abort_path' => sub {
         'create_timeout', 'register_claim',
         'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_active',
         'delete_timer', 'abort_claim',
-        # No action for final event
+        'notify_aborted',
     );
 };
 
@@ -781,7 +781,7 @@ subtest 'retry_abort_path' => sub {
         'delete_timer', 'abort_claim',
         'create_retry_timer',
         'abort_claim',
-        # No action for final event
+        'notify_aborted',
     );
 };
 
