@@ -4,6 +4,7 @@ use strict;
 use warnings FATAL => 'all';
 
 use Nessy::Daemon::StateMachine;
+use JSON;
 
 use Nessy::Properties qw(
     command_interface
@@ -44,6 +45,8 @@ sub release {
 sub http_response_callback {
     my ($self, $command_interface, $body, $headers) = @_;
 
+    $self->_log_http_error_response($body, $headers);
+
     my $status_code = $headers->{Status};
 
     my %params;
@@ -54,6 +57,42 @@ sub http_response_callback {
     my $event_class = $self->_get_event_class($status_code);
     $self->_trigger_event($event_class, $command_interface, %params);
 }
+
+
+sub _log_http_error_response {
+    my ($self, $body, $headers) = @_;
+
+    my $status_code = $headers->{Status};
+    my $status_category = int($status_code/100);
+
+    if ($status_category == 5
+            || ($status_category == 4 && $status_code != 409)) {
+        $self->_log_http_response($body, $headers);
+    }
+}
+
+my $_json_parser;
+sub _json_parser {
+    $_json_parser ||= JSON->new;
+}
+
+sub _log_http_response {
+    my ($self, $body, $headers) = @_;
+
+    my $status_code = $headers->{Status};
+    $self->_log("HTTP Response (%d) %s:  %s", $status_code,
+        $self->_json_parser->encode($headers), $body || '');
+}
+
+sub _log {
+    my $self = shift;
+    my $template = shift;
+
+    my $message = sprintf($template, @_);
+
+    print STDERR $message, "\n";
+}
+
 
 my %_SPECIFIC_EVENT_CLASSES = (
     201 => $Nessy::Daemon::StateMachine::e_http_201,
