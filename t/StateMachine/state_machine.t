@@ -1,12 +1,13 @@
 use strict;
 use warnings;
 
-use Test::More tests => 32;
+use Test::More tests => 36;
 use Test::Exception;
 
-use Nessy::StateMachineFactory;
+use StateMachine::Factory;
 
 basic_state_machine();
+event_with_data();
 conflict_state_machine();
 loop_state_machine();
 
@@ -31,7 +32,7 @@ sub duplicate_event {
 sub _duplicate_thing {
     my $thing = shift;
 
-    my $f = Nessy::StateMachineFactory->new();
+    my $f = StateMachine::Factory->new();
     $f->$thing('foo');
 
     dies_ok { $f->$thing('foo') } "Defining duplicate $thing throws exception";
@@ -39,7 +40,7 @@ sub _duplicate_thing {
 
 
 sub basic_state_machine {
-    my $f = Nessy::StateMachineFactory->new();
+    my $f = StateMachine::Factory->new();
 
     my $start_state = $f->define_start_state('start');
     ok($start_state, 'define start state');
@@ -66,8 +67,29 @@ sub basic_state_machine {
     $sm->handle_event($go_event);
 }
 
+
+sub event_with_data {
+    my $f = StateMachine::Factory->new();
+
+    my $start_state = $f->define_start_state('start');
+    my $end_state = $f->define_state('end');
+
+    my $event_type = $f->define_event('e', 'prop1', 'prop2');
+    ok($event_type, 'event with properties defined');
+
+    $f->define_transitions(
+        [ $start_state, $event_type, $end_state, [ sub { ok(1, 'Event fired') } ] ],
+    );
+
+    my $sm = $f->produce_state_machine;
+    my $e = $event_type->new(prop1 => 'a', prop2 => 'b');
+    is($e->prop1, 'a', 'prop1 matches');
+    is($e->prop2, 'b', 'prop2 matches');
+    $sm->handle_event($e);
+}
+
 sub conflict_state_machine {
-    my $f = Nessy::StateMachineFactory->new();
+    my $f = StateMachine::Factory->new();
 
     my $start_state = $f->define_start_state('start');
     ok($start_state, 'define start state');
@@ -100,7 +122,7 @@ sub conflict_state_machine {
 }
 
 sub loop_state_machine {
-    my $f = Nessy::StateMachineFactory->new();
+    my $f = StateMachine::Factory->new();
 
     my $start_state = $f->define_start_state('start');
     ok($start_state, 'define start state');
@@ -132,7 +154,7 @@ sub loop_state_machine {
 }
 
 sub returning_false_from_action_throws_exception {
-    my $f = Nessy::StateMachineFactory->new();
+    my $f = StateMachine::Factory->new();
 
     my $start_state = $f->define_start_state('start');
     my $loop_event_type = $f->define_event('loop');
@@ -146,7 +168,7 @@ sub returning_false_from_action_throws_exception {
 }
 
 sub duplicate_transition {
-    my $f = Nessy::StateMachineFactory->new();
+    my $f = StateMachine::Factory->new();
 
     my $start_state = $f->define_start_state('start');
     my $loop_event_type = $f->define_event('loop');
@@ -157,7 +179,7 @@ sub duplicate_transition {
 }
 
 sub modifying_concrete_sm_throws_exception {
-    my $f = Nessy::StateMachineFactory->new();
+    my $f = StateMachine::Factory->new();
     my $start_state = $f->define_start_state('start');
     my $loop_event_type = $f->define_event('loop');
 
@@ -174,14 +196,14 @@ sub modifying_concrete_sm_throws_exception {
 }
 
 sub changing_start_state_throws_exception {
-    my $f = Nessy::StateMachineFactory->new();
+    my $f = StateMachine::Factory->new();
     $f->define_start_state('start');
     dies_ok { $f->define_start_state('foo') }
         'Changing the start state of a factory throws exception';
 }
 
 sub missing_start_state_throws_exception {
-    my $f = Nessy::StateMachineFactory->new();
+    my $f = StateMachine::Factory->new();
 
     my $state = $f->define_state('foo');
     my $event = $f->define_event('go');
@@ -192,7 +214,7 @@ sub missing_start_state_throws_exception {
 }
 
 sub unknown_event_throws_exception_in_transition {
-    my $f = Nessy::StateMachineFactory->new();
+    my $f = StateMachine::Factory->new();
     my $start_state = $f->define_start_state('start');
     my $other_state = $f->define_state('other');
 
