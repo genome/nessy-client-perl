@@ -181,7 +181,7 @@ subtest 'registering_abort_path' => sub {
 
     _verify_calls($ci,
         'create_timeout', 'register_claim',
-        'delete_timeout', 'abandon_last_request', 'notify_register_signal',
+        'delete_timeout', 'abandon_last_request', 'notify_register_shutdown',
     );
 };
 
@@ -287,7 +287,7 @@ subtest 'abort_during_withdraw_path' => sub {
         'create_timeout', 'register_claim',
         'reset_retry_backoff', 'update_url', 'create_activate_timer',
         'delete_timer', 'withdraw_claim',
-        'abandon_last_request', 'notify_withdraw_signal',
+        'abandon_last_request', 'notify_withdraw_shutdown',
     );
 };
 
@@ -446,7 +446,7 @@ subtest 'abort_while_releasing_path' => sub {
         'create_timeout', 'register_claim',
         'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_active',
         'delete_timer', 'release_claim',
-        'abandon_last_request', 'notify_release_signal',
+        'abandon_last_request', 'notify_release_shutdown',
     );
 };
 
@@ -802,7 +802,7 @@ subtest 'abort_during_aborting_path' => sub {
         'create_timeout', 'register_claim',
         'delete_timeout', 'reset_retry_backoff', 'update_url', 'create_renew_timer', 'notify_active',
         'delete_timer', 'abort_claim',
-        'abandon_last_request', 'notify_abort_signal',
+        'abandon_last_request', 'notify_abort_shutdown',
     );
 };
 
@@ -857,19 +857,19 @@ sub _mock_command_interface {
         'delete_timeout',
         'delete_timer',
         'notify_abort_error',
-        'notify_abort_signal',
+        'notify_abort_shutdown',
         'notify_aborted',
         'notify_activate_error',
         'notify_active',
         'notify_register_error',
-        'notify_register_signal',
+        'notify_register_shutdown',
         'notify_register_timeout',
         'notify_release_error',
-        'notify_release_signal',
+        'notify_release_shutdown',
         'notify_released',
         'notify_renew_error',
         'notify_withdraw_error',
-        'notify_withdraw_signal',
+        'notify_withdraw_shutdown',
         'notify_withdrawn',
         'register_claim',
         'release_claim',

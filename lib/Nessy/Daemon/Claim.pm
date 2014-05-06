@@ -33,6 +33,12 @@ sub start {
     1;
 }
 
+sub shutdown {
+    my $self = shift;
+
+    $self->event_generator->shutdown($self->command_interface);
+}
+
 sub terminate {
     my $self = shift;
 

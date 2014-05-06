@@ -303,21 +303,21 @@ sub _construct_callbacks {
             $self->_log_claim_failure($resource_name,
                 "Timed out while attempting to register claim for '%s'");
         },
-        on_register_signal => sub {
+        on_register_shutdown => sub {
             $self->_log_claim_failure($resource_name,
-                "Got signal while attempting to register claim for '%s'");
+                "Got shutdown while attempting to register claim for '%s'");
         },
-        on_withdraw_signal => sub {
+        on_withdraw_shutdown => sub {
             $self->_log_claim_failure($resource_name,
-                "Got signal while withdrawing claim for '%s'");
+                "Got shutdown while withdrawing claim for '%s'");
         },
-        on_abort_signal => sub {
+        on_abort_shutdown => sub {
             $self->_log_claim_failure($resource_name,
-                "Got signal while aborting claim for '%s'");
+                "Got shutdown while aborting claim for '%s'");
         },
-        on_release_signal => sub {
+        on_release_shutdown => sub {
             $self->_log_claim_failure($resource_name,
-                "Got signal while releasing claim for '%s'");
+                "Got shutdown while releasing claim for '%s'");
         },
         on_register_error => sub {
             $self->_log_claim_failure($resource_name,

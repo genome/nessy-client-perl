@@ -12,18 +12,18 @@ use Nessy::Properties qw(
     user_data
 
     on_abort_error
-    on_abort_signal
+    on_abort_shutdown
     on_aborted
     on_active
     on_register_error
-    on_register_signal
+    on_register_shutdown
     on_register_timeout
     on_release_error
-    on_release_signal
+    on_release_shutdown
     on_released
     on_renew_error
     on_withdraw_error
-    on_withdraw_signal
+    on_withdraw_shutdown
     on_withdrawn
 
     activate_seconds
@@ -54,19 +54,19 @@ use List::Util qw(min);
 
 my @NOTIFICATIONS = qw(
     abort_error
-    abort_signal
+    abort_shutdown
     aborted
     activate_error
     active
     register_error
-    register_signal
+    register_shutdown
     register_timeout
     release_error
-    release_signal
+    release_shutdown
     released
     renew_error
     withdraw_error
-    withdraw_signal
+    withdraw_shutdown
     withdrawn
 );
 

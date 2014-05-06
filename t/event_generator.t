@@ -25,8 +25,8 @@ subtest test_start => sub {
 };
 
 
-subtest test_signal => sub {
-    _test_generic_callback('signal', 'signal');
+subtest test_shutdown => sub {
+    _test_generic_callback('shutdown', 'shutdown');
 };
 
 

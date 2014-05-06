@@ -371,19 +371,19 @@ sub _create_command_interface {
 sub _default_callbacks {
     my @CB_NAMES = qw(
         on_abort_error
-        on_abort_signal
+        on_abort_shutdown
         on_aborted
         on_activate_error
         on_active
         on_register_error
-        on_register_signal
+        on_register_shutdown
         on_register_timeout
         on_release_error
-        on_release_signal
+        on_release_shutdown
         on_released
         on_renew_error
         on_withdraw_error
-        on_withdraw_signal
+        on_withdraw_shutdown
         on_withdrawn
     );
 

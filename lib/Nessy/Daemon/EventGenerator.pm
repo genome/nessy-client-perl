@@ -27,13 +27,11 @@ sub start {
         $command_interface);
 }
 
-
-sub signal {
+sub shutdown {
     my ($self, $command_interface) = @_;
-    $self->_trigger_event($Nessy::Daemon::StateMachine::e_signal,
+    $self->_trigger_event($Nessy::Daemon::StateMachine::e_shutdown,
         $command_interface);
 }
-
 
 sub release {
     my ($self, $command_interface) = @_;
