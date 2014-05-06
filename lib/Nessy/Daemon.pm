@@ -524,14 +524,6 @@ sub _claim_withdrawn {
 }
 
 
-sub _on_fatal_error {
-    my($self, $fatal_claim, $message) = @_;
-
-    $self->remove_claim($fatal_claim);
-    $message = sprintf("claimed resource %s: %s", $fatal_claim->resource_name, $message);
-    $self->fatal_error($message);
-}
-
 sub release {
     my($self, $message) = @_;
 
