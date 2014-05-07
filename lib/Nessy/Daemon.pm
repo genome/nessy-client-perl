@@ -364,6 +364,10 @@ sub _construct_callbacks {
             $self->_log_claim_failure($resource_name,
                 "Got shutdown while releasing claim");
         },
+        on_withdraw_shutdown => sub {
+            $self->_log_claim_failure($resource_name,
+                "Got shutdown while withdrawing claim");
+        },
         on_register_error => sub {
             $self->_log_claim_failure($resource_name,
                 "Got error while registering claim");
@@ -440,21 +444,16 @@ sub _claim_released {
 
     $self->_remove_named_claim($resource_name);
 
-    if ($self->_shutting_down) {
-        $self->_finish_shutdown;
+    my $serial = $self->_get_message_serial('release', $resource_name);
+    my $message = Nessy::Client::Message->new(
+        command => 'release',
+        resource_name => $resource_name,
+        serial => $serial,
+    );
 
-    } else {
-        my $serial = $self->_get_message_serial('release', $resource_name);
-        my $message = Nessy::Client::Message->new(
-            command => 'release',
-            resource_name => $resource_name,
-            serial => $serial,
-        );
+    $message->succeed;
 
-        $message->succeed;
-
-        $self->_send_return_message($message);
-    }
+    $self->_send_return_message($message);
 }
 
 sub _claim_release_failure {
@@ -499,22 +498,18 @@ sub _claim_withdrawn {
 
     $self->_remove_named_claim($resource_name);
 
-    if ($self->_shutting_down) {
-        $self->_finish_shutdown;
 
-    } else {
-        my $serial = $self->_get_message_serial('claim', $resource_name);
-        my $message = Nessy::Client::Message->new(
-            command => 'claim',
-            resource_name => $resource_name,
-            serial => $serial,
-        );
+    my $serial = $self->_get_message_serial('claim', $resource_name);
+    my $message = Nessy::Client::Message->new(
+        command => 'claim',
+        resource_name => $resource_name,
+        serial => $serial,
+    );
 
-        $message->error_message("Claim timed out for resource: '$resource_name'");
-        $message->fail;
+    $message->error_message("Claim timed out for resource: '$resource_name'");
+    $message->fail;
 
-        $self->_send_return_message($message);
-    }
+    $self->_send_return_message($message);
 }
 
 sub _remove_named_claim {
