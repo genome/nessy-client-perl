@@ -61,7 +61,7 @@ sub _log_http_error_response {
     my ($self, $body, $headers) = @_;
 
     my $status_code = $headers->{Status};
-    my $status_category = int($status_code/100);
+    my $status_category = _status_category($status_code);
 
     if ($status_category == 5
             || ($status_category == 4 && $status_code != 409)) {
@@ -108,11 +108,15 @@ sub _get_event_class {
     if (exists $_SPECIFIC_EVENT_CLASSES{$status_code}) {
         return $_SPECIFIC_EVENT_CLASSES{$status_code};
     } else {
-        my $category = int($status_code / 100);
+        my $category = _status_category($status_code);
         return $_GENERIC_EVENT_CLASSES{$category};
     }
 }
 
+sub _status_category {
+    my $status_code = shift;
+    return substr($status_code, 0, 1);
+}
 
 sub timer_callback {
     my ($self, $command_interface) = @_;
