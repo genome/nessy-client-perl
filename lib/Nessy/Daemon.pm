@@ -324,7 +324,7 @@ sub claim {
 
 
     if ($claim) {
-        $self->add_claim($claim);
+        $self->_add_claim($claim);
         $claim->start;
     }
     return $claim;
@@ -562,7 +562,7 @@ sub validate {
     1;
 }
 
-sub add_claim {
+sub _add_claim {
     my($self, $claim) = @_;
 
     my $resource_name = $claim->resource_name;
