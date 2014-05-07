@@ -346,39 +346,39 @@ sub _construct_callbacks {
         # Dirty failures
         on_register_timeout => sub {
             $self->_log_claim_failure($resource_name,
-                "Timed out while attempting to register claim for '%s'");
+                "Timed out while attempting to register claim");
         },
         on_register_shutdown => sub {
             $self->_log_claim_failure($resource_name,
-                "Got shutdown while attempting to register claim for '%s'");
+                "Got shutdown while attempting to register claim");
         },
         on_withdraw_shutdown => sub {
             $self->_log_claim_failure($resource_name,
-                "Got shutdown while withdrawing claim for '%s'");
+                "Got shutdown while withdrawing claim");
         },
         on_abort_shutdown => sub {
             $self->_log_claim_failure($resource_name,
-                "Got shutdown while aborting claim for '%s'");
+                "Got shutdown while aborting claim");
         },
         on_release_shutdown => sub {
             $self->_log_claim_failure($resource_name,
-                "Got shutdown while releasing claim for '%s'");
+                "Got shutdown while releasing claim");
         },
         on_register_error => sub {
             $self->_log_claim_failure($resource_name,
-                "Got error while registering claim for '%s'");
+                "Got error while registering claim");
         },
         on_activate_error => sub {
             $self->_log_claim_failure($resource_name,
-                "Got error while activating claim for '%s'");
+                "Got error while activating claim");
         },
         on_withdraw_error => sub {
             $self->_log_claim_failure($resource_name,
-                "Got error while withdrawing claim for '%s'");
+                "Got error while withdrawing claim");
         },
         on_abort_error => sub {
             $self->_log_claim_failure($resource_name,
-                "Got error while aborting claim for '%s'");
+                "Got error while aborting claim");
         },
 
         # Severe failure
@@ -389,7 +389,7 @@ sub _construct_callbacks {
         # Critical failure (terminate the parent process)
         on_renew_error => sub {
             $self->_claim_critical_error($resource_name,
-                "Error while renewing claim for '%s'");
+                "Error while renewing claim");
         },
 
     );
@@ -422,7 +422,7 @@ sub _log_claim_failure {
 
     $self->_remove_named_claim($resource_name);
 
-    _log_error(sprintf($message, $resource_name));
+    _log_error("$message for '$resource_name'");
     $self->_finish_shutdown;
 }
 
@@ -490,7 +490,7 @@ sub _claim_aborted {
         $self->_finish_shutdown;
 
     } else {
-        $self->_log_claim_failure($resource_name, "Aborted claim for '%s'");
+        $self->_log_claim_failure($resource_name, "Aborted claim");
     }
 }
 
