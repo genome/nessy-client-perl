@@ -420,8 +420,7 @@ sub _claim_activated {
 sub _log_claim_failure {
     my ($self, $resource_name, $message) = @_;
 
-    my $claim = $self->lookup_claim($resource_name);
-    $self->remove_claim($claim);
+    $self->_remove_named_claim($resource_name);
 
     _log_error(sprintf($message, $resource_name));
     $self->_finish_shutdown;
@@ -431,8 +430,7 @@ sub _log_claim_failure {
 sub _claim_critical_error {
     my ($self, $resource_name, $message) = @_;
 
-    my $claim = $self->lookup_claim($resource_name);
-    $self->remove_claim($claim);
+    $self->_remove_named_claim($resource_name);
 
     $self->fatal_error(sprintf($message, $resource_name));
 }
@@ -440,8 +438,7 @@ sub _claim_critical_error {
 sub _claim_released {
     my ($self, $resource_name) = @_;
 
-    my $claim = $self->lookup_claim($resource_name);
-    $self->remove_claim($claim);
+    $self->_remove_named_claim($resource_name);
 
     if ($self->_shutting_down) {
         $self->_finish_shutdown;
@@ -463,8 +460,7 @@ sub _claim_released {
 sub _claim_release_failure {
     my ($self, $resource_name) = @_;
 
-    my $claim = $self->lookup_claim($resource_name);
-    $self->remove_claim($claim);
+    $self->_remove_named_claim($resource_name);
 
     if ($self->_shutting_down) {
         $self->_finish_shutdown;
@@ -489,8 +485,7 @@ sub _claim_aborted {
     my ($self, $resource_name) = @_;
 
     if ($self->_shutting_down) {
-        my $claim = $self->lookup_claim($resource_name);
-        $self->remove_claim($claim);
+        $self->_remove_named_claim($resource_name);
 
         $self->_finish_shutdown;
 
@@ -502,8 +497,7 @@ sub _claim_aborted {
 sub _claim_withdrawn {
     my ($self, $resource_name) = @_;
 
-    my $claim = $self->lookup_claim($resource_name);
-    $self->remove_claim($claim);
+    $self->_remove_named_claim($resource_name);
 
     if ($self->_shutting_down) {
         $self->_finish_shutdown;
@@ -523,6 +517,13 @@ sub _claim_withdrawn {
     }
 }
 
+
+sub _remove_named_claim {
+    my ($self, $resource_name) = @_;
+
+    my $claim = $self->lookup_claim($resource_name);
+    $self->remove_claim($claim);
+}
 
 sub release {
     my($self, $message) = @_;
