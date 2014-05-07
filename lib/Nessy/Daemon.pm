@@ -530,7 +530,7 @@ sub release {
     $self->_save_message_serial($message);
 
     my $resource_name = $message->resource_name;
-    my $claim = $self->lookup_claim($resource_name);
+    my $claim = $self->_lookup_claim($resource_name);
 
     $claim->release;
 
@@ -541,7 +541,7 @@ sub validate {
     my($self, $message) = @_;
 
     my $resource_name = $message->resource_name;
-    my $claim = $self->lookup_claim($resource_name);
+    my $claim = $self->_lookup_claim($resource_name);
 
     my $responder = sub {
         my $is_active = shift;
@@ -570,7 +570,7 @@ sub _add_claim {
     $claims->{$resource_name} = $claim;
 }
 
-sub lookup_claim {
+sub _lookup_claim {
     my ($self, $resource_name) = @_;
     my $claims = $self->claims;
 
