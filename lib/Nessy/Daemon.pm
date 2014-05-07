@@ -522,7 +522,7 @@ sub _remove_named_claim {
     my ($self, $resource_name) = @_;
 
     my $claim = $self->lookup_claim($resource_name);
-    $self->remove_claim($claim);
+    $self->_remove_claim($claim);
 }
 
 sub release {
@@ -573,7 +573,7 @@ sub add_claim {
     $claims->{$resource_name} = $claim;
 }
 
-sub remove_claim {
+sub _remove_claim {
     my($self, $claim) = @_;
     my $resource_name = $claim->resource_name;
     my $claims = $self->claims;
