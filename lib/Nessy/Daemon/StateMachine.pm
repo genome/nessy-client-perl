@@ -3,10 +3,10 @@ package Nessy::Daemon::StateMachine;
 use strict;
 use warnings FATAL => 'all';
 
-use Nessy::StateMachineFactory;
 use Sub::Install;
+use StateMachine::Factory;
 
-our $factory = Nessy::StateMachineFactory->new();
+our $factory = StateMachine::Factory->new();
 
 
 # ---------------------------- States ----------------------------------------
