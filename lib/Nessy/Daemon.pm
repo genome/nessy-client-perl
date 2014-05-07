@@ -532,8 +532,6 @@ sub release {
 
     my $resource_name = $message->resource_name;
     my $claim = $self->lookup_claim($resource_name);
-    # XXX Should this be done inside the lookup function?
-    $claim || Carp::croak("No claim with resource $resource_name");
 
     $claim->release;
 
@@ -583,7 +581,11 @@ sub _remove_claim {
 sub lookup_claim {
     my ($self, $resource_name) = @_;
     my $claims = $self->claims;
-    return $claims->{$resource_name};
+
+    my $claim = $claims->{$resource_name};
+    $claim || Carp::croak("No claim with resource $resource_name");
+
+    return $claim;
 }
 
 sub all_claims {
