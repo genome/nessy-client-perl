@@ -41,7 +41,7 @@ sub validate {
 sub DESTROY {
     my $self = shift;
     if (($self->_pid == $$) and ($self->_tid == $self->_get_tid)) {
-        if (!defined($self->release())) {
+        if (!$self->release()) {
             die "Failed to release claim for resource '"
                 . $self->resource_name . "'";
         }
