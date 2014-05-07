@@ -517,12 +517,11 @@ sub _claim_withdrawn {
     }
 }
 
-
 sub _remove_named_claim {
     my ($self, $resource_name) = @_;
 
-    my $claim = $self->lookup_claim($resource_name);
-    $self->_remove_claim($claim);
+    my $claims = $self->claims;
+    return delete $claims->{$resource_name};
 }
 
 sub release {
@@ -569,13 +568,6 @@ sub _add_claim {
         Carp::croak("Attempted to add claim $resource_name when it already exists");
     }
     $claims->{$resource_name} = $claim;
-}
-
-sub _remove_claim {
-    my($self, $claim) = @_;
-    my $resource_name = $claim->resource_name;
-    my $claims = $self->claims;
-    return delete $claims->{$resource_name};
 }
 
 sub lookup_claim {
