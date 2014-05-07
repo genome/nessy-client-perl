@@ -3,6 +3,7 @@ package Nessy::Claim;
 use strict;
 use warnings;
 
+use Carp qw();
 use Nessy::Properties qw(resource_name on_release _is_released _pid _tid on_validate);
 
 my $can_use_threads = eval 'use threads; 1';
@@ -42,8 +43,8 @@ sub DESTROY {
     my $self = shift;
     if (($self->_pid == $$) and ($self->_tid == $self->_get_tid)) {
         if (!$self->release()) {
-            die "Failed to release claim for resource '"
-                . $self->resource_name . "'";
+            Carp::croak("Failed to release claim for resource '"
+                . $self->resource_name . "'");
         }
     }
 }
