@@ -17,7 +17,7 @@ sub new {
 
     return bless $class->_verify_params(\%params, qw(
         state_machine
-    ));
+    )), $class;
 }
 
 
