@@ -77,7 +77,7 @@ sub shutdown {
 sub _finish_shutdown {
     my $self = shift;
 
-    my @active_claims = $self->all_claims;
+    my @active_claims = $self->_all_claims;
 
     unless (@active_claims) {
         if ($self->_shutdown_requested) {
@@ -123,7 +123,7 @@ sub _close_client_connection {
 sub _shutdown_all_claims {
     my $self = shift;
 
-    my @claims = $self->all_claims;
+    my @claims = $self->_all_claims;
     if (@claims) {
         foreach my $claim (@claims) {
             if (defined($claim)) {
@@ -588,7 +588,7 @@ sub lookup_claim {
     return $claim;
 }
 
-sub all_claims {
+sub _all_claims {
     my $self = shift;
     my $claims = $self->claims;
     values %$claims;
