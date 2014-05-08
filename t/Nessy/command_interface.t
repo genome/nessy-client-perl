@@ -279,39 +279,49 @@ subtest test_renew_claim => sub {
 };
 
 
-subtest test_terminate_client => sub {
+subtest test_notify_renew_error => sub {
     plan tests => 1;
     my $ci = _create_command_interface(undef,
-        on_fatal_error => sub { ok(1, 'on_fatal_error callback called'); });
+        on_renew_error => sub {
+            ok(1, 'on_renew_error callback called'); });
 
-    $ci->terminate_client();
+    $ci->notify_renew_error();
 };
 
 
-subtest test_notify_lock_active => sub {
+subtest test_notify_active => sub {
     plan tests => 1;
     my $ci = _create_command_interface(undef,
         on_active => sub { ok(1, 'on_active callback called'); });
 
-    $ci->notify_lock_active();
+    $ci->notify_active();
 };
 
 
-subtest test_notify_claim_withdrawn => sub {
+subtest test_notify_withdrawn => sub {
     plan tests => 1;
     my $ci = _create_command_interface(undef,
         on_withdrawn => sub { ok(1, 'on_withdrawn callback called'); });
 
-    $ci->notify_claim_withdrawn();
+    $ci->notify_withdrawn();
 };
 
 
-subtest test_notify_lock_released => sub {
+subtest test_notify_released => sub {
     plan tests => 1;
     my $ci = _create_command_interface(undef,
         on_released => sub { ok(1, 'on_released callback called'); });
 
-    $ci->notify_lock_released();
+    $ci->notify_released();
+};
+
+
+subtest test_notify_new_shutdown => sub {
+    plan tests => 1;
+    my $ci = _create_command_interface(undef,
+        on_new_shutdown => sub { ok(1, 'on_new_shutdown callback called'); });
+
+    $ci->notify_new_shutdown();
 };
 
 
@@ -358,10 +368,7 @@ sub _create_command_interface {
         timeout_seconds => 0.1,
 
         # Default callbacks should never be called
-        on_active => sub { ok(0, "on_active shouln't be called") },
-        on_fatal_error => sub { ok(0, "on_fatal_error shouln't be called") },
-        on_released => sub { ok(0, "on_released shouln't be called") },
-        on_withdrawn => sub { ok(0, "on_withdrawn shouln't be called") },
+        _default_callbacks(),
 
         max_activate_backoff_factor => 5,
         max_retry_backoff_factor => 5,
@@ -370,6 +377,34 @@ sub _create_command_interface {
     );
 }
 
+sub _default_callbacks {
+    my @CB_NAMES = qw(
+        on_abort_error
+        on_abort_shutdown
+        on_aborted
+        on_activate_error
+        on_active
+        on_new_shutdown
+        on_register_error
+        on_register_shutdown
+        on_register_timeout
+        on_release_error
+        on_release_shutdown
+        on_released
+        on_renew_error
+        on_withdraw_error
+        on_withdraw_shutdown
+        on_withdrawn
+    );
+
+    my %callbacks;
+    for my $name (@CB_NAMES) {
+        $callbacks{$name} = sub {
+            ok(0, "$name shouldn't be called");
+        };
+    }
+    return %callbacks;
+}
 
 sub _submit_url {
     my ($host, $port) = Nessy::Client::TestWebServer->get_connection_details;

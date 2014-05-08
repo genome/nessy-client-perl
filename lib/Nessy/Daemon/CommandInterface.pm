@@ -11,10 +11,21 @@ use Nessy::Properties qw(
     update_url
     user_data
 
+    on_abort_error
+    on_abort_shutdown
+    on_aborted
     on_active
-    on_withdrawn
-    on_fatal_error
+    on_new_shutdown
+    on_register_error
+    on_register_shutdown
+    on_register_timeout
+    on_release_error
+    on_release_shutdown
     on_released
+    on_renew_error
+    on_withdraw_error
+    on_withdraw_shutdown
+    on_withdrawn
 
     activate_seconds
     renew_seconds
@@ -37,31 +48,76 @@ use Nessy::Properties qw(
 use AnyEvent;
 use AnyEvent::HTTP;
 use JSON;
+use Sub::Install;
 
 use List::Util qw(min);
+
+
+my @NOTIFICATIONS = qw(
+    abort_error
+    abort_shutdown
+    aborted
+    activate_error
+    active
+    new_shutdown
+    register_error
+    register_shutdown
+    register_timeout
+    release_error
+    release_shutdown
+    released
+    renew_error
+    withdraw_error
+    withdraw_shutdown
+    withdrawn
+);
+
+sub _callback_name {
+    my $base_name = shift;
+    return 'on_' . $base_name;
+}
+
+sub _method_name {
+    my $base_name = shift;
+    return 'notify_' . $base_name;
+}
+
+for my $notification (@NOTIFICATIONS) {
+    my $cb_name = _callback_name($notification);
+    Sub::Install::install_sub({
+        code => sub {
+            my $self = shift;
+
+            $self->$cb_name->();
+
+            1;
+        },
+        into => __PACKAGE__,
+        as => _method_name($notification),
+    });
+}
+
 
 sub new {
     my $class = shift;
     my %params = @_;
 
-    my $self = bless $class->_verify_params(\%params, qw(
-        event_generator
-        resource
-        submit_url
-        ttl
+    my $self = bless $class->_verify_params(\%params,
+        map {_callback_name($_)} @NOTIFICATIONS,
+        qw(
+            event_generator
+            resource
+            submit_url
+            ttl
 
-        on_active
-        on_withdrawn
-        on_fatal_error
-        on_released
+            activate_seconds
+            renew_seconds
+            retry_seconds
 
-        activate_seconds
-        renew_seconds
-        retry_seconds
-
-        max_activate_backoff_factor
-        max_retry_backoff_factor
-    )), $class;
+            max_activate_backoff_factor
+            max_retry_backoff_factor
+        )
+    ), $class;
 
     $self->_current_activate_backoff_factor(1);
     $self->_current_retry_backoff_factor(1);
@@ -259,33 +315,6 @@ sub delete_timeout {
 }
 
 
-sub notify_claim_withdrawn {
-    my $self = shift;
-
-    $self->on_withdrawn->(@_);
-
-    1;
-}
-
-
-sub notify_lock_active {
-    my $self = shift;
-
-    $self->on_active->(@_);
-
-    1;
-}
-
-
-sub notify_lock_released {
-    my $self = shift;
-
-    $self->on_released->(@_);
-
-    1;
-}
-
-
 sub register_claim {
     my $self = shift;
 
@@ -324,15 +353,6 @@ sub reset_retry_backoff {
     my $self = shift;
 
     $self->_current_retry_backoff_factor(1);
-
-    1;
-}
-
-
-sub terminate_client {
-    my $self = shift;
-
-    $self->on_fatal_error->(@_);
 
     1;
 }
