@@ -392,7 +392,7 @@ sub _construct_callbacks {
 
         # Critical failure (terminate the parent process)
         on_renew_error => sub {
-            $self->_claim_critical_error($resource_name,
+            $self->_claim_renew_failure($resource_name,
                 "Error while renewing claim");
         },
 
@@ -431,7 +431,7 @@ sub _log_claim_failure {
 }
 
 
-sub _claim_critical_error {
+sub _claim_renew_failure {
     my ($self, $resource_name, $message) = @_;
 
     $self->_remove_named_claim($resource_name);
