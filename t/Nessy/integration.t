@@ -103,11 +103,21 @@ subtest shutdown_without_claims_doesnt_crash => sub {
     lives_ok {$client->shutdown} "client shutdown doesn't crash";
 };
 
-subtest shutdown_with_claim_doesn_crash => sub {
+subtest shutdown_with_claim_doesnt_crash => sub {
     my $resource = _get_resource();
     my $client = _get_client();
 
     my $claim = $client->claim($resource);
+
+    lives_ok {$client->shutdown} "client shutdown doesn't crash";
+};
+
+subtest shutdown_released_claim_doesnt_crash => sub {
+    my $resource = _get_resource();
+    my $client = _get_client();
+
+    my $claim = $client->claim($resource);
+    $claim->release;
 
     lives_ok {$client->shutdown} "client shutdown doesn't crash";
 };
