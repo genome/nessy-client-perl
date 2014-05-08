@@ -15,6 +15,7 @@ use Nessy::Properties qw(
     on_abort_shutdown
     on_aborted
     on_active
+    on_new_shutdown
     on_register_error
     on_register_shutdown
     on_register_timeout
@@ -58,6 +59,7 @@ my @NOTIFICATIONS = qw(
     aborted
     activate_error
     active
+    new_shutdown
     register_error
     register_shutdown
     register_timeout

@@ -69,6 +69,7 @@ my @NOTIFICATIONS = qw(
     abort_shutdown
     aborted
     active
+    new_shutdown
     register_error
     register_shutdown
     register_timeout
@@ -183,6 +184,7 @@ sub a_withdraw_claim {
 $factory->define_transitions(
 
 [ $s_new               , $e_start    , $s_registering       ,  [ \&a_create_timeout        , \&a_register_claim           ]                              ]                        ,
+[ $s_new               , $e_shutdown , $s_fail              ,  [ \&a_notify_new_shutdown   ]                              ]                              ,
 
 [ $s_aborting          , $e_shutdown , $s_fail              ,  [ \&a_abandon_last_request  , \&a_notify_abort_shutdown    ]                              ]                        ,
 [ $s_aborting          , $e_http_409 , $s_fail              ,  [ \&a_notify_abort_error    ]                              ]                              ,

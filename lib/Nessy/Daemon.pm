@@ -342,6 +342,10 @@ sub _construct_callbacks {
         # Clean failures (server is consistent)
         on_withdrawn => sub { $self->_claim_withdrawn($resource_name) },
         on_aborted => sub { $self->_claim_aborted($resource_name) },
+        on_new_shutdown => sub {
+            $self->_log_claim_failure($resource_name,
+                "Got shutdown on new claim");
+        },
 
         # Dirty failures
         on_register_timeout => sub {

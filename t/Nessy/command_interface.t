@@ -316,6 +316,15 @@ subtest test_notify_released => sub {
 };
 
 
+subtest test_notify_new_shutdown => sub {
+    plan tests => 1;
+    my $ci = _create_command_interface(undef,
+        on_new_shutdown => sub { ok(1, 'on_new_shutdown callback called'); });
+
+    $ci->notify_new_shutdown();
+};
+
+
 done_testing();
 
 
@@ -375,6 +384,7 @@ sub _default_callbacks {
         on_aborted
         on_activate_error
         on_active
+        on_new_shutdown
         on_register_error
         on_register_shutdown
         on_register_timeout

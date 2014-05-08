@@ -830,6 +830,20 @@ subtest 'abort_during_retrying_abort_path' => sub {
 };
 
 
+subtest 'new_shutdown_path' => sub {
+    my $sm = $Nessy::Daemon::StateMachine::factory->produce_state_machine();
+    ok($sm, 'state machine created');
+
+    my $ci = _mock_command_interface();
+
+    _execute_event($sm, 'e_shutdown', command_interface => $ci);
+
+    _verify_calls($ci,
+        'notify_new_shutdown'
+    );
+};
+
+
 done_testing();
 
 
@@ -861,6 +875,7 @@ sub _mock_command_interface {
         'notify_aborted',
         'notify_activate_error',
         'notify_active',
+        'notify_new_shutdown',
         'notify_register_error',
         'notify_register_shutdown',
         'notify_register_timeout',
