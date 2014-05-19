@@ -4,6 +4,7 @@ use strict;
 use warnings FATAL => qw(all);
 
 use Nessy::Client;
+use Test::Exception;
 use Test::More;
 
 unless ($ENV{NESSY_SERVER_URL}) {
@@ -53,8 +54,7 @@ subtest claim_returns_false_with_contention_and_timeout => sub {
 
 
 subtest failed_claim_does_not_block_new_claims => sub {
-#    plan tests => 5;
-    plan skip_all => 'The current implementation fails here';
+    plan tests => 5;
 
     my $resource = _get_resource();
 
@@ -74,6 +74,52 @@ subtest failed_claim_does_not_block_new_claims => sub {
         timeout => 2);
 
     ok($third_claim, 'third claim got resource');
+};
+
+
+subtest validate_active_claim_succeeds => sub {
+    my $resource = _get_resource();
+    my $client = _get_client();
+
+    my $claim = $client->claim($resource);
+
+    ok($claim->validate, 'active claim validates');
+};
+
+
+subtest validate_released_claim_fails => sub {
+    my $resource = _get_resource();
+    my $client = _get_client();
+
+    my $claim = $client->claim($resource);
+
+    $claim->release;
+    ok(!$claim->validate, 'released claim fails to validate');
+};
+
+subtest shutdown_without_claims_doesnt_crash => sub {
+    my $client = _get_client();
+
+    lives_ok {$client->shutdown} "client shutdown doesn't crash";
+};
+
+subtest shutdown_with_claim_doesnt_crash => sub {
+    my $resource = _get_resource();
+    my $client = _get_client();
+
+    my $claim = $client->claim($resource);
+
+    lives_ok {$client->shutdown} "client shutdown doesn't crash";
+};
+
+subtest shutdown_released_claim_doesnt_crash => sub {
+    my $resource = _get_resource();
+    my $client = _get_client();
+
+    my $claim = $client->claim($resource);
+    $claim->release;
+
+    lives_ok {$client->shutdown} "client shutdown doesn't crash";
 };
 
 

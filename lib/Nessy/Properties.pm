@@ -11,11 +11,16 @@ our @CARP_NOT;
 our %properties_for_class;
 
 sub import {
+    shift;  # throw away this package name
     my $package = caller();
+    import_properties($package, @_);
+}
+
+sub import_properties {
+    my $package = shift;
 
     push @CARP_NOT, $package;
 
-    shift; # remove this package
     my @property_list = @_;
     $properties_for_class{$package} = \@property_list;
 

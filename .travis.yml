@@ -3,6 +3,8 @@ perl:
   - 5.8
   - "5.10"  # Without quotes this will use perl version 5.1
   - 5.12
+  - 5.14
+  - 5.16
   - 5.18
 
 before_script:
