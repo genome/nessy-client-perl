@@ -1,3 +1,12 @@
+libnessy-client-perl (0.010-1) lucid; urgency=low
+
+  * Implement new state machine based backend.
+  * Added support for 'aborted' status on claims.
+  * Timeout while waiting to get an active claim sets status to 'withdrawn'.
+  * Unified handling of HTTP error responses.
+
+ -- Mark Burnett <mburnett@genome.wustl.edu>  Tue, 20 May 2014 15:22:27 -0500
+
 libnessy-client-perl (0.003-1) lucid; urgency=low
 
   * Fix "illegal transition" crash when claim is released during renewal.
