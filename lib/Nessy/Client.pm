@@ -461,11 +461,11 @@ process terminates.
 
 L<Nessy::Claim>, L<Nessy::Daemon>
 
-=head1 LICENCE AND COPYRIGHT
+=head1 LICENSE
 
-Copyright (C) 2014 Washington University in St. Louis, MO.
+Copyright (C) The Genome Institute at Washington University in St. Louis.
 
-This sofware is licensed under the same terms as Perl itself.
-See the LICENSE file in this distribution.
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
 
 =cut
