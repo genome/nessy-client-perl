@@ -468,4 +468,8 @@ Copyright (C) The Genome Institute at Washington University in St. Louis.
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
+=head1 AUTHOR
+
+Anthony Brummett E<lt>brummett@cpan.orgE<gt>
+
 =cut
