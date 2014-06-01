@@ -21,6 +21,12 @@ on build => sub {
     requires 'Time::HiRes';
 };
 
+on develop => sub {
+    requires 'CPAN::Uploader';
+    requires 'Minilla', '1.1.0';
+    requires 'Version::Next';
+};
+
 on test => sub {
     requires 'Plack';
     requires 'Test::Exception';
