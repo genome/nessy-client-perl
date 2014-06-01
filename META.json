@@ -1,0 +1,105 @@
+{
+   "abstract" : "Client API for the Nessy lock server",
+   "author" : [
+      "Anthony Brummett <brummett@cpan.org>"
+   ],
+   "dynamic_config" : 0,
+   "generated_by" : "Minilla/v1.1.0, CPAN::Meta::Converter version 2.141170",
+   "license" : [
+      "perl_5"
+   ],
+   "meta-spec" : {
+      "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+      "version" : "2"
+   },
+   "name" : "Nessy-Client",
+   "no_index" : {
+      "directory" : [
+         "t",
+         "xt",
+         "inc",
+         "share",
+         "eg",
+         "examples",
+         "author",
+         "builder"
+      ]
+   },
+   "prereqs" : {
+      "build" : {
+         "requires" : {
+            "POSIX" : "0",
+            "Sys::Hostname" : "0",
+            "Test::More" : "0",
+            "Time::HiRes" : "0"
+         }
+      },
+      "configure" : {
+         "requires" : {
+            "CPAN::Meta" : "0",
+            "CPAN::Meta::Prereqs" : "0",
+            "Module::Build" : "0.38"
+         }
+      },
+      "develop" : {
+         "requires" : {
+            "CPAN::Uploader" : "0",
+            "Minilla" : "v1.1.0",
+            "Test::CPAN::Meta" : "0",
+            "Test::MinimumVersion::Fast" : "0.04",
+            "Test::PAUSE::Permissions" : "0.04",
+            "Test::Pod" : "1.41",
+            "Test::Spellunker" : "v0.2.7",
+            "Version::Next" : "0"
+         }
+      },
+      "runtime" : {
+         "requires" : {
+            "AnyEvent" : "5.33",
+            "AnyEvent::HTTP" : "2.15",
+            "AnyEvent::Handle" : "0",
+            "Carp" : "0",
+            "Data::Dumper" : "0",
+            "Data::UUID" : "0",
+            "Fcntl" : "0",
+            "File::Basename" : "0",
+            "Getopt::Long" : "0",
+            "IO::Socket" : "0",
+            "JSON" : "0",
+            "Scalar::Util" : "0",
+            "Socket" : "0",
+            "Sub::Install" : "0",
+            "Sub::Name" : "0"
+         }
+      },
+      "test" : {
+         "requires" : {
+            "Plack" : "0",
+            "Test::Exception" : "0",
+            "Test::MockObject" : "0"
+         }
+      }
+   },
+   "release_status" : "unstable",
+   "resources" : {
+      "bugtracker" : {
+         "web" : "https://github.com/genome/nessy-client-perl/issues"
+      },
+      "homepage" : "https://github.com/genome/nessy-client-perl",
+      "repository" : {
+         "type" : "git",
+         "url" : "git://github.com/genome/nessy-client-perl.git",
+         "web" : "https://github.com/genome/nessy-client-perl"
+      }
+   },
+   "version" : "0.010",
+   "x_contributors" : [
+      "Michael J. Kiwala <michael.kiwala@gmail.com>",
+      "Anthony Brummett <brummett@gmail.com>",
+      "Anthony Brummett <abrummet@genome.wustl.edu>",
+      "mkiwala-g <mkiwala@genome.wustl.edu>",
+      "Mark Burnett <mark.m.burnett@gmail.com>",
+      "Mark Burnett <mburnett@genome.wustl.edu>",
+      "Nathaniel Nutter <iam@nnutter.com>"
+   ]
+}
