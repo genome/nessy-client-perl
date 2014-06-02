@@ -1,2 +1,8 @@
+# Minilla
+/Nessy-*
+/.build
+!META.json
+
+# Carton
 /local/
 /cpanfile.snapshot
