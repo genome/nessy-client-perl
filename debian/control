@@ -2,12 +2,12 @@ Source: libnessy-client-perl
 Section: perl
 Priority: optional
 Build-Depends: debhelper (>= 7), perl (>= 5.8.0)
-Build-Depends-Indep: perl (>= 5.8.0), libtest-simple-perl, libjson-perl, libanyevent-perl, libanyevent-http-perl (>= 2.15), libsub-name-perl, libsub-install-perl, libplack-perl, libwww-perl
+Build-Depends-Indep: perl (>= 5.8.0), libtest-simple-perl, libjson-perl, libanyevent-perl, libanyevent-http-perl (>= 2.15-3), libsub-name-perl, libsub-install-perl, libplack-perl, libwww-perl
 Maintainer: Anthony Brummett <abrummet@genome.wustl.edu>
 Standards-Version: 3.8.3
 Homepage: https://github.com/genome/nessy-client-perl
 
 Package: libnessy-client-perl
 Architecture: all
-Depends: ${perl:Depends}, ${misc:Depends}, perl (>= 5.8.0), libjson-perl, libanyevent-perl, libanyevent-http-perl (>= 2.15), libsub-name-perl, libsub-install-perl
+Depends: ${perl:Depends}, ${misc:Depends}, perl (>= 5.8.0), libjson-perl, libanyevent-perl, libanyevent-http-perl (>= 2.15-3), libsub-name-perl, libsub-install-perl
 Description: Perl client for the Nessy locking server
