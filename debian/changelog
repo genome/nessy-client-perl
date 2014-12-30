@@ -1,3 +1,9 @@
+libnessy-client-perl (0.010-2) lucid; urgency=low
+
+  * Update libanyevent-http-perl dependency version to 2.15-3
+
+ -- Mark Burnett <mburnett@genome.wustl.edu>  Wed, 24 Dec 2014 13:43:47 -0600
+
 libnessy-client-perl (0.010-1) lucid; urgency=low
 
   * Implement new state machine based backend.
