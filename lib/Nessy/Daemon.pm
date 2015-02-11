@@ -411,6 +411,19 @@ sub submit_url {
 
 sub _claim_activated {
     my ($self, $resource_name) = @_;
+    $self->_claim_activated_or_register_failed($resource_name, 'succeed');
+}
+
+sub _claim_register_failed {
+    my($self, $resource_name) = @_;
+    $self->_claim_activated_or_register_failed($resource_name, 'fail');
+
+    $self->_log_claim_failure($resource_name,
+        "Got error while registering claim");
+}
+
+sub _claim_activated_or_register_failed {
+    my($self, $resource_name, $result) = @_;
 
     my $serial = $self->_get_message_serial('claim', $resource_name);
     my $message = Nessy::Client::Message->new(
@@ -419,11 +432,10 @@ sub _claim_activated {
         serial => $serial,
     );
 
-    $message->succeed;
+    $message->$result;
 
     $self->_send_return_message($message);
 }
-
 
 sub _log_claim_failure {
     my ($self, $resource_name, $message) = @_;
