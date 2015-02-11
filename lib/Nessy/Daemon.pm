@@ -346,6 +346,7 @@ sub _construct_callbacks {
             $self->_log_claim_failure($resource_name,
                 "Got shutdown on new claim");
         },
+        on_register_error => sub { $self->_claim_register_failed($resource_name) },
 
         # Dirty failures
         on_register_timeout => sub {
@@ -371,10 +372,6 @@ sub _construct_callbacks {
         on_withdraw_shutdown => sub {
             $self->_log_claim_failure($resource_name,
                 "Got shutdown while withdrawing claim");
-        },
-        on_register_error => sub {
-            $self->_log_claim_failure($resource_name,
-                "Got error while registering claim");
         },
         on_activate_error => sub {
             $self->_log_claim_failure($resource_name,
