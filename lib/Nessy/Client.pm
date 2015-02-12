@@ -31,30 +31,12 @@ sub new {
     my $pid = $class->_fork();
     if ($pid) {
         my $self = bless {}, $class;
-        $self->api_version($params{api_version});
         $self->pid($pid);
-        $self->default_ttl( $params{default_ttl} || $class->_default_ttl );
-        $self->default_timeout( $params{default_timeout} || $class->_default_timeout );
-        $self->serial_responder_registry({});
-
-        my $watcher = $self->_create_socket_watcher($params{socketpair}->[0]);
-        $self->socket_watcher($watcher);
-
-        $params{socketpair}->[1]->close();
-
+        $self->_parent_process_setup(%params);
         return $self;
 
     } elsif (defined $pid) {
-        eval {
-            $params{socketpair}->[0]->close();
-            my $daemon_class = $class->_daemon_class_name;
-            my $daemon = $daemon_class->new(
-                                url => $params{url},
-                                client_socket => $params{socketpair}->[1],
-                                api_version => $params{api_version});
-            $daemon->run();
-        };
-        Carp::croak($@) if $@;
+        $class->_run_child_process(%params);
         exit;
     } else {
         Carp::croak("Can't fork: $!");
@@ -78,6 +60,35 @@ sub _make_socket_pair_for_daemon_comms {
     return ($socket1, $socket2);
 }
 
+sub _parent_process_setup {
+    my($self, %params) = @_;
+
+    $self->api_version($params{api_version});
+    $self->default_ttl( $params{default_ttl} || $self->_default_ttl );
+    $self->default_timeout( $params{default_timeout} || $self->_default_timeout );
+    $self->serial_responder_registry({});
+
+    my $watcher = $self->_create_socket_watcher($params{socketpair}->[0]);
+    $self->socket_watcher($watcher);
+
+    $params{socketpair}->[1]->close();
+}
+
+
+sub _run_child_process {
+    my($class, %params) = @_;
+
+    eval {
+        $params{socketpair}->[0]->close();
+        my $daemon_class = $class->_daemon_class_name;
+        my $daemon = $daemon_class->new(
+                            url => $params{url},
+                            client_socket => $params{socketpair}->[1],
+                            api_version => $params{api_version});
+        $daemon->run();
+    };
+    Carp::croak($@) if $@;
+}
 
 sub _default_ttl { 60 } # seconds
 sub _default_timeout { undef } # seconds or undef means wait as long as it takes
