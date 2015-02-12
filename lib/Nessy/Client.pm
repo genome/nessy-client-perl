@@ -326,6 +326,19 @@ sub _daemon_response_handler {
     $responder->($message);
 }
 
+sub _fail_outstanding_requests {
+    my($self, $message) = @_;
+    my $registry = $self->serial_responder_registry;
+    foreach my $list ( values %$registry ) {
+        my($responder, $orig_message) = @$list;
+
+        $orig_message->fail;
+        $orig_message->error_message($message);
+        $responder->($orig_message);
+    }
+    $registry = {};
+}
+
 
 my $json_parser = JSON->new()->convert_blessed(1);
 sub _create_socket_watcher {
@@ -358,6 +371,8 @@ sub _on_read_event {
 sub bailout {
     my($self, $message) = @_;
     print STDERR $message,"\n";
+    $self->_fail_outstanding_requests($message);
+    $self->socket_watcher(undef);
 }
 
 1;
