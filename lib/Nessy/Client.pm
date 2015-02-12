@@ -31,7 +31,7 @@ sub new {
 
     my($socket1, $socket2) = $class->_make_socket_pair_for_daemon_comms();
 
-    my $pid = _fork();
+    my $pid = $class->_fork();
     if ($pid) {
         my $self = bless {}, $class;
         $self->api_version($api_version);
