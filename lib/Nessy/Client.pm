@@ -357,7 +357,7 @@ sub _on_read_event {
 
 sub bailout {
     my($self, $message) = @_;
-    Carp::croak($message);
+    print STDERR $message,"\n";
 }
 
 1;
