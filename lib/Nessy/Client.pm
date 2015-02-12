@@ -71,15 +71,21 @@ sub _parent_process_setup {
     my $watcher = $self->_create_socket_watcher($params{socketpair}->[0]);
     $self->socket_watcher($watcher);
 
-    $params{socketpair}->[1]->close();
+    $self->_close_unused_socket($params{socketpair}->[1]);
 }
 
+# After forking, the parent closes the child's socket, and the child closes
+# the parent's socket
+sub _close_unused_socket {
+    my($self, $sock) = @_;
+    $sock->close();
+}
 
 sub _run_child_process {
     my($class, %params) = @_;
 
     eval {
-        $params{socketpair}->[0]->close();
+        $class->_close_unused_socket($params{socketpair}->[0]);
         my $daemon_class = $class->_daemon_class_name;
         my $daemon = $daemon_class->new(
                             url => $params{url},
