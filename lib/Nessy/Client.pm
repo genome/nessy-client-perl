@@ -29,9 +29,7 @@ sub new {
     $class->_verify_constructor_params(\%params);
     my($api_version,$url) = @params{'api_version','url'};
 
-    my($socket1, $socket2) = IO::Socket->socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC);
-
-    $_->autoflush(1) foreach ($socket1, $socket2);
+    my($socket1, $socket2) = $class->_make_socket_pair_for_daemon_comms();
 
     my $pid = _fork();
     if ($pid) {
@@ -73,6 +71,14 @@ sub _verify_constructor_params {
     $params->{url} || Carp::croak('url is a required param');
     return $params;
 }
+
+sub _make_socket_pair_for_daemon_comms {
+    my($socket1, $socket2) = IO::Socket->socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC);
+    $_->autoflush(1) foreach ($socket1, $socket2);
+
+    return ($socket1, $socket2);
+}
+
 
 sub _default_ttl { 60 } # seconds
 sub _default_timeout { undef } # seconds or undef means wait as long as it takes
