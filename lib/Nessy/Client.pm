@@ -26,9 +26,8 @@ my $MESSAGE_SERIAL = 1;
 sub new {
     my($class, %params) = @_;
 
-    my $api_version = $params{api_version} || $class->_default_api_version;
-
-    my $url = $params{url} || Carp::croak('url is a required param');
+    $class->_verify_constructor_params(\%params);
+    my($api_version,$url) = @params{'api_version','url'};
 
     my($socket1, $socket2) = IO::Socket->socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC);
 
@@ -65,6 +64,14 @@ sub new {
     } else {
         Carp::croak("Can't fork: $!");
     }
+}
+
+sub _verify_constructor_params {
+    my($class, $params) = @_;
+
+    $params->{api_version} ||= $class->_default_api_version;
+    $params->{url} || Carp::croak('url is a required param');
+    return $params;
 }
 
 sub _default_ttl { 60 } # seconds
