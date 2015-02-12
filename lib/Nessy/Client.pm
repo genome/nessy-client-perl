@@ -311,7 +311,7 @@ sub _register_responder_for_message {
     my($self, $responder, $message) = @_;
 
     my $registry = $self->serial_responder_registry;
-    $registry->{ $message->serial } = $responder;
+    $registry->{ $message->serial } = [ $responder, $message ];
 }
 
 sub _daemon_response_handler {
@@ -319,7 +319,7 @@ sub _daemon_response_handler {
 
     my $registry = $self->serial_responder_registry;
     my $serial = $message->serial;
-    my $responder = delete $registry->{$serial};
+    my($responder, $orig_message) = @{ delete $registry->{$serial} };
 
     $self->bailout('no responder for message '.$message->serial) unless ($responder);
 
