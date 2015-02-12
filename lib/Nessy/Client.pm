@@ -27,34 +27,31 @@ sub new {
     my($class, %params) = @_;
 
     $class->_verify_constructor_params(\%params);
-    my($api_version,$url) = @params{'api_version','url'};
-
-    my($socket1, $socket2) = $class->_make_socket_pair_for_daemon_comms();
 
     my $pid = $class->_fork();
     if ($pid) {
         my $self = bless {}, $class;
-        $self->api_version($api_version);
+        $self->api_version($params{api_version});
         $self->pid($pid);
         $self->default_ttl( $params{default_ttl} || $class->_default_ttl );
         $self->default_timeout( $params{default_timeout} || $class->_default_timeout );
         $self->serial_responder_registry({});
 
-        my $watcher = $self->_create_socket_watcher($socket1);
+        my $watcher = $self->_create_socket_watcher($params{socketpair}->[0]);
         $self->socket_watcher($watcher);
 
-        $socket2->close();
+        $params{socketpair}->[1]->close();
 
         return $self;
 
     } elsif (defined $pid) {
         eval {
-            $socket1->close();
+            $params{socketpair}->[0]->close();
             my $daemon_class = $class->_daemon_class_name;
             my $daemon = $daemon_class->new(
-                                url => $url,
-                                client_socket => $socket2,
-                                api_version => $api_version);
+                                url => $params{url},
+                                client_socket => $params{socketpair}->[1],
+                                api_version => $params{api_version});
             $daemon->run();
         };
         Carp::croak($@) if $@;
@@ -69,6 +66,8 @@ sub _verify_constructor_params {
 
     $params->{api_version} ||= $class->_default_api_version;
     $params->{url} || Carp::croak('url is a required param');
+    $params->{'socketpair'} ||= [ $class->_make_socket_pair_for_daemon_comms() ];
+
     return $params;
 }
 
