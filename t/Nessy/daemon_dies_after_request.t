@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 
-use Test::More tests => 5;
+use Test::More tests => 2;
 use Nessy::Client;
 use AnyEvent;
 
@@ -11,31 +11,34 @@ use AnyEvent;
 my $client = Nessy::Test::Client->new(url => 'http://localhost/');
 ok($client, 'created new client');
 
-my $w;
-$w = AnyEvent->io(fh => $client->daemon_to_client_sock,
-             poll => 'r',
-             # when the client sends the daemon a lock request, close
-             # the socket to simulate the daemon going away
-             cb => sub {
-                        ok(1, 'Got message from client to make a lock');
-                        $client->daemon_to_client_sock->close(),
-                        undef $w;
-                      },
-        );
+subtest 'client does not block when daemon dies' => sub {
+    plan tests => 4;
 
-$SIG{ALRM} = sub { die "timed out" };
-alarm(30);
-my $warning_message;
-$SIG{__WARN__} = sub { $warning_message = shift };
-my $claim_name = 'foo';
-my $claim = eval { $client->claim($claim_name) };
+    my $w;
+    $w = AnyEvent->io(fh => $client->daemon_to_client_sock,
+                 poll => 'r',
+                 # when the client sends the daemon a lock request, close
+                 # the socket to simulate the daemon going away
+                 cb => sub {
+                            ok(1, 'Got message from client to make a lock');
+                            $client->daemon_to_client_sock->close(),
+                            undef $w;
+                          },
+            );
 
-ok(! $claim, "couldn't make a claim when the daemon closed its socket");
-ok(!$@, 'no exception');
-like($warning_message,
-    qr(claim $claim_name at .* failed: Connection reset by peer),
-    'warning message');
+    local $SIG{ALRM} = sub { die "timed out" };
+    alarm(30);
+    my $warning_message;
+    $SIG{__WARN__} = sub { $warning_message = shift };
+    my $claim_name = 'foo';
+    my $claim = eval { $client->claim($claim_name) };
 
+    ok(! $claim, "couldn't make a claim when the daemon closed its socket");
+    ok(!$@, 'no exception');
+    like($warning_message,
+        qr(claim $claim_name at .* failed: Connection reset by peer),
+        'warning message');
+};
 
 package Nessy::Test::Client;
 use base 'Nessy::Client';
