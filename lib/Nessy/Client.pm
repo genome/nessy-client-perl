@@ -20,6 +20,9 @@ use Scalar::Util;
 
 my $MESSAGE_SERIAL = 1;
 
+use constant PARENT_PROCESS_SOCKET => 0;  # index into $params{socketpair}
+use constant CHILD_PROCESS_SOCKET => 1;
+
 # The client process that acts as an intermediary between the client code
 # and the lock server 
 
@@ -49,6 +52,8 @@ sub _verify_constructor_params {
     $params->{api_version} ||= $class->_default_api_version;
     $params->{url} || Carp::croak('url is a required param');
     $params->{socketpair} ||= [ $class->_make_socket_pair_for_daemon_comms() ];
+    Carp::croak('socketpair param must be an arrayref of 2 handles')
+        unless (ref($params->{socketpair}) eq 'ARRAY' and @{$params->{socketpair}} == 2);
     $params->{default_ttl} ||= $class->_default_ttl;
     $params->{default_timeout} ||= $class->_default_timeout;
 
@@ -70,10 +75,10 @@ sub _parent_process_setup {
     $self->default_timeout($params{default_timeout});
     $self->serial_responder_registry({});
 
-    my $watcher = $self->_create_socket_watcher($params{socketpair}->[0]);
+    my $watcher = $self->_create_socket_watcher($params{socketpair}->[PARENT_PROCESS_SOCKET]);
     $self->socket_watcher($watcher);
 
-    $self->_close_unused_socket($params{socketpair}->[1]);
+    $self->_close_unused_socket($params{socketpair}->[CHILD_PROCESS_SOCKET]);
 }
 
 # After forking, the parent closes the child's socket, and the child closes
@@ -87,11 +92,11 @@ sub _run_child_process {
     my($class, %params) = @_;
 
     eval {
-        $class->_close_unused_socket($params{socketpair}->[0]);
+        $class->_close_unused_socket($params{socketpair}->[PARENT_PROCESS_SOCKET]);
         my $daemon_class = $class->_daemon_class_name;
         my $daemon = $daemon_class->new(
                             url => $params{url},
-                            client_socket => $params{socketpair}->[1],
+                            client_socket => $params{socketpair}->[CHILD_PROCESS_SOCKET],
                             api_version => $params{api_version});
         $daemon->run();
     };
