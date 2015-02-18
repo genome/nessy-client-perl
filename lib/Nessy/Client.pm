@@ -329,7 +329,12 @@ sub _send_command_with_callback {
 
     my $message = Nessy::Client::Message->new(serial => $MESSAGE_SERIAL++, %message_args);
 
+    unless($self->socket_watcher) {   # bailout() sets this to undef()
+        $self->_fork_and_run_daemon();
+    }
+
     $self->_register_responder_for_message($cb, $message);
+
     $self->socket_watcher->push_write(json => $message);
 }
 
