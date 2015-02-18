@@ -20,51 +20,87 @@ use Scalar::Util;
 
 my $MESSAGE_SERIAL = 1;
 
+use constant PARENT_PROCESS_SOCKET => 0;  # index into $params{socketpair}
+use constant CHILD_PROCESS_SOCKET => 1;
+
 # The client process that acts as an intermediary between the client code
 # and the lock server 
 
 sub new {
     my($class, %params) = @_;
 
-    my $api_version = $params{api_version} || $class->_default_api_version;
+    $class->_verify_constructor_params(\%params);
 
-    my $url = $params{url} || Carp::croak('url is a required param');
-
-    my($socket1, $socket2) = IO::Socket->socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC);
-
-    $_->autoflush(1) foreach ($socket1, $socket2);
-
-    my $pid = _fork();
+    my $pid = $class->_fork();
     if ($pid) {
         my $self = bless {}, $class;
-        $self->api_version($api_version);
         $self->pid($pid);
-        $self->default_ttl( $params{default_ttl} || $class->_default_ttl );
-        $self->default_timeout( $params{default_timeout} || $class->_default_timeout );
-        $self->serial_responder_registry({});
-
-        my $watcher = $self->_create_socket_watcher($socket1);
-        $self->socket_watcher($watcher);
-
-        $socket2->close();
-
+        $self->_parent_process_setup(%params);
         return $self;
 
     } elsif (defined $pid) {
-        eval {
-            $socket1->close();
-            my $daemon_class = $class->_daemon_class_name;
-            my $daemon = $daemon_class->new(
-                                url => $url,
-                                client_socket => $socket2,
-                                api_version => $api_version);
-            $daemon->run();
-        };
-        Carp::croak($@) if $@;
+        $class->_run_child_process(%params);
         exit;
     } else {
         Carp::croak("Can't fork: $!");
     }
+}
+
+sub _verify_constructor_params {
+    my($class, $params) = @_;
+
+    $params->{api_version} ||= $class->_default_api_version;
+    $params->{url} || Carp::croak('url is a required param');
+    $params->{socketpair} ||= [ $class->_make_socket_pair_for_daemon_comms() ];
+    Carp::croak('socketpair param must be an arrayref of 2 handles')
+        unless (ref($params->{socketpair}) eq 'ARRAY' and @{$params->{socketpair}} == 2);
+    $params->{default_ttl} ||= $class->_default_ttl;
+    $params->{default_timeout} ||= $class->_default_timeout;
+
+    return $params;
+}
+
+sub _make_socket_pair_for_daemon_comms {
+    my($socket1, $socket2) = IO::Socket->socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC);
+    $_->autoflush(1) foreach ($socket1, $socket2);
+
+    return ($socket1, $socket2);
+}
+
+sub _parent_process_setup {
+    my($self, %params) = @_;
+
+    $self->api_version($params{api_version});
+    $self->default_ttl($params{default_ttl});
+    $self->default_timeout($params{default_timeout});
+    $self->serial_responder_registry({});
+
+    my $watcher = $self->_create_socket_watcher($params{socketpair}->[PARENT_PROCESS_SOCKET]);
+    $self->socket_watcher($watcher);
+
+    $self->_close_unused_socket($params{socketpair}->[CHILD_PROCESS_SOCKET]);
+}
+
+# After forking, the parent closes the child's socket, and the child closes
+# the parent's socket
+sub _close_unused_socket {
+    my($self, $sock) = @_;
+    $sock->close();
+}
+
+sub _run_child_process {
+    my($class, %params) = @_;
+
+    eval {
+        $class->_close_unused_socket($params{socketpair}->[PARENT_PROCESS_SOCKET]);
+        my $daemon_class = $class->_daemon_class_name;
+        my $daemon = $daemon_class->new(
+                            url => $params{url},
+                            client_socket => $params{socketpair}->[CHILD_PROCESS_SOCKET],
+                            api_version => $params{api_version});
+        $daemon->run();
+    };
+    Carp::croak($@) if $@;
 }
 
 sub _default_ttl { 60 } # seconds
@@ -282,7 +318,7 @@ sub _register_responder_for_message {
     my($self, $responder, $message) = @_;
 
     my $registry = $self->serial_responder_registry;
-    $registry->{ $message->serial } = $responder;
+    $registry->{ $message->serial } = [ $responder, $message ];
 }
 
 sub _daemon_response_handler {
@@ -290,11 +326,24 @@ sub _daemon_response_handler {
 
     my $registry = $self->serial_responder_registry;
     my $serial = $message->serial;
-    my $responder = delete $registry->{$serial};
+    my($responder, $orig_message) = @{ delete $registry->{$serial} };
 
     $self->bailout('no responder for message '.$message->serial) unless ($responder);
 
     $responder->($message);
+}
+
+sub _fail_outstanding_requests {
+    my($self, $message) = @_;
+    my $registry = $self->serial_responder_registry;
+    foreach my $list ( values %$registry ) {
+        my($responder, $orig_message) = @$list;
+
+        $orig_message->fail;
+        $orig_message->error_message($message);
+        $responder->($orig_message);
+    }
+    $registry = {};
 }
 
 
@@ -328,7 +377,9 @@ sub _on_read_event {
 
 sub bailout {
     my($self, $message) = @_;
-    Carp::croak($message);
+    print STDERR "nessy: ",$message,"\n";
+    $self->_fail_outstanding_requests($message);
+    $self->socket_watcher(undef);
 }
 
 1;
