@@ -377,7 +377,7 @@ sub _on_read_event {
 
 sub bailout {
     my($self, $message) = @_;
-    print STDERR $message,"\n";
+    print STDERR "nessy: ",$message,"\n";
     $self->_fail_outstanding_requests($message);
     $self->socket_watcher(undef);
 }
