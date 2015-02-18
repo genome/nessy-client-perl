@@ -5,14 +5,10 @@ use warnings;
 
 use Nessy::Claim;
 
-use Test::More tests => 17;
+use Test::More tests => 4;
 
-test_failing_constructor();
-test_release();
-test_destructor();
-test_validate();
-
-sub test_failing_constructor {
+subtest 'failing constructor' => sub {
+    plan tests => 7;
 
     my $claim;
 
@@ -30,9 +26,11 @@ sub test_failing_constructor {
         ok(! $claim, "omitting $omit param does not return new object");
         like($@, qr($omit is a required param), "new() without $omit throws expected exception");
     }
-}
+};
 
-sub test_release {
+subtest release => sub {
+    plan tests => 6;
+
     my $resource_name = 'foo';
 
     my($on_release_called, $on_validate_called) = (0, 0);
@@ -50,9 +48,11 @@ sub test_release {
 
     is($on_release_called, 1, 'on_release callback was not called again');
     is($on_validate_called, 0, 'on_validate callback was not called');
-}
+};
 
-sub test_destructor {
+subtest destructor => sub {
+    plan tests => 2;
+
     my $resource_name = 'foo';
 
     my $on_release_called = 0;
@@ -64,15 +64,16 @@ sub test_destructor {
     undef($claim);
 
     is($on_release_called, 1, 'on_release called once in destructor');
-}
+};
 
-sub test_validate {
+subtest validate => sub {
+    plan tests => 2;
     my $on_validate_called = 0;
     my $on_validate = sub { $on_validate_called++; 1};
     my $claim = Nessy::Claim->new(resource_name => 'foo', on_release => sub {}, on_validate => $on_validate);
 
     ok($claim->validate, 'on_validate');
     is($on_validate_called, 1, 'on_validate callback was called');
-}
+};
 
 

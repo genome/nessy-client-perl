@@ -6,25 +6,19 @@ use warnings;
 use Nessy::Client::Message;
 use JSON;
 
-use Test::More tests => 33;
+use Test::More tests => 5;
 
-test_constructor();
-test_constructor_and_properties();
-test_failed_constructor();
+subtest constructor => sub {
+    plan tests => 3;
 
-test_encode();
-
-test_success_fail();
-
-
-sub test_constructor {
     my $m = Nessy::Client::Message->new(resource_name => 'foo', command => 'bar', serial => 1);
     ok($m, 'constructor');
     is($m->resource_name, 'foo', 'resource_name property');
     is($m->command, 'bar', 'command property');
-}
+};
 
-sub test_constructor_and_properties {
+subtest 'constructor and properties' => sub {
+    plan tests => 6;
 
     my @construction_params = (resource_name => 'foo', command => 'bar', serial => 1);
     my @remaining_params = (args => 123, result => 'abc', error_message => 'hi');
@@ -42,9 +36,11 @@ sub test_constructor_and_properties {
         }
         ok($is_ok, "accessor with $params_count properties");
     }
-}
+};
 
-sub test_failed_constructor {
+subtest 'failed constructor' => sub {
+    plan tests => 4;
+
     my $m = eval { Nessy::Client::Message->new() };
     ok($@, 'new() throws exception with no args');
 
@@ -60,9 +56,11 @@ sub test_failed_constructor {
         my $m = eval { Nessy::Client::Message->new( %params ) };
         like($@, qr($omit is a required param), "constructor fails when missing $omit");
     }
-}
+};
 
-sub test_encode {
+subtest encode => sub {
+    plan tests => 4;
+
     my %params = (
         resource_name => 'foo',
         command => 'bar',
@@ -90,9 +88,11 @@ sub test_encode {
         $is_ok = 0 if ($m->$key ne $params{$key});
     }
     ok($is_ok, 'json copy succeeded');
-}
+};
 
-sub test_success_fail {
+subtest 'success/fail' => sub {
+    plan tests => 16;
+
     my $m = Nessy::Client::Message->new( command => 'hi', resource_name => 'foo', serial => 1);
     ok($m, 'new message');
     ok($m->succeed, 'Set message successful');
@@ -117,4 +117,4 @@ sub test_success_fail {
 
     ok(! eval { $m->fail }, 'Could not change status after it was set');
     like($@, qr(Cannot set Message to failed), 'exception');
-}
+};

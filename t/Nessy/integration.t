@@ -122,6 +122,20 @@ subtest shutdown_released_claim_doesnt_crash => sub {
     lives_ok {$client->shutdown} "client shutdown doesn't crash";
 };
 
+subtest 'bad URL' => sub {
+    plan tests => 2;
+
+    local $ENV{NESSY_SERVER_URL} = $ENV{NESSY_SERVER_URL} . '/bad';
+    my $resource = _get_resource();
+    my $client = _get_client();
+    local $SIG{ALRM} = sub { die 'timed out' };
+
+    alarm(30);
+    my $claim = eval { $client->claim($resource) };
+    ok(! $claim, 'getting a claim with bad URL failed');
+    is($@, '', 'no exception getting claim');
+};
+
 
 done_testing();
 
