@@ -48,7 +48,9 @@ sub _verify_constructor_params {
 
     $params->{api_version} ||= $class->_default_api_version;
     $params->{url} || Carp::croak('url is a required param');
-    $params->{'socketpair'} ||= [ $class->_make_socket_pair_for_daemon_comms() ];
+    $params->{socketpair} ||= [ $class->_make_socket_pair_for_daemon_comms() ];
+    $params->{default_ttl} ||= $class->_default_ttl;
+    $params->{default_timeout} ||= $class->_default_timeout;
 
     return $params;
 }
@@ -64,8 +66,8 @@ sub _parent_process_setup {
     my($self, %params) = @_;
 
     $self->api_version($params{api_version});
-    $self->default_ttl( $params{default_ttl} || $self->_default_ttl );
-    $self->default_timeout( $params{default_timeout} || $self->_default_timeout );
+    $self->default_ttl($params{default_ttl});
+    $self->default_timeout($params{default_timeout});
     $self->serial_responder_registry({});
 
     my $watcher = $self->_create_socket_watcher($params{socketpair}->[0]);
