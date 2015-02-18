@@ -40,14 +40,16 @@ sub new {
 sub _fork_and_run_daemon {
     my $self = shift;
 
+    my @sockets = $self->_make_socket_pair_for_daemon_comms();
+
     my $pid = $self->_fork();
     if ($pid) {
         $self->pid($pid);
-        $self->_parent_process_setup();
+        $self->_parent_process_setup(@sockets);
         return $pid;
 
     } elsif (defined $pid) {
-        $self->_run_child_process();
+        $self->_run_child_process(@sockets);
         exit;
     } else {
         Carp::croak("Can't fork: $!");
@@ -67,9 +69,6 @@ sub _verify_constructor_params {
 
     $params->{api_version} ||= $class->_default_api_version;
     $params->{url} || Carp::croak('url is a required param');
-    $params->{socketpair} ||= [ $class->_make_socket_pair_for_daemon_comms() ];
-    Carp::croak('socketpair param must be an arrayref of 2 handles')
-        unless (ref($params->{socketpair}) eq 'ARRAY' and @{$params->{socketpair}} == 2);
     $params->{default_ttl} ||= $class->_default_ttl;
     $params->{default_timeout} ||= $class->_default_timeout;
 
@@ -84,7 +83,7 @@ sub _make_socket_pair_for_daemon_comms {
 }
 
 sub _parent_process_setup {
-    my($self) = @_;
+    my($self, @sockets) = @_;
 
     my $params = $self->constructor_params();
 
@@ -93,10 +92,10 @@ sub _parent_process_setup {
     $self->default_timeout($params->{default_timeout});
     $self->serial_responder_registry({});
 
-    my $watcher = $self->_create_socket_watcher($params->{socketpair}->[PARENT_PROCESS_SOCKET]);
+    my $watcher = $self->_create_socket_watcher($sockets[PARENT_PROCESS_SOCKET]);
     $self->socket_watcher($watcher);
 
-    $self->_close_unused_socket($params->{socketpair}->[CHILD_PROCESS_SOCKET]);
+    $self->_close_unused_socket($sockets[CHILD_PROCESS_SOCKET]);
 }
 
 # After forking, the parent closes the child's socket, and the child closes
@@ -107,16 +106,16 @@ sub _close_unused_socket {
 }
 
 sub _run_child_process {
-    my($self) = @_;
+    my($self, @sockets) = @_;
 
     my $params = $self->constructor_params();
 
     eval {
-        $self->_close_unused_socket($params->{socketpair}->[PARENT_PROCESS_SOCKET]);
+        $self->_close_unused_socket($sockets[PARENT_PROCESS_SOCKET]);
         my $daemon_class = $self->_daemon_class_name;
         my $daemon = $daemon_class->new(
                             url => $params->{url},
-                            client_socket => $params->{socketpair}->[CHILD_PROCESS_SOCKET],
+                            client_socket => $sockets[CHILD_PROCESS_SOCKET],
                             api_version => $params->{api_version});
         $daemon->run();
     };
