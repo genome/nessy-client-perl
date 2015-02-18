@@ -33,11 +33,18 @@ sub new {
     my $self = bless {}, $class;
     $self->constructor_params(\%params);
 
-    my $pid = $class->_fork();
+    $self->_fork_and_run_daemon();
+    return $self;
+}
+
+sub _fork_and_run_daemon {
+    my $self = shift;
+
+    my $pid = $self->_fork();
     if ($pid) {
         $self->pid($pid);
         $self->_parent_process_setup();
-        return $self;
+        return $pid;
 
     } elsif (defined $pid) {
         $self->_run_child_process();
