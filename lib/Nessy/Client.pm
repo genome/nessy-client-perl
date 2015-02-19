@@ -20,8 +20,8 @@ use Scalar::Util;
 
 my $MESSAGE_SERIAL = 1;
 
-use constant PARENT_PROCESS_SOCKET => 0;  # index into $params{socketpair}
-use constant CHILD_PROCESS_SOCKET => 1;
+use constant CLIENT_TO_DAEMON_SOCKET => 0;  # index into $params{socketpair}
+use constant DAEMON_TO_CLIENT_SOCKET => 1;
 
 # The client process that acts as an intermediary between the client code
 # and the lock server 
@@ -84,10 +84,10 @@ sub _parent_process_setup {
     $self->default_timeout($params->{default_timeout});
     $self->serial_responder_registry({});
 
-    my $watcher = $self->_create_socket_watcher($sockets[PARENT_PROCESS_SOCKET]);
+    my $watcher = $self->_create_socket_watcher($sockets[CLIENT_TO_DAEMON_SOCKET]);
     $self->socket_watcher($watcher);
 
-    $self->_close_unused_socket($sockets[CHILD_PROCESS_SOCKET]);
+    $self->_close_unused_socket($sockets[DAEMON_TO_CLIENT_SOCKET]);
 }
 
 # After forking, the parent closes the child's socket, and the child closes
@@ -103,11 +103,11 @@ sub _run_child_process {
     my $params = $self->constructor_params();
 
     eval {
-        $self->_close_unused_socket($sockets[PARENT_PROCESS_SOCKET]);
+        $self->_close_unused_socket($sockets[CLIENT_TO_DAEMON_SOCKET]);
         my $daemon_class = $self->_daemon_class_name;
         my $daemon = $daemon_class->new(
                             url => $params->{url},
-                            client_socket => $sockets[CHILD_PROCESS_SOCKET],
+                            client_socket => $sockets[DAEMON_TO_CLIENT_SOCKET],
                             api_version => $params->{api_version});
         $daemon->run();
     };
