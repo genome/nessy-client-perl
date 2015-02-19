@@ -5,7 +5,7 @@ use warnings;
 
 our $VERSION = '0.010';
 
-use Nessy::Properties qw(pid socket socket_watcher serial_responder_registry api_version default_ttl default_timeout);
+use Nessy::Properties qw(pid socket socket_watcher serial_responder_registry api_version default_ttl default_timeout constructor_params);
 
 use Nessy::Claim;
 use Nessy::Daemon;
@@ -54,14 +54,6 @@ sub _fork_and_run_daemon {
     } else {
         Carp::croak("Can't fork: $!");
     }
-}
-
-sub constructor_params {
-    my $self = shift;
-    if (@_) {
-        $self->{constructor_params} = shift;
-    }
-    return $self->{constructor_params};
 }
 
 sub _verify_constructor_params {
