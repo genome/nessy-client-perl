@@ -20,7 +20,7 @@ use Scalar::Util;
 
 my $MESSAGE_SERIAL = 1;
 
-use constant CLIENT_TO_DAEMON_SOCKET => 0;  # index into $params{socketpair}
+use constant CLIENT_TO_DAEMON_SOCKET => 0;  # index into list returned by socketpair
 use constant DAEMON_TO_CLIENT_SOCKET => 1;
 
 # The client process that acts as an intermediary between the client code
