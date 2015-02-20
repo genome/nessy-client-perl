@@ -5,7 +5,7 @@ use warnings;
 
 our $VERSION = '0.010';
 
-use Nessy::Properties qw(pid socket socket_watcher serial_responder_registry api_version default_ttl default_timeout);
+use Nessy::Properties qw(pid socket socket_watcher serial_responder_registry api_version default_ttl default_timeout constructor_params);
 
 use Nessy::Claim;
 use Nessy::Daemon;
@@ -20,8 +20,8 @@ use Scalar::Util;
 
 my $MESSAGE_SERIAL = 1;
 
-use constant PARENT_PROCESS_SOCKET => 0;  # index into $params{socketpair}
-use constant CHILD_PROCESS_SOCKET => 1;
+use constant CLIENT_TO_DAEMON_SOCKET => 0;  # index into list returned by socketpair
+use constant DAEMON_TO_CLIENT_SOCKET => 1;
 
 # The client process that acts as an intermediary between the client code
 # and the lock server 
@@ -30,16 +30,26 @@ sub new {
     my($class, %params) = @_;
 
     $class->_verify_constructor_params(\%params);
+    my $self = bless {}, $class;
+    $self->constructor_params(\%params);
 
-    my $pid = $class->_fork();
+    $self->_fork_and_run_daemon();
+    return $self;
+}
+
+sub _fork_and_run_daemon {
+    my $self = shift;
+
+    my @sockets = $self->_make_socket_pair_for_daemon_comms();
+
+    my $pid = $self->_fork();
     if ($pid) {
-        my $self = bless {}, $class;
         $self->pid($pid);
-        $self->_parent_process_setup(%params);
-        return $self;
+        $self->_parent_process_setup(@sockets);
+        return $pid;
 
     } elsif (defined $pid) {
-        $class->_run_child_process(%params);
+        $self->_run_child_process(@sockets);
         exit;
     } else {
         Carp::croak("Can't fork: $!");
@@ -51,9 +61,6 @@ sub _verify_constructor_params {
 
     $params->{api_version} ||= $class->_default_api_version;
     $params->{url} || Carp::croak('url is a required param');
-    $params->{socketpair} ||= [ $class->_make_socket_pair_for_daemon_comms() ];
-    Carp::croak('socketpair param must be an arrayref of 2 handles')
-        unless (ref($params->{socketpair}) eq 'ARRAY' and @{$params->{socketpair}} == 2);
     $params->{default_ttl} ||= $class->_default_ttl;
     $params->{default_timeout} ||= $class->_default_timeout;
 
@@ -68,17 +75,19 @@ sub _make_socket_pair_for_daemon_comms {
 }
 
 sub _parent_process_setup {
-    my($self, %params) = @_;
+    my($self, @sockets) = @_;
 
-    $self->api_version($params{api_version});
-    $self->default_ttl($params{default_ttl});
-    $self->default_timeout($params{default_timeout});
+    my $params = $self->constructor_params();
+
+    $self->api_version($params->{api_version});
+    $self->default_ttl($params->{default_ttl});
+    $self->default_timeout($params->{default_timeout});
     $self->serial_responder_registry({});
 
-    my $watcher = $self->_create_socket_watcher($params{socketpair}->[PARENT_PROCESS_SOCKET]);
+    my $watcher = $self->_create_socket_watcher($sockets[CLIENT_TO_DAEMON_SOCKET]);
     $self->socket_watcher($watcher);
 
-    $self->_close_unused_socket($params{socketpair}->[CHILD_PROCESS_SOCKET]);
+    $self->_close_unused_socket($sockets[DAEMON_TO_CLIENT_SOCKET]);
 }
 
 # After forking, the parent closes the child's socket, and the child closes
@@ -89,15 +98,17 @@ sub _close_unused_socket {
 }
 
 sub _run_child_process {
-    my($class, %params) = @_;
+    my($self, @sockets) = @_;
+
+    my $params = $self->constructor_params();
 
     eval {
-        $class->_close_unused_socket($params{socketpair}->[PARENT_PROCESS_SOCKET]);
-        my $daemon_class = $class->_daemon_class_name;
+        $self->_close_unused_socket($sockets[CLIENT_TO_DAEMON_SOCKET]);
+        my $daemon_class = $self->_daemon_class_name;
         my $daemon = $daemon_class->new(
-                            url => $params{url},
-                            client_socket => $params{socketpair}->[CHILD_PROCESS_SOCKET],
-                            api_version => $params{api_version});
+                            url => $params->{url},
+                            client_socket => $sockets[DAEMON_TO_CLIENT_SOCKET],
+                            api_version => $params->{api_version});
         $daemon->run();
     };
     Carp::croak($@) if $@;
@@ -310,7 +321,12 @@ sub _send_command_with_callback {
 
     my $message = Nessy::Client::Message->new(serial => $MESSAGE_SERIAL++, %message_args);
 
+    unless($self->socket_watcher) {   # bailout() sets this to undef()
+        $self->_fork_and_run_daemon();
+    }
+
     $self->_register_responder_for_message($cb, $message);
+
     $self->socket_watcher->push_write(json => $message);
 }
 
