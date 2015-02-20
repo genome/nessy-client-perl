@@ -51,7 +51,7 @@ subtest 'daemon restarts after going away' => sub {
     my $respond_successfully = sub {
                 my($watcher, $message_hash) = @_;
                 my $message = Nessy::Client::Message->new(%$message_hash);
-                ok($message, 'Got message from client to make a lock');
+                ok($message, 'Got message from client: '.$message->command);
                 $message->succeed;
                 $watcher->push_write(json => $message);
             };
